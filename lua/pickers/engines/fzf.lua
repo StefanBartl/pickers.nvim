@@ -7,12 +7,48 @@
 ---   live_grep(opts)    → nil
 ---   pick_item(opts)    → nil   (used by repos / wkdbooks sources)
 ---   pick_dir(opts)     → nil   (used by folder source)
+---
+--- Escape behaviour (double-escape to close):
+---   fzf runs inside a Neovim terminal buffer.  A terminal-mode <Esc> keymap
+---   is injected via winopts.on_create BEFORE fzf reads stdin, so Neovim
+---   intercepts the key first:
+---     1st <Esc>  (t-mode)  →  <C-\><C-n>  →  Normal mode of the fzf buffer
+---     2nd <Esc>  (n-mode)  →  nvim_win_close  →  fzf process exits
 
 local notify = require("lib.nvim.notify").create("[pickers.engines.fzf]")
 
 local M = {}
 
--- ── Helpers ──────────────────────────────────────────────────────────────────
+-- ── Double-escape helper ─────────────────────────────────────────────────────
+
+---Injected into winopts.on_create for every fzf-lua call.
+---Sets buffer-local t-mode and n-mode <Esc> keymaps on the fzf terminal buffer
+---so that the first <Esc> goes to Normal mode (without aborting fzf) and the
+---second <Esc> closes the window (killing the fzf process via stdin close).
+local function setup_double_esc()
+  local buf = vim.api.nvim_get_current_buf()
+
+  -- t-mode: intercept <Esc> before fzf sees it → exit terminal mode
+  vim.keymap.set("t", "<Esc>", "<C-\\><C-n>", {
+    buffer  = buf,
+    silent  = true,
+    nowait  = true,
+  })
+
+  -- n-mode: second <Esc> closes the floating window; fzf exits on stdin close
+  vim.keymap.set("n", "<Esc>", function()
+    local ok, err = pcall(vim.api.nvim_win_close, 0, true)
+    if not ok then
+      notify.debug("win_close error (already closed?): " .. tostring(err))
+    end
+  end, {
+    buffer  = buf,
+    silent  = true,
+    nowait  = true,
+  })
+end
+
+-- ── Other helpers ────────────────────────────────────────────────────────────
 
 ---@return string|nil  "fd" | "fdfind" | nil
 local function fd_exec()
@@ -56,36 +92,33 @@ function M.pick_files(opts)
   local ok, fzf = pcall(require, "fzf-lua")
   if not ok then notify.error("fzf-lua unavailable") return end
 
+  local base = {
+    prompt  = opts.prompt,
+    query   = opts.query,
+    winopts = { on_create = setup_double_esc },
+  }
+
   -- Custom find command (system source: pre-built fd argv)
   if opts.find_command then
     local cmd_str = table.concat(
       vim.tbl_map(vim.fn.shellescape, opts.find_command),
       " "
     )
-    safe_call(fzf.files, {
-      cmd    = cmd_str,
-      prompt = opts.prompt,
-      query  = opts.query,
-    })
+    base.cmd = cmd_str
+    safe_call(fzf.files, base)
     return
   end
 
   -- Multi-root: construct fd command spanning all roots
   if #opts.roots > 1 then
-    safe_call(fzf.files, {
-      cmd    = multi_root_cmd(opts.roots),
-      prompt = opts.prompt,
-      query  = opts.query,
-    })
+    base.cmd = multi_root_cmd(opts.roots)
+    safe_call(fzf.files, base)
     return
   end
 
-  -- Single root: standard fzf.files
-  safe_call(fzf.files, {
-    cwd    = opts.roots[1],
-    prompt = opts.prompt,
-    query  = opts.query,
-  })
+  -- Single root: standard fzf.files with cwd
+  base.cwd = opts.roots[1]
+  safe_call(fzf.files, base)
 end
 
 ---@param opts Pickers.EngineOpts
@@ -101,6 +134,7 @@ function M.live_grep(opts)
     prompt      = opts.prompt,
     rg_opts     = table.concat(rg_opts_list, " "),
     query       = opts.query,
+    winopts     = { on_create = setup_double_esc },
   })
 end
 
@@ -113,6 +147,7 @@ function M.pick_item(opts)
   fzf.fzf_exec(opts.items, {
     prompt   = opts.prompt,
     fzf_opts = { ["--no-multi"] = true },
+    winopts  = { on_create = setup_double_esc },
     actions  = {
       ["default"] = function(selected)
         if selected and selected[1] then
@@ -135,11 +170,11 @@ function M.pick_dir(opts)
     prompt   = opts.prompt or "Folder> ",
     cwd      = cwd,
     fd_opts  = "--type d --hidden --follow --exclude .git",
+    winopts  = { on_create = setup_double_esc },
     actions  = {
       ["default"] = function(selected)
         if not selected or not selected[1] then return end
-        local rel  = selected[1]
-        local path = vim.fs.normalize(cwd .. "/" .. rel)
+        local path = vim.fs.normalize(cwd .. "/" .. selected[1])
         opts.on_select(path)
       end,
     },
