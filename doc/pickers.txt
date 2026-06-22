@@ -1,0 +1,248 @@
+*pickers.txt*   Unified fuzzy-picker plugin for Neovim
+
+Author:   Stefan Bartl <stefan.bartl.work@gmail.com>
+Homepage: https://github.com/StefanBartl/pickers.nvim
+License:  MIT
+
+==============================================================================
+CONTENTS                                                      *pickers-contents*
+
+  1. Introduction ..................... |pickers-intro|
+  2. Requirements ..................... |pickers-requirements|
+  3. Setup ............................ |pickers-setup|
+  4. Command .......................... |pickers-command|
+  5. Scopes ........................... |pickers-scopes|
+  6. Keymaps .......................... |pickers-keymaps|
+  7. Compat commands .................. |pickers-compat|
+  8. Configuration reference .......... |pickers-config|
+  9. Health check ..................... |pickers-health|
+
+==============================================================================
+1. INTRODUCTION                                                  *pickers-intro*
+
+pickers.nvim consolidates seven previously separate Neovim picker modules
+into one unified plugin:
+
+  • find_config       — search in the Neovim config directory
+  • find_in_folder    — interactively pick a folder, then search it
+  • dir_picker        — depth-based / alias directory navigation
+  • repo_pickers      — pick a repo, then search it
+  • grep              — live grep in CWD
+  • search_all_drives — search across all mount points / drive letters
+  • system_find       — systemwide fd-based file search
+
+All scopes share one unified command `:Pickers` and are backed by a single
+engine (telescope.nvim or fzf-lua, auto-detected).
+
+==============================================================================
+2. REQUIREMENTS                                           *pickers-requirements*
+
+Required:
+  • lib.nvim  https://github.com/StefanBartl/lib.nvim
+
+One of (auto-detected, telescope preferred):
+  • telescope.nvim  https://github.com/nvim-telescope/telescope.nvim
+  • fzf-lua         https://github.com/ibhagwan/fzf-lua
+
+Recommended CLI tools:
+  • ripgrep (rg)   — live_grep support
+  • fd / fdfind    — system source, dir-picker (telescope)
+
+==============================================================================
+3. SETUP                                                         *pickers-setup*
+
+Minimal (lazy.nvim): >lua
+  {
+    "StefanBartl/pickers.nvim",
+    dependencies = { "StefanBartl/lib.nvim" },
+    config = function()
+      require("pickers").setup()
+    end,
+  }
+<
+
+Full options: >lua
+  require("pickers").setup({
+    engine         = "auto",          -- "auto" | "telescope" | "fzf"
+    repos_dir      = vim.env.REPOS_DIR,
+    wkdbooks_dir   = nil,             -- default: repos_dir .. "/WKDBooks"
+    wkdbook_prefix = "wkdbook-",
+    depth_aliases  = {
+      work = function() return "/home/user/work" end,
+    },
+    keymaps = {
+      enable       = true,
+      dir_pick     = "<leader>dp",
+      folder_files = "<leader>fb",
+      config_files = "<leader>fc",
+      config_grep  = "<leader>gc",
+      cwd_grep     = "<leader>li",
+      cwd_files    = nil,            -- disabled by default
+    },
+    usercmds = { enable = true },
+  })
+<
+
+Note: `setup()` is optional.  The `:Pickers` command is always registered
+automatically by `plugin/pickers.lua`.  Call `setup()` only when you want to
+change defaults, add aliases, or toggle keymaps/usercmds.
+
+==============================================================================
+4. COMMAND                                                     *pickers-command*
+
+                                                                      *:Pickers*
+:Pickers [{scope} [{action}]]
+:Pickers dir [{nav} [{action}]]
+
+  scope    One of: cwd config folder repos wkdbooks system drives dir
+  action   One of: files grep
+  nav      (dir only) alias name, integer depth, or path=<dir>
+
+When an argument is omitted an interactive picker (hover_select or
+vim.ui.select) prompts the user.
+
+Examples: >
+  :Pickers                    " scope picker → action picker
+  :Pickers cwd                " action picker for CWD
+  :Pickers cwd files          " find files in CWD
+  :Pickers config grep        " live grep in nvim config
+  :Pickers dir                " dir-nav picker → action picker
+  :Pickers dir 2              " go 2 dirs up → action picker
+  :Pickers dir git files      " git repo root → find files
+  :Pickers dir path=/tmp grep " explicit path → live grep
+  :Pickers repos files        " pick repo → find files
+  :Pickers drives grep        " live grep across all drives
+  :Pickers system files       " systemwide fd search (prompts for query)
+<
+
+Tab-completion is supported for all arguments.
+
+==============================================================================
+5. SCOPES                                                       *pickers-scopes*
+
+cwd~
+  Search root: `vim.uv.cwd()`.
+
+config~
+  Search root: `vim.fn.stdpath("config")`.
+
+folder~
+  Opens an engine directory picker so you can interactively choose a folder,
+  then searches inside it.
+
+repos~
+  Lists all git repositories inside `repos_dir`, lets you pick one, then
+  opens the engine picker inside that repo.  Requires `repos_dir` to be set.
+
+wkdbooks~
+  Same as repos but filtered to directories whose name starts with
+  `wkdbook_prefix` (default: "wkdbook-") inside `wkdbooks_dir`.
+
+system~
+  Opens `vim.ui.input` for a search specification:
+    name .ext /path
+  Runs `fd` with the given arguments.  Requires fd or fdfind in PATH.
+
+drives~
+  Discovers all mount points / drive letters:
+    • Windows: PowerShell Get-PSDrive (A-Z fallback)
+    • WSL:     /mnt/* scan
+    • POSIX:   `df -P --output=target`
+  Roots are session-cached after first discovery.
+
+dir~
+  Navigation argument forms:
+    <number>         go N directories above cwd (1 = parent, 2 = grandparent…)
+    git              git repository root of cwd
+    home             OS home directory
+    cwd              current working directory
+    root             filesystem root above cwd
+    <alias>          any name registered in `depth_aliases`
+    path=<dir>       explicit path; ~ / %VAR% / $VAR expanded
+
+==============================================================================
+6. KEYMAPS                                                     *pickers-keymaps*
+
+All keymaps are registered in `lua/pickers/bindings.lua`.  They mirror the
+keymaps from the original individual modules exactly:
+
+  <leader>dp   :Pickers dir          (dir navigation picker)
+  <leader>fb   :Pickers folder files (find in interactively picked folder)
+  <leader>fc   :Pickers config files (find files in nvim config)
+  <leader>gc   :Pickers config grep  (grep in nvim config)
+  <leader>li   :Pickers cwd grep     (live grep in CWD)
+
+Disable all keymaps: >lua
+  require("pickers").setup({ keymaps = { enable = false } })
+<
+
+Change a keymap: >lua
+  require("pickers").setup({ keymaps = { cwd_grep = "<leader>sg" } })
+<
+
+==============================================================================
+7. COMPAT COMMANDS                                               *pickers-compat*
+
+These commands are registered alongside `:Pickers` for backwards compatibility
+with configs that used the original individual modules:
+
+  :DirPicker [nav]    → :Pickers dir [nav]
+  :FindConfig         → :Pickers config files
+  :GrepConfig         → :Pickers config grep
+  :FindInFolder       → :Pickers folder files
+  :LiveGrep           → :Pickers cwd grep
+  :AllDrives          → :Pickers drives files
+  :AllDrivesGrep      → :Pickers drives grep
+  :FindOnSystem       → :Pickers system files
+  :RepoFiles          → :Pickers repos files
+  :RepoGrep           → :Pickers repos grep
+  :WkdBookFiles       → :Pickers wkdbooks files
+  :WkdBookGrep        → :Pickers wkdbooks grep
+
+==============================================================================
+8. CONFIGURATION REFERENCE                                      *pickers-config*
+
+All keys are optional.  Unset keys retain their default values.
+
+  engine (string, default "auto")~
+    "auto"       detect: telescope → fzf
+    "telescope"  always use telescope.nvim
+    "fzf"        always use fzf-lua
+
+  repos_dir (string|nil, default $REPOS_DIR)~
+    Root directory that contains git repositories.  Used by the `repos` scope.
+
+  wkdbooks_dir (string|nil)~
+    Root for wkdbook directories.  Default: repos_dir .. "/WKDBooks".
+
+  wkdbook_prefix (string, default "wkdbook-")~
+    Only subdirectories whose name starts with this prefix are listed.
+
+  depth_aliases (table<string, fun():string>)~
+    Map alias name → function that returns an absolute path.  Merged with the
+    built-in aliases (cwd, home, root, git).
+
+  keymaps (table)~
+    enable       (bool, default true)  — set false to disable all keymaps
+    dir_pick     (string|nil)          — default "<leader>dp"
+    folder_files (string|nil)          — default "<leader>fb"
+    config_files (string|nil)          — default "<leader>fc"
+    config_grep  (string|nil)          — default "<leader>gc"
+    cwd_grep     (string|nil)          — default "<leader>li"
+    cwd_files    (string|nil)          — default nil (disabled)
+
+  usercmds (table)~
+    enable (bool, default true)
+
+==============================================================================
+9. HEALTH CHECK                                                 *pickers-health*
+
+Run: >
+  :checkhealth pickers
+<
+
+Checks: lib.nvim availability, telescope / fzf-lua presence, rg / fd in PATH,
+repos_dir / wkdbooks_dir existence, and the number of registered aliases.
+
+==============================================================================
+vim:ft=help:tw=78:ts=2:et:
