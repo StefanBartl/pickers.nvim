@@ -5,33 +5,34 @@
 --- grep, search_all_drives and system_find into one plugin backed by a
 --- single telescope or fzf-lua engine (auto-detected from what is installed).
 ---
---- Minimal setup (lazy.nvim example):
+--- Minimal setup (lazy.nvim):
 ---   {
 ---     "StefanBartl/pickers.nvim",
+---     lazy = false,                       -- required: load at startup
 ---     dependencies = { "StefanBartl/lib.nvim" },
 ---     config = function()
 ---       require("pickers").setup({
----         engine    = "auto",          -- "telescope" | "fzf" | "auto"
+---         engine    = "auto",
 ---         repos_dir = vim.env.REPOS_DIR,
 ---       })
 ---     end,
 ---   }
 ---
---- After setup the following are active (if not disabled):
----   :Pickers [scope] [nav|action] [action]  — unified command
----   All compat commands (:FindConfig, :GrepConfig, :DirPicker, …)
----   All preserved keymaps (<leader>dp, <leader>fb, <leader>fc, <leader>gc, <leader>li)
+--- Without setup() the plugin still works — default keymaps and compat
+--- user-commands are registered automatically at VimEnter by plugin/pickers.lua.
 
 local M = {}
 
 ---Configure and activate pickers.nvim.
 ---
---- Calling setup() is required only when you want to change defaults or
---- disable keymaps/usercmds.  The :Pickers command is always registered by
---- plugin/pickers.lua regardless.
+--- This sets vim.g.pickers_nvim_setup_called so that plugin/pickers.lua
+--- does not redundantly re-register bindings at VimEnter.
 ---
 ---@param opts Pickers.Config|nil
 function M.setup(opts)
+  -- Mark as setup so the VimEnter fallback in plugin/pickers.lua is skipped.
+  vim.g.pickers_nvim_setup_called = true
+
   require("pickers.config").apply(opts)
   local cfg = require("pickers.config").get()
   require("pickers.bindings").setup(cfg)

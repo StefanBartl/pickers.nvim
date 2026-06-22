@@ -1,6 +1,6 @@
 ---@module 'pickers.config.defaults'
 ---@brief Default configuration values.
-require("pickers.@types")
+---@see pickers.types
 
 ---@type Pickers.Config
 local M = {
