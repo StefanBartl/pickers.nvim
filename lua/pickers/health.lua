@@ -1,5 +1,5 @@
 ---@module 'pickers.health'
----@brief :checkhealth pickers — verify engines, CLI tools, and config.
+---@brief :checkhealth pickers — verify engines, CLI tools, config, and collections.
 
 local M = {}
 
@@ -73,20 +73,35 @@ function M.check()
       vim.health.warn("repos_dir set but not found: " .. cfg.repos_dir)
     end
   else
-    vim.health.info("repos_dir not set — repos / wkdbooks sources unavailable")
-  end
-
-  if cfg.wkdbooks_dir then
-    if vim.fn.isdirectory(cfg.wkdbooks_dir) == 1 then
-      vim.health.ok("wkdbooks_dir exists: " .. cfg.wkdbooks_dir)
-    else
-      vim.health.warn("wkdbooks_dir set but not found: " .. cfg.wkdbooks_dir)
-    end
+    vim.health.info("repos_dir not set — repos source unavailable")
   end
 
   local alias_count = 0
   for _ in pairs(cfg.depth_aliases) do alias_count = alias_count + 1 end
   vim.health.info("depth_aliases: " .. alias_count .. " registered")
+
+  -- ── Collections ───────────────────────────────────────────────────────────
+  vim.health.start("pickers.nvim — collections")
+
+  local collections = cfg.collections or {}
+  if #collections == 0 then
+    vim.health.info("No collections configured (optional — add them in setup())")
+  else
+    vim.health.info(#collections .. " collection(s) configured")
+    for _, coll in ipairs(collections) do
+      local label = coll.name .. " → " .. (coll.dir or "?")
+      if vim.fn.isdirectory(coll.dir or "") == 1 then
+        local detail = ""
+        if coll.prefix ~= nil then
+          detail = "  prefix=" .. (coll.prefix == "" and '""' or coll.prefix)
+        end
+        if coll.only_git then detail = detail .. "  only_git=true" end
+        vim.health.ok(label .. detail)
+      else
+        vim.health.warn(label .. "  [directory not found]")
+      end
+    end
+  end
 end
 
 return M

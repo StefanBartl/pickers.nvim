@@ -4,28 +4,35 @@
 
 local M = {}
 
--- Module-local state — never exposed as global
 local _cfg = nil  ---@type Pickers.Config|nil
 
 ---Return the active configuration, initialising from defaults on first call.
 ---@return Pickers.Config
 function M.get()
   if _cfg then return _cfg end
-
   _cfg = vim.deepcopy(require("pickers.config.defaults"))
-
-  -- Lazily compute wkdbooks_dir when not explicitly set
-  if not _cfg.wkdbooks_dir and _cfg.repos_dir then
-    _cfg.wkdbooks_dir = _cfg.repos_dir .. "/WKDBooks"
-  end
-
   return _cfg
 end
 
+---Validate and normalise a single collection entry.
+---Returns nil if the entry is invalid.
+---@param raw table
+---@return Pickers.Collection|nil
+local function normalise_collection(raw)
+  if type(raw) ~= "table" then return nil end
+  if type(raw.name) ~= "string" or raw.name == "" then return nil end
+  if type(raw.dir)  ~= "string" or raw.dir  == "" then return nil end
+  return {
+    name     = raw.name,
+    dir      = raw.dir,
+    prefix   = (type(raw.prefix) == "string") and raw.prefix or nil,
+    keys     = (type(raw.keys) == "table") and raw.keys or nil,
+    only_git = raw.only_git == true,
+  }
+end
+
 ---Merge user-provided options into the active configuration.
----Only known top-level keys are accepted; unknown keys are ignored silently.
 ---@param opts Pickers.Config|nil
----@return nil
 function M.apply(opts)
   local cfg = M.get()
   if type(opts) ~= "table" then return end
@@ -35,19 +42,26 @@ function M.apply(opts)
   end
   if type(opts.repos_dir) == "string" then
     cfg.repos_dir = opts.repos_dir
-    -- Re-derive wkdbooks_dir unless the user also supplied it
-    if not opts.wkdbooks_dir then
-      cfg.wkdbooks_dir = opts.repos_dir .. "/WKDBooks"
-    end
-  end
-  if type(opts.wkdbooks_dir) == "string" then
-    cfg.wkdbooks_dir = opts.wkdbooks_dir
-  end
-  if type(opts.wkdbook_prefix) == "string" then
-    cfg.wkdbook_prefix = opts.wkdbook_prefix
   end
 
-  -- Merge alias table: only string-key → function entries accepted
+  if type(opts.collections) == "table" then
+    cfg.collections = {}
+    for _, raw in ipairs(opts.collections) do
+      local coll = normalise_collection(raw)
+      if coll then
+        cfg.collections[#cfg.collections + 1] = coll
+      else
+        vim.notify(
+          string.format(
+            "[pickers] Invalid collection entry (name+dir required): %s",
+            vim.inspect(raw)
+          ),
+          vim.log.levels.WARN
+        )
+      end
+    end
+  end
+
   if type(opts.depth_aliases) == "table" then
     for k, v in pairs(opts.depth_aliases) do
       if type(k) == "string" and type(v) == "function" then

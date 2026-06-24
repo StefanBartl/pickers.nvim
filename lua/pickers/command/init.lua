@@ -9,6 +9,8 @@
 ---   :Pickers dir <nav>                    → nav resolved → interactive action
 ---   :Pickers dir <action>                 → nav=cwd, action direct   (files|grep)
 ---   :Pickers dir <nav> <action>           → fully specified
+---   :Pickers <collection>                 → collection as root → action picker
+---   :Pickers <collection> <action>        → collection root + direct action
 ---
 --- Engine is always taken from config; it is never exposed in the command.
 
@@ -18,13 +20,41 @@ local M = {}
 
 -- ── Constants ─────────────────────────────────────────────────────────────────
 
-local SCOPES  = { "cwd", "config", "folder", "repos", "wkdbooks", "system", "drives", "dir" }
-local ACTIONS = { "files", "grep" }
+local BASE_SCOPES = { "cwd", "config", "folder", "repos", "wkdbooks", "system", "drives", "dir" }
+local ACTIONS     = { "files", "grep" }
 
-local SCOPES_SET  = {}
-for _, s in ipairs(SCOPES)  do SCOPES_SET[s]  = true end
+local BASE_SCOPES_SET = {}
+for _, s in ipairs(BASE_SCOPES) do BASE_SCOPES_SET[s] = true end
 local ACTIONS_SET = {}
 for _, a in ipairs(ACTIONS) do ACTIONS_SET[a] = true end
+
+-- ── Helpers ───────────────────────────────────────────────────────────────────
+
+---Return collection names from the active config.
+---@return string[]
+local function get_collection_names()
+  local ok, cfg_mod = pcall(require, "pickers.config")
+  if not ok then return {} end
+  local cfg   = cfg_mod.get()
+  local names = {}
+  for _, coll in ipairs(cfg.collections or {}) do
+    if type(coll.name) == "string" then names[#names + 1] = coll.name end
+  end
+  return names
+end
+
+---Find a collection by name in the active config.
+---@param name string
+---@return Pickers.Collection|nil
+local function find_collection(name)
+  local ok, cfg_mod = pcall(require, "pickers.config")
+  if not ok then return nil end
+  local cfg = cfg_mod.get()
+  for _, coll in ipairs(cfg.collections or {}) do
+    if coll.name == name then return coll end
+  end
+  return nil
+end
 
 -- ── Routing helpers ───────────────────────────────────────────────────────────
 
@@ -53,8 +83,8 @@ local function after_source(source, action, engine_mod)
   end
 end
 
----Run a non-dir scope.
----@param scope      Pickers.Scope
+---Run a built-in (non-dir) scope.
+---@param scope      string
 ---@param action     Pickers.Action|nil
 ---@param engine_mod table
 local function run_standard_scope(scope, action, engine_mod)
@@ -64,8 +94,7 @@ local function run_standard_scope(scope, action, engine_mod)
     notify.error("Unknown scope '" .. scope .. "'")
     return
   end
-
-  -- folder / repos / wkdbooks need the engine for their interactive pickers
+  -- folder / repos / wkdbooks need engine_mod for their sub-pickers
   if scope == "folder" or scope == "repos" or scope == "wkdbooks" then
     src_mod.get(cfg, function(source)
       after_source(source, action, engine_mod)
@@ -75,6 +104,17 @@ local function run_standard_scope(scope, action, engine_mod)
       after_source(source, action, engine_mod)
     end)
   end
+end
+
+---Run a user-defined collection as a scope.
+---@param coll       Pickers.Collection
+---@param action     Pickers.Action|nil
+---@param engine_mod table
+local function run_collection_scope(coll, action, engine_mod)
+  local cfg = require("pickers.config").get()
+  require("pickers.sources.collection").get(coll, cfg, function(source)
+    after_source(source, action, engine_mod)
+  end, engine_mod)
 end
 
 -- ── Public: handle ────────────────────────────────────────────────────────────
@@ -90,22 +130,22 @@ function M.handle(opts)
   local arg2  = fargs[2]
   local arg3  = fargs[3]
 
-  -- :Pickers → interactive scope picker
+  -- :Pickers → interactive scope picker (built-ins + collections)
   if not scope or scope == "" then
     require("pickers.ui.scope_picker").open(function(chosen)
-      if chosen then
-        if chosen == "dir" then
-          require("pickers.actions.dir").run(nil, nil, engine_mod)
-        else
-          run_standard_scope(chosen, nil, engine_mod)
-        end
+      if not chosen then return end
+      if chosen == "dir" then
+        require("pickers.actions.dir").run(nil, nil, engine_mod)
+        return
       end
+      if BASE_SCOPES_SET[chosen] then
+        run_standard_scope(chosen, nil, engine_mod)
+        return
+      end
+      local coll = find_collection(chosen)
+      if coll then run_collection_scope(coll, nil, engine_mod); return end
+      notify.error("Unknown scope from picker: '" .. chosen .. "'")
     end)
-    return
-  end
-
-  if not SCOPES_SET[scope] then
-    notify.error("Unknown scope '" .. scope .. "'. Valid: " .. table.concat(SCOPES, ", "))
     return
   end
 
@@ -113,25 +153,39 @@ function M.handle(opts)
   if scope == "dir" then
     local nav_arg = arg2
     local action  = arg3
-
-    -- If arg2 is an action keyword, treat it as the action with nav = nil
-    if arg2 and ACTIONS_SET[arg2] then
-      nav_arg = nil
-      action  = arg2
-    end
-
+    if arg2 and ACTIONS_SET[arg2] then nav_arg = nil; action = arg2 end
     require("pickers.actions.dir").run(nav_arg, action, engine_mod)
     return
   end
 
-  -- All other scopes: arg2 is the action
-  local action = arg2
-  if action and not ACTIONS_SET[action] then
-    notify.warn("Unknown action '" .. action .. "'. Valid: files, grep. Showing action picker.")
-    action = nil
+  -- Built-in scopes
+  if BASE_SCOPES_SET[scope] then
+    local action = arg2
+    if action and not ACTIONS_SET[action] then
+      notify.warn("Unknown action '" .. action .. "'. Valid: files, grep. Showing action picker.")
+      action = nil
+    end
+    run_standard_scope(scope, action, engine_mod)
+    return
   end
 
-  run_standard_scope(scope, action, engine_mod)
+  -- Collection scopes (user-defined)
+  local coll = find_collection(scope)
+  if coll then
+    local action = arg2
+    if action and not ACTIONS_SET[action] then
+      notify.warn("Unknown action '" .. action .. "'. Valid: files, grep. Showing action picker.")
+      action = nil
+    end
+    run_collection_scope(coll, action, engine_mod)
+    return
+  end
+
+  notify.error(
+    "Unknown scope '" .. scope .. "'. "
+    .. "Built-in: " .. table.concat(BASE_SCOPES, ", ") .. ". "
+    .. "Run :checkhealth pickers to see your collections."
+  )
 end
 
 -- ── Public: complete ──────────────────────────────────────────────────────────
@@ -141,58 +195,43 @@ end
 ---@param cmdline  string
 ---@return string[]
 function M.complete(arglead, cmdline, _)
-  -- Count tokens already typed (excluding the "Pickers" command word)
   local after_cmd = cmdline:match("^%s*Pickers%s+(.-)%s*$") or ""
+  local tokens    = {}
+  for t in after_cmd:gmatch("%S+") do tokens[#tokens + 1] = t end
 
-  local tokens = {}
-  for t in after_cmd:gmatch("%S+") do
-    tokens[#tokens + 1] = t
-  end
-
-  -- If arglead is non-empty and matches the last token, that token is the
-  -- partial word being completed — it doesn't count as a "finished" token.
   local n_finished = #tokens
-  if arglead ~= "" and tokens[#tokens] == arglead then
-    n_finished = n_finished - 1
-  end
+  if arglead ~= "" and tokens[#tokens] == arglead then n_finished = n_finished - 1 end
 
-  ---Filter candidates by arglead prefix (case-insensitive).
   local function filter(candidates)
     if arglead == "" then return candidates end
     local lead = arglead:lower()
     local out  = {}
     for _, c in ipairs(candidates) do
-      if c:lower():sub(1, #lead) == lead then
-        out[#out + 1] = c
-      end
+      if c:lower():sub(1, #lead) == lead then out[#out + 1] = c end
     end
     return out
   end
 
-  -- Position 0: completing the scope
+  -- Position 0: completing scope → built-ins + collection names
   if n_finished == 0 then
-    return filter(SCOPES)
+    local all_scopes = vim.list_extend(vim.list_extend({}, BASE_SCOPES), get_collection_names())
+    return filter(all_scopes)
   end
 
   local scope = tokens[1]
-
   if scope == "dir" then
     if n_finished == 1 then
-      -- Completing second arg: can be nav alias | digit | "files" | "grep"
-      local aliases     = require("pickers.actions.dir").alias_names()
-      local candidates  = vim.list_extend({}, ACTIONS)
+      local aliases    = require("pickers.actions.dir").alias_names()
+      local candidates = vim.list_extend({}, ACTIONS)
       vim.list_extend(candidates, aliases)
       for i = 1, 9 do candidates[#candidates + 1] = tostring(i) end
       candidates[#candidates + 1] = "path="
       return filter(candidates)
     elseif n_finished == 2 then
-      -- Completing third arg: action
       return filter(ACTIONS)
     end
   else
-    if n_finished == 1 then
-      return filter(ACTIONS)
-    end
+    if n_finished == 1 then return filter(ACTIONS) end
   end
 
   return {}
