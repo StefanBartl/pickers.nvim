@@ -26,6 +26,7 @@ Consolidates seven separate picker modules into one plugin with a single `:Picke
 - [Installation](#installation)
 - [Command](#command)
 - [Scopes](#scopes)
+- [Collections](#collections)
 - [Keymaps](#keymaps)
 - [Compat commands](#compat-commands)
 - [Configuration](#configuration)
@@ -61,6 +62,13 @@ Consolidates seven separate picker modules into one plugin with a single `:Picke
     require("pickers").setup({
       engine    = "auto",            -- "auto" | "telescope" | "fzf"
       repos_dir = vim.env.REPOS_DIR,
+      collections = {
+        { name = "notes", dir = vim.env.REPOS_DIR .. "/Notes",
+          keys = { files = "<leader>mnf", grep = "<leader>mng" } },
+        { name = "wkdbooks", dir = vim.env.REPOS_DIR .. "/WKDBooks",
+          prefix = "wkdbook-",
+          keys = { files = "<leader>wkf", grep = "<leader>wkg" } },
+      },
     })
   end,
 }
@@ -119,7 +127,7 @@ When an argument is omitted an interactive picker appears (`hover_select` or
 
 | Scope | Nav (dir only) | Action | Result |
 |---|---|---|---|
-| _(none)_ | — | — | scope picker |
+| _(none)_ | — | — | scope picker (built-ins + collections) |
 | `cwd` | — | _(none)_ | action picker for CWD |
 | `cwd` | — | `files` | find files in CWD |
 | `config` | — | `grep` | live grep in nvim config |
@@ -132,12 +140,16 @@ When an argument is omitted an interactive picker appears (`hover_select` or
 | `dir` | `2` | _(none)_ | 2 dirs up → action picker |
 | `dir` | `git` | `files` | git root → find files |
 | `dir` | `path=/tmp` | `grep` | explicit path → live grep |
+| `notes` _(collection)_ | — | `files` | find files in collection root |
+| `wkdbooks` _(collection)_ | — | `grep` | pick subdir → live grep |
 
-Tab-completion is supported for all arguments.
+Tab-completion is supported for all arguments, including collection names.
 
 ---
 
 ## Scopes
+
+### Built-in scopes
 
 | Scope | Search root |
 |---|---|
@@ -145,7 +157,7 @@ Tab-completion is supported for all arguments.
 | `config` | `vim.fn.stdpath("config")` |
 | `folder` | Interactively picked directory |
 | `repos` | One git repo selected from `repos_dir` |
-| `wkdbooks` | One wkdbook selected from `wkdbooks_dir` |
+| `wkdbooks` | One wkdbook selected from `repos_dir/WKDBooks` |
 | `system` | Systemwide `fd` search (prompts for query) |
 | `drives` | All mount points / drive letters (session-cached) |
 | `dir` | Depth / alias / explicit-path navigation |
@@ -161,6 +173,52 @@ Tab-completion is supported for all arguments.
 | `root` | Filesystem root above cwd |
 | `<alias>` | Any name registered in `depth_aliases` |
 | `path=<dir>` | Explicit path (`~` / `%VAR%` / `$VAR` expanded) |
+
+---
+
+## Collections
+
+Collections are user-defined named scopes. Each collection becomes a first-class
+`:Pickers` scope, gets auto-generated compat commands (`{PascalName}Files` /
+`{PascalName}Grep`), and optional keymaps.
+
+### Collection config
+
+```lua
+collections = {
+  -- Direct root — dir is used as-is
+  { name = "notes",       dir = vim.env.REPOS_DIR .. "/Notes",
+    keys = { files = "<leader>mnf", grep = "<leader>mng" } },
+
+  -- Prefix-filtered subdirs — pick one, then search inside it
+  { name = "wkdbooks",    dir = vim.env.REPOS_DIR .. "/WKDBooks",
+    prefix = "wkdbook-",
+    keys = { files = "<leader>wkf", grep = "<leader>wkg" } },
+
+  -- All subdirs (empty prefix string) — pick one, then search inside it
+  { name = "projects",    dir = "/home/user/projects", prefix = "" },
+
+  -- Only subdirs that contain .git/
+  { name = "myrepos",     dir = "/home/user/src", prefix = "", only_git = true },
+}
+```
+
+### prefix field behaviour
+
+| `prefix` value | Behaviour |
+|---|---|
+| `nil` (not set) | `dir` is used directly as the search root |
+| `""` (empty string) | All immediate subdirs of `dir` are listed; pick one |
+| `"xyz-"` | Only subdirs whose name starts with `"xyz-"` are listed |
+
+### Auto-generated compat commands
+
+For a collection named `"notes_lua"`:
+
+| Command | Equivalent |
+|---|---|
+| `:NotesLuaFiles` | `:Pickers notes_lua files` |
+| `:NotesLuaGrep` | `:Pickers notes_lua grep` |
 
 ---
 
@@ -222,11 +280,14 @@ require("pickers").setup({
   -- Root directory that contains git repositories (default: $REPOS_DIR)
   repos_dir = vim.env.REPOS_DIR,
 
-  -- Root for wkdbook directories (default: repos_dir .. "/WKDBooks")
-  wkdbooks_dir = nil,
-
-  -- Only subdirectories starting with this prefix are listed as wkdbooks
-  wkdbook_prefix = "wkdbook-",
+  -- User-defined named scopes (see Collections section above)
+  collections = {
+    { name = "notes",    dir = vim.env.REPOS_DIR .. "/Notes",
+      keys = { files = "<leader>mnf", grep = "<leader>mng" } },
+    { name = "wkdbooks", dir = vim.env.REPOS_DIR .. "/WKDBooks",
+      prefix = "wkdbook-",
+      keys = { files = "<leader>wkf", grep = "<leader>wkg" } },
+  },
 
   -- Add or override named dir aliases (merged with built-ins: cwd/home/root/git)
   depth_aliases = {
@@ -256,7 +317,7 @@ require("pickers").setup({
 :checkhealth pickers
 ```
 
-Verifies: lib.nvim · telescope/fzf-lua · rg · fd/fdfind · repos_dir · wkdbooks_dir · registered aliases.
+Verifies: lib.nvim · telescope/fzf-lua · rg · fd/fdfind · repos_dir · registered aliases · each collection directory.
 
 ---
 

@@ -61,11 +61,17 @@
 ---@class Pickers.Usercmds
 ---@field enable boolean
 
+---@class Pickers.Collection
+---@field name     string                               Unique scope name (e.g. "notes")
+---@field dir      string                               Root directory
+---@field prefix   string|nil                           nil=direct root, ""=all subdirs, "xyz-"=filtered
+---@field keys     { files?: string, grep?: string }|nil  Optional keymaps
+---@field only_git boolean|nil                          Only show subdirs that contain .git
+
 ---@class Pickers.Config
 ---@field engine         Pickers.Engine
 ---@field repos_dir      string|nil
----@field wkdbooks_dir   string|nil
----@field wkdbook_prefix string
+---@field collections    Pickers.Collection[]
 ---@field depth_aliases  table<string, fun():string>
 ---@field keymaps        Pickers.Keymaps
 ---@field usercmds       Pickers.Usercmds

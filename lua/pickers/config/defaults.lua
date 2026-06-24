@@ -4,10 +4,9 @@
 
 ---@type Pickers.Config
 local M = {
-  engine         = "auto",
-  repos_dir      = vim.env.REPOS_DIR or nil,
-  wkdbooks_dir   = nil,   -- computed lazily: repos_dir .. "/WKDBooks"
-  wkdbook_prefix = "wkdbook-",
+  engine      = "auto",
+  repos_dir   = vim.env.REPOS_DIR or nil,
+  collections = {},
 
   depth_aliases = {
     cwd = function()
