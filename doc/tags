@@ -1,0 +1,13 @@
+:Pickers	pickers.txt	/*:Pickers*
+pickers-collections	pickers.txt	/*pickers-collections*
+pickers-command	pickers.txt	/*pickers-command*
+pickers-compat	pickers.txt	/*pickers-compat*
+pickers-config	pickers.txt	/*pickers-config*
+pickers-contents	pickers.txt	/*pickers-contents*
+pickers-health	pickers.txt	/*pickers-health*
+pickers-intro	pickers.txt	/*pickers-intro*
+pickers-keymaps	pickers.txt	/*pickers-keymaps*
+pickers-requirements	pickers.txt	/*pickers-requirements*
+pickers-scopes	pickers.txt	/*pickers-scopes*
+pickers-setup	pickers.txt	/*pickers-setup*
+pickers.txt	pickers.txt	/*pickers.txt*
