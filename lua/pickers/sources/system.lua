@@ -48,10 +48,11 @@ local function build_fd_cmd(input, fd)
     paths = { "/" }
   end
 
-  local cmd = { fd }
-  if name then
-    cmd[#cmd + 1] = name
-  end
+  -- fd argv is: fd [OPTIONS] <pattern> <path...>. The pattern must always be the
+  -- first positional — an empty string matches everything. Without it fd would
+  -- misread the first path as the search pattern (cross-platform bug; on Windows
+  -- an absolute path like "C:\..." is silently treated as a regex).
+  local cmd = { fd, name or "" }
   for _, p in ipairs(paths) do
     cmd[#cmd + 1] = p
   end
