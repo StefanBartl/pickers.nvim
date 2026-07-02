@@ -10,6 +10,7 @@ function M.run(source, engine_mod)
     roots        = source.roots,
     prompt       = source.prompt,
     find_command = source.find_command,
+    find         = require("pickers.config").get().find,
   })
 end
 

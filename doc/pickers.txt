@@ -291,6 +291,15 @@ All keys are optional.  Unset keys retain their default values.
     Map alias name → function that returns an absolute path.  Merged with the
     built-in aliases (cwd, home, root, git).
 
+  find (table)~
+    File-listing flags for the built-in file pickers (config/cwd/folder/repos/
+    collections).  The `system` scope is unaffected (it builds its own fd
+    command).  Honoured by both telescope and fzf-lua.
+      hidden    (bool, default true)   — show dotfiles / hidden entries
+      no_ignore (bool, default false)  — ignore .gitignore/.ignore rules
+      follow    (bool, default true)   — follow symlinks
+      exclude   (string[]|nil)         — extra globs to skip (e.g. node_modules)
+
   keymaps (table)~
     enable       (bool, default true)  — set false to disable all keymaps
     dir_pick     (string|nil)          — default "<leader>dp"

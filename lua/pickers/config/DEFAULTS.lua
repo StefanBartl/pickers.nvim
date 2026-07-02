@@ -44,6 +44,17 @@ local M = {
     dir_pick     = "<leader>dp",
   },
 
+  -- File-listing behaviour for the built-in file pickers (config/cwd/folder/
+  -- repos/collections). Ignored for the `system` scope, which builds its own fd
+  -- command. no_ignore stays false so per-repo .gitignore rules keep working
+  -- (e.g. generated data dirs); flip it to true to also list ignored files.
+  find = {
+    hidden    = true,
+    no_ignore = false,
+    follow    = true,
+    exclude   = nil,
+  },
+
   usercmds = {
     enable = true,
   },

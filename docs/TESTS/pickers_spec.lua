@@ -64,6 +64,17 @@ do
   check("apply: prefix empty-string kept", cfg.collections[2] and cfg.collections[2].prefix == "")
   check("apply: keymap overridden", cfg.keymaps.cwd_grep == "<leader>zz")
   check("apply: keymap default kept", cfg.keymaps.config_files == "<leader>fc")
+
+  -- find defaults (hidden/follow on, no_ignore off so .gitignore is respected)
+  check("find: hidden default true", cfg.find.hidden == true)
+  check("find: no_ignore default false", cfg.find.no_ignore == false)
+  check("find: follow default true", cfg.find.follow == true)
+
+  -- find override merges over defaults
+  config.apply({ find = { no_ignore = true } })
+  local cfg2 = config.get()
+  check("find: no_ignore overridden", cfg2.find.no_ignore == true)
+  check("find: hidden still default", cfg2.find.hidden == true)
 end
 
 -- ── command.complete — needs lib.nvim; skip cleanly if absent ───────────────
