@@ -45,6 +45,7 @@
 ---@field query           string|nil
 ---@field find_command    string[]|nil
 ---@field additional_args string[]|nil
+---@field find            Pickers.FindOpts|nil   File-listing flags (ignored when find_command is set)
 
 -- ###########################################################################
 -- Configuration
@@ -61,6 +62,12 @@
 ---@class Pickers.Usercmds
 ---@field enable boolean
 
+---@class Pickers.FindOpts
+---@field hidden    boolean       Show dotfiles / hidden entries (default: true)
+---@field no_ignore boolean       Ignore .gitignore / .ignore rules (default: false)
+---@field follow    boolean       Follow symlinks (default: true)
+---@field exclude   string[]|nil  Extra glob patterns to exclude (default: nil)
+
 ---@class Pickers.Collection
 ---@field name     string                               Unique scope name (e.g. "notes")
 ---@field dir      string                               Root directory
@@ -73,6 +80,7 @@
 ---@field repos_dir      string|nil
 ---@field collections    Pickers.Collection[]
 ---@field depth_aliases  table<string, fun():string>
+---@field find           Pickers.FindOpts
 ---@field keymaps        Pickers.Keymaps
 ---@field usercmds       Pickers.Usercmds
 

@@ -321,6 +321,16 @@ require("pickers").setup({
     dots = function() return vim.fn.expand("~/.config") end,
   },
 
+  -- File-listing behaviour for the built-in file pickers (config/cwd/folder/
+  -- repos/collections). The `system` scope builds its own fd command and is
+  -- unaffected. Telescope and fzf-lua both honour these.
+  find = {
+    hidden    = true,   -- show dotfiles (.github/, .luarc.json, …)
+    no_ignore = false,  -- respect .gitignore/.ignore; set true to list ignored files too
+    follow    = true,   -- follow symlinks
+    exclude   = nil,    -- optional list of extra globs to skip, e.g. { "node_modules", "*.min.js" }
+  },
+
   keymaps = {
     enable       = true,
     dir_pick     = "<leader>dp",   -- Dir navigation picker

@@ -57,12 +57,32 @@ local function fd_exec()
   return nil
 end
 
+---Build the fd option string (everything after `fd`, before any path args) from
+---the user's find flags. Reused for single-root fd_opts and multi-root cmd.
+---@param find Pickers.FindOpts|nil
+---@return string
+local function fd_opts_string(find)
+  local f = find or {}
+  local parts = { "--color=never", "--type", "f", "--exclude", ".git" }
+  if f.hidden    then parts[#parts + 1] = "--hidden" end
+  if f.no_ignore then parts[#parts + 1] = "--no-ignore" end
+  if f.follow    then parts[#parts + 1] = "--follow" end
+  if type(f.exclude) == "table" then
+    for _, g in ipairs(f.exclude) do
+      parts[#parts + 1] = "--exclude"
+      parts[#parts + 1] = vim.fn.shellescape(g)
+    end
+  end
+  return table.concat(parts, " ")
+end
+
 ---Build a shell-safe fd command string for multi-root file listing.
 ---@param roots string[]
+---@param find  Pickers.FindOpts|nil
 ---@return string
-local function multi_root_cmd(roots)
+local function multi_root_cmd(roots, find)
   local fd = fd_exec() or "fd"
-  local parts = { fd, "--type", "f", "--hidden", "--follow", "--exclude", ".git" }
+  local parts = { fd, fd_opts_string(find) }
   for _, r in ipairs(roots) do
     parts[#parts + 1] = vim.fn.shellescape(r)
   end
@@ -111,13 +131,14 @@ function M.pick_files(opts)
 
   -- Multi-root: construct fd command spanning all roots
   if #opts.roots > 1 then
-    base.cmd = multi_root_cmd(opts.roots)
+    base.cmd = multi_root_cmd(opts.roots, opts.find)
     safe_call(fzf.files, base)
     return
   end
 
-  -- Single root: standard fzf.files with cwd
-  base.cwd = opts.roots[1]
+  -- Single root: standard fzf.files with cwd + user find flags
+  base.cwd     = opts.roots[1]
+  base.fd_opts = fd_opts_string(opts.find)
   safe_call(fzf.files, base)
 end
 

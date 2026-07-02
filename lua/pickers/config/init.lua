@@ -70,6 +70,10 @@ function M.apply(opts)
     end
   end
 
+  if type(opts.find) == "table" then
+    cfg.find = vim.tbl_deep_extend("force", cfg.find, opts.find)
+  end
+
   if type(opts.keymaps) == "table" then
     cfg.keymaps = vim.tbl_deep_extend("force", cfg.keymaps, opts.keymaps)
   end

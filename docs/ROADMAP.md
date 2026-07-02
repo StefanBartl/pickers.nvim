@@ -5,11 +5,12 @@ a promise; it is a backlog of ideas ordered roughly by usefulness.
 
 ## Features
 
-- [ ] **Per-source ignore/hidden control.** Let the user opt into
-  `--hidden` / `--no-ignore` / custom exclude globs per scope (config, cwd,
-  folder). Motivated by config-file pickers drowning in generated data dirs.
-- [ ] **Exclude globs in config.** A `exclude` option (list of glob patterns)
-  merged into the engine command for every scope.
+- [x] **Ignore/hidden/follow control.** `find = { hidden, no_ignore, follow, exclude }`
+  in `setup()`, honoured by both engines for the built-in file pickers.
+- [x] **Exclude globs.** `find.exclude` (list of glob patterns) is passed to the
+  engine command.
+- [ ] **Per-scope overrides.** Currently `find` is global; allow per-collection /
+  per-scope find overrides.
 - [ ] **Result-count / preview toggles** surfaced through `setup()`.
 - [ ] **Remember last scope/action** for a `:Pickers` repeat command.
 

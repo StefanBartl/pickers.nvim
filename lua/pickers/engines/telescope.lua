@@ -50,14 +50,22 @@ function M.pick_files(opts)
   }
 
   if opts.find_command then
-    -- Custom find command (system source)
+    -- Custom find command (system source) — it carries its own flags.
     call_opts.find_command = opts.find_command
     call_opts.cwd = opts.roots[1]
-  elseif #opts.roots > 1 then
-    -- Multi-root: telescope supports search_dirs natively
-    call_opts.search_dirs = opts.roots
   else
-    call_opts.cwd = opts.roots[1]
+    -- Apply user find flags (telescope find_files understands these natively).
+    local f = opts.find or {}
+    call_opts.hidden    = f.hidden
+    call_opts.no_ignore = f.no_ignore
+    call_opts.follow    = f.follow
+
+    if #opts.roots > 1 then
+      -- Multi-root: telescope supports search_dirs natively
+      call_opts.search_dirs = opts.roots
+    else
+      call_opts.cwd = opts.roots[1]
+    end
   end
 
   safe_call(builtin.find_files, call_opts)
