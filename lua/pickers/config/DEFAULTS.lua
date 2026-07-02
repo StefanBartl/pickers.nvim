@@ -1,4 +1,4 @@
----@module 'pickers.config.defaults'
+---@module 'pickers.config.DEFAULTS'
 ---@brief Default configuration values.
 ---@see pickers.types
 

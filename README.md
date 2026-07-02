@@ -12,11 +12,14 @@
 ![Lazy.nvim compatible](https://img.shields.io/badge/lazy.nvim-supported-success)
 ![Neovim](https://img.shields.io/badge/Neovim-0.9+-success.svg)
 ![Lua](https://img.shields.io/badge/language-Lua-yellow.svg)
-![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Contributions](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)
 
 **Unified fuzzy-picker plugin for Neovim.**  
 Consolidates seven separate picker modules into one plugin with a single `:Pickers` command, backed by telescope.nvim or fzf-lua.
+
+> 💡 Pairs well with [project-insight.nvim](https://github.com/StefanBartl/project-insight.nvim):
+> use `pickers.nvim` to jump into any repo, then get an instant structural
+> overview of it with `project-insight.nvim`.
 
 ---
 
@@ -112,6 +115,25 @@ If startup time matters and you only want the plugin loaded on first use:
 
 lazy.nvim registers stub keymaps / commands that load the plugin on first
 use; `setup()` then replaces them with the real ones.
+
+### packer.nvim
+
+```lua
+use {
+  "StefanBartl/pickers.nvim",
+  requires = { "StefanBartl/lib.nvim" },
+  config = function()
+    require("pickers").setup({
+      engine    = "auto",
+      repos_dir = vim.env.REPOS_DIR,
+    })
+  end,
+}
+```
+
+> With packer the plugin is loaded eagerly by default, so keymaps and compat
+> user-commands are registered right away — the `lazy = false` note above does
+> not apply here.
 
 ---
 
@@ -224,7 +246,7 @@ For a collection named `"notes_lua"`:
 
 ## Keymaps
 
-All keymaps are registered in `lua/pickers/bindings.lua`.  
+All keymaps are registered in `lua/pickers/bindings/` (see also `docs/BINDINGS.lua`).  
 They mirror the keymaps from the original individual modules exactly:
 
 | Keymap | Action | Was |
@@ -244,6 +266,10 @@ Change a keymap:
 ```lua
 require("pickers").setup({ keymaps = { cwd_grep = "<leader>sg" } })
 ```
+
+All keymaps carry a `desc` and are labelled through [which-key](https://github.com/folke/which-key.nvim)
+automatically when it is installed — no configuration required, and no hard
+dependency if it is not.
 
 ---
 
@@ -318,9 +344,3 @@ require("pickers").setup({
 ```
 
 Verifies: lib.nvim · telescope/fzf-lua · rg · fd/fdfind · repos_dir · registered aliases · each collection directory.
-
----
-
-## License
-
-MIT

@@ -1,6 +1,6 @@
 ---@module 'pickers.config'
 ---@brief Manages the active configuration; merges user options into defaults.
----@see pickers.config.defaults
+---@see pickers.config.DEFAULTS
 
 local M = {}
 
@@ -10,7 +10,7 @@ local _cfg = nil  ---@type Pickers.Config|nil
 ---@return Pickers.Config
 function M.get()
   if _cfg then return _cfg end
-  _cfg = vim.deepcopy(require("pickers.config.defaults"))
+  _cfg = vim.deepcopy(require("pickers.config.DEFAULTS"))
   return _cfg
 end
 

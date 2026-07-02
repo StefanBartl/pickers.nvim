@@ -2,7 +2,6 @@
 
 Author:   Stefan Bartl <stefan.bartl.work@gmail.com>
 Homepage: https://github.com/StefanBartl/pickers.nvim
-License:  MIT
 
 ==============================================================================
 CONTENTS                                                      *pickers-contents*
@@ -235,7 +234,7 @@ following letter is uppercased.
 ==============================================================================
 7. KEYMAPS                                                     *pickers-keymaps*
 
-All keymaps are registered in `lua/pickers/bindings.lua`.  They mirror the
+All keymaps are registered in `lua/pickers/bindings/`.  They mirror the
 keymaps from the original individual modules exactly:
 
   <leader>dp   :Pickers dir          (dir navigation picker)
