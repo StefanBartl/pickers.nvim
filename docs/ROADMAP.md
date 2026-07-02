@@ -35,3 +35,15 @@ a promise; it is a backlog of ideas ordered roughly by usefulness.
 - [x] Fix `system` source passing the search path as fd's first positional
   (interpreted as a pattern instead of a path on Windows).
 - [x] `docs/TESTS/**` for command parsing, collection normalisation and PascalCase conversion.
+
+## Checklist audit — open items
+
+Distilled from `docs/CHECKLISTS/` (applied Lua/Neovim checklists). Ordered by value.
+
+- [ ] Use `lib.nvim.usercmd` instead of raw `nvim_create_user_command`
+  (`plugin/pickers.lua`, `lua/pickers/bindings/util.lua`).
+- [ ] Use `lib.nvim.autocmd` + a named augroup instead of raw `nvim_create_autocmd`
+  (`lua/pickers/bindings/autocmds.lua`).
+- [ ] Add `stylua.toml` + `.luacheckrc` and a GitHub Actions CI (lint + `nvim -l docs/TESTS/pickers_spec.lua`).
+- [ ] (Optional) Structured error types (`InvalidStateError`, …) if flows grow.
+- [ ] (Optional) Per-subdirectory `@types` folders instead of the single central one.
