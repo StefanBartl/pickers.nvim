@@ -16,6 +16,7 @@ jobs:
       - name: stylua (check)
         uses: JohnnyMorganz/stylua-action@v4
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
           version: latest
           args: --check lua plugin docs/TESTS
 
