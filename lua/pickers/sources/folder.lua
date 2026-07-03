@@ -33,7 +33,7 @@ function M.get(_cfg, callback, engine_mod)
 
       local name = vim.fn.fnamemodify(path, ":t")
       callback({
-        roots  = { path },
+        roots = { path },
         prompt = (name ~= "" and name or path) .. "> ",
       })
     end,

@@ -46,7 +46,8 @@ Distilled from `docs/CHECKLISTS/` (applied Lua/Neovim checklists). Ordered by va
   `nvim_create_autocmd` (`lua/pickers/bindings/autocmds.lua`), with raw fallback.
 - [x] Add `stylua.toml` + `.luacheckrc` and a GitHub Actions CI (advisory lint +
   `nvim -l docs/TESTS/pickers_spec.lua` as the gate).
-- [ ] Flip CI linters (stylua/luacheck) from advisory to gating once triaged.
+- [x] Flip CI linters (stylua/luacheck) from advisory to gating — repo is
+  stylua-formatted and luacheck-clean (0 warnings).
 - [x] Structured error types — `lua/pickers/error.lua` (`Pickers.Error`/`ErrorKind`
   + `safe_call`), adopted in the command dispatcher.
 - [x] Per-subdirectory `@types` folders (engines/sources/command/config) replacing

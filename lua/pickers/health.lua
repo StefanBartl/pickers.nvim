@@ -10,16 +10,14 @@ function M.check()
   if pcall(require, "lib.nvim.notify") then
     vim.health.ok("lib.nvim available")
   else
-    vim.health.error(
-      "lib.nvim not found — add 'github.com/StefanBartl/lib.nvim' as a dependency"
-    )
+    vim.health.error("lib.nvim not found — add 'github.com/StefanBartl/lib.nvim' as a dependency")
   end
 
   -- ── Picker engines ────────────────────────────────────────────────────────
   vim.health.start("pickers.nvim — picker engines")
 
   local has_telescope = pcall(require, "telescope.builtin")
-  local has_fzf       = pcall(require, "fzf-lua")
+  local has_fzf = pcall(require, "fzf-lua")
 
   if has_telescope then
     vim.health.ok("telescope.nvim available")
@@ -77,7 +75,9 @@ function M.check()
   end
 
   local alias_count = 0
-  for _ in pairs(cfg.depth_aliases) do alias_count = alias_count + 1 end
+  for _ in pairs(cfg.depth_aliases) do
+    alias_count = alias_count + 1
+  end
   vim.health.info("depth_aliases: " .. alias_count .. " registered")
 
   -- ── Collections ───────────────────────────────────────────────────────────

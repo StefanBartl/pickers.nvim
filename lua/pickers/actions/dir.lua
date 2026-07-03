@@ -23,8 +23,12 @@ local M = {}
 local function expand_vars(raw)
   local home = vim.uv.os_homedir() or vim.fn.expand("~")
   local s = raw:gsub("^~", home)
-  s = s:gsub("%%([^%%]+)%%", function(v) return os.getenv(v) or ("%" .. v .. "%") end)
-  s = s:gsub("%$([%w_]+)",   function(v) return os.getenv(v) or ("$" .. v) end)
+  s = s:gsub("%%([^%%]+)%%", function(v)
+    return os.getenv(v) or ("%" .. v .. "%")
+  end)
+  s = s:gsub("%$([%w_]+)", function(v)
+    return os.getenv(v) or ("$" .. v)
+  end)
   return vim.fs.normalize(s)
 end
 
@@ -44,9 +48,7 @@ end
 ---@return string|nil
 local function resolve(arg, cfg)
   -- nil / empty → cwd
-  if not arg or arg:match("^%s*$") then
-    return vim.fs.normalize(vim.uv.cwd() or vim.fn.getcwd())
-  end
+  if not arg or arg:match("^%s*$") then return vim.fs.normalize(vim.uv.cwd() or vim.fn.getcwd()) end
 
   -- Explicit path= prefix
   local path_val = arg:match("^[Pp][Aa][Tt][Hh]=(.+)$")
@@ -60,18 +62,14 @@ local function resolve(arg, cfg)
   local resolver = cfg.depth_aliases[lower]
   if resolver then
     local ok, result = pcall(resolver)
-    if ok and type(result) == "string" then
-      return vim.fs.normalize(result)
-    end
+    if ok and type(result) == "string" then return vim.fs.normalize(result) end
     notify.error("Alias '" .. lower .. "' resolver failed")
     return nil
   end
 
   -- Numeric depth
   local depth = tonumber(arg)
-  if depth then
-    return by_depth(math.max(0, math.floor(depth)))
-  end
+  if depth then return by_depth(math.max(0, math.floor(depth))) end
 
   -- Treat raw arg as an explicit path
   return expand_vars(arg)
@@ -83,9 +81,9 @@ end
 ---@param action     Pickers.Action
 ---@param engine_mod table
 local function dispatch(path, action, engine_mod)
-  local tail   = vim.fn.fnamemodify(path, ":t")
+  local tail = vim.fn.fnamemodify(path, ":t")
   local source = {
-    roots  = { path },
+    roots = { path },
     prompt = (tail ~= "" and tail or path) .. "> ",
   }
   if action == "grep" then
@@ -131,11 +129,11 @@ end
 ---Return sorted alias names (used for :Pickers tab-completion).
 ---@return string[]
 function M.alias_names()
-  local cfg   = require("pickers.config").get()
+  local cfg = require("pickers.config").get()
   local names = {}
-  local i     = 0
+  local i = 0
   for k in pairs(cfg.depth_aliases) do
-    i        = i + 1
+    i = i + 1
     names[i] = k
   end
   table.sort(names)

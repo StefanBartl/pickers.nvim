@@ -40,7 +40,9 @@ end
 ---@param name string
 ---@return string
 function M.to_pascal(name)
-  local r = name:gsub("_(%a)", function(l) return l:upper() end)
+  local r = name:gsub("_(%a)", function(l)
+    return l:upper()
+  end)
   return r:sub(1, 1):upper() .. r:sub(2)
 end
 

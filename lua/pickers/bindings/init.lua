@@ -16,9 +16,7 @@ function M.setup(cfg)
     require("pickers.bindings.keymaps").register(cfg.keymaps)
     require("pickers.bindings.whichkey").register(cfg.keymaps)
   end
-  if cfg.usercmds and cfg.usercmds.enable then
-    require("pickers.bindings.usrcmds").register()
-  end
+  if cfg.usercmds and cfg.usercmds.enable then require("pickers.bindings.usrcmds").register() end
   for _, coll in ipairs(cfg.collections or {}) do
     require("pickers.bindings.collections").register(coll)
   end

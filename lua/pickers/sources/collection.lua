@@ -25,7 +25,7 @@ local function list_subdirs(dir, prefix, only_git)
   if not handle then return {} end
 
   local result = {}
-  local plen   = prefix and #prefix or 0
+  local plen = prefix and #prefix or 0
 
   while true do
     local name, etype = vim.uv.fs_scandir_next(handle)
@@ -33,10 +33,8 @@ local function list_subdirs(dir, prefix, only_git)
     if etype == "directory" then
       local full = dir .. "/" .. name
       local ok_prefix = (not prefix or prefix == "") or name:sub(1, plen) == prefix
-      local ok_git    = (not only_git) or (vim.uv.fs_stat(full .. "/.git") ~= nil)
-      if ok_prefix and ok_git then
-        result[#result + 1] = full
-      end
+      local ok_git = (not only_git) or (vim.uv.fs_stat(full .. "/.git") ~= nil)
+      if ok_prefix and ok_git then result[#result + 1] = full end
     end
   end
 
@@ -72,20 +70,21 @@ function M.get(coll, _cfg, callback, engine_mod)
   -- Direct-root collection (no subdir picker)
   if coll.prefix == nil then
     callback({
-      roots  = { vim.fs.normalize(dir) },
+      roots = { vim.fs.normalize(dir) },
       prompt = coll.name .. "> ",
     })
     return
   end
 
   -- Subdir-picker collection
-  local prefix   = coll.prefix
-  local plen     = #prefix
+  local prefix = coll.prefix
+  local plen = #prefix
   local only_git = coll.only_git == true
-  local subdirs  = list_subdirs(dir, prefix, only_git)
+  local subdirs = list_subdirs(dir, prefix, only_git)
 
   if #subdirs == 0 then
-    local info = (prefix == "") and "no subdirs found" or ("no subdirs with prefix '" .. prefix .. "' found")
+    local info = (prefix == "") and "no subdirs found"
+      or ("no subdirs with prefix '" .. prefix .. "' found")
     notify.warn("[" .. coll.name .. "] " .. info .. " in: " .. dir)
     callback(nil)
     return
@@ -100,12 +99,12 @@ function M.get(coll, _cfg, callback, engine_mod)
 
   engine_mod.pick_item({
     prompt = coll.name .. "> ",
-    items  = labels,
+    items = labels,
     on_select = function(label)
       for i, l in ipairs(labels) do
         if l == label then
           callback({
-            roots  = { vim.fs.normalize(subdirs[i]) },
+            roots = { vim.fs.normalize(subdirs[i]) },
             prompt = label .. "> ",
           })
           return

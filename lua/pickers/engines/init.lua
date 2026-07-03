@@ -24,7 +24,7 @@ end
 ---@param requested Pickers.Engine|nil  Override; nil → use config default.
 ---@return table|nil  Engine module, or nil when nothing is available.
 function M.load(requested)
-  local cfg  = require("pickers.config").get()
+  local cfg = require("pickers.config").get()
   local want = (type(requested) == "string" and requested) or cfg.engine
 
   if want ~= "auto" then

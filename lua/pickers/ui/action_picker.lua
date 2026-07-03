@@ -11,8 +11,8 @@ function M.open(callback)
   local ok, hover = pcall(require, "lib.nvim.ui.hover_select")
   if ok and hover and type(hover.open) == "function" then
     hover.open({
-      title     = "Pickers — Action",
-      items     = ACTIONS,
+      title = "Pickers — Action",
+      items = ACTIONS,
       on_select = callback,
     })
   else

@@ -15,19 +15,23 @@
 --- Engine is always taken from config; it is never exposed in the command.
 
 local notify = require("lib.nvim.notify").create("[pickers.command]")
-local perr   = require("pickers.error")
+local perr = require("pickers.error")
 
 local M = {}
 
 -- ── Constants ─────────────────────────────────────────────────────────────────
 
 local BASE_SCOPES = { "cwd", "config", "folder", "repos", "wkdbooks", "system", "drives", "dir" }
-local ACTIONS     = { "files", "grep" }
+local ACTIONS = { "files", "grep" }
 
 local BASE_SCOPES_SET = {}
-for _, s in ipairs(BASE_SCOPES) do BASE_SCOPES_SET[s] = true end
+for _, s in ipairs(BASE_SCOPES) do
+  BASE_SCOPES_SET[s] = true
+end
 local ACTIONS_SET = {}
-for _, a in ipairs(ACTIONS) do ACTIONS_SET[a] = true end
+for _, a in ipairs(ACTIONS) do
+  ACTIONS_SET[a] = true
+end
 
 -- ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -36,7 +40,7 @@ for _, a in ipairs(ACTIONS) do ACTIONS_SET[a] = true end
 local function get_collection_names()
   local ok, cfg_mod = pcall(require, "pickers.config")
   if not ok then return {} end
-  local cfg   = cfg_mod.get()
+  local cfg = cfg_mod.get()
   local names = {}
   for _, coll in ipairs(cfg.collections or {}) do
     if type(coll.name) == "string" then names[#names + 1] = coll.name end
@@ -89,10 +93,12 @@ end
 ---@param action     Pickers.Action|nil
 ---@param engine_mod table
 local function run_standard_scope(scope, action, engine_mod)
-  local cfg         = require("pickers.config").get()
+  local cfg = require("pickers.config").get()
   local ok, src_mod = pcall(require, "pickers.sources." .. scope)
   if not ok or not src_mod then
-    notify.error(perr.tostring(perr.new("SourceError", "no source module for scope '" .. scope .. "'")))
+    notify.error(
+      perr.tostring(perr.new("SourceError", "no source module for scope '" .. scope .. "'"))
+    )
     return
   end
   -- folder / repos / wkdbooks need engine_mod for their sub-pickers
@@ -128,8 +134,8 @@ function M.handle(opts)
 
   local fargs = opts.fargs or {}
   local scope = fargs[1]
-  local arg2  = fargs[2]
-  local arg3  = fargs[3]
+  local arg2 = fargs[2]
+  local arg3 = fargs[3]
 
   -- :Pickers → interactive scope picker (built-ins + collections)
   if not scope or scope == "" then
@@ -144,7 +150,10 @@ function M.handle(opts)
         return
       end
       local coll = find_collection(chosen)
-      if coll then run_collection_scope(coll, nil, engine_mod); return end
+      if coll then
+        run_collection_scope(coll, nil, engine_mod)
+        return
+      end
       notify.error("Unknown scope from picker: '" .. chosen .. "'")
     end)
     return
@@ -153,8 +162,11 @@ function M.handle(opts)
   -- dir scope — special: arg2 can be nav OR action
   if scope == "dir" then
     local nav_arg = arg2
-    local action  = arg3
-    if arg2 and ACTIONS_SET[arg2] then nav_arg = nil; action = arg2 end
+    local action = arg3
+    if arg2 and ACTIONS_SET[arg2] then
+      nav_arg = nil
+      action = arg2
+    end
     require("pickers.actions.dir").run(nav_arg, action, engine_mod)
     return
   end
@@ -182,12 +194,20 @@ function M.handle(opts)
     return
   end
 
-  notify.error(perr.tostring(perr.new(
-    "UnknownScopeError",
-    "Unknown scope '" .. scope .. "'. "
-    .. "Built-in: " .. table.concat(BASE_SCOPES, ", ") .. ". "
-    .. "Run :checkhealth pickers to see your collections."
-  )))
+  notify.error(
+    perr.tostring(
+      perr.new(
+        "UnknownScopeError",
+        "Unknown scope '"
+          .. scope
+          .. "'. "
+          .. "Built-in: "
+          .. table.concat(BASE_SCOPES, ", ")
+          .. ". "
+          .. "Run :checkhealth pickers to see your collections."
+      )
+    )
+  )
 end
 
 -- ── Public: complete ──────────────────────────────────────────────────────────
@@ -198,8 +218,10 @@ end
 ---@return string[]
 function M.complete(arglead, cmdline, _)
   local after_cmd = cmdline:match("^%s*Pickers%s+(.-)%s*$") or ""
-  local tokens    = {}
-  for t in after_cmd:gmatch("%S+") do tokens[#tokens + 1] = t end
+  local tokens = {}
+  for t in after_cmd:gmatch("%S+") do
+    tokens[#tokens + 1] = t
+  end
 
   local n_finished = #tokens
   if arglead ~= "" and tokens[#tokens] == arglead then n_finished = n_finished - 1 end
@@ -207,7 +229,7 @@ function M.complete(arglead, cmdline, _)
   local function filter(candidates)
     if arglead == "" then return candidates end
     local lead = arglead:lower()
-    local out  = {}
+    local out = {}
     for _, c in ipairs(candidates) do
       if c:lower():sub(1, #lead) == lead then out[#out + 1] = c end
     end
@@ -223,10 +245,12 @@ function M.complete(arglead, cmdline, _)
   local scope = tokens[1]
   if scope == "dir" then
     if n_finished == 1 then
-      local aliases    = require("pickers.actions.dir").alias_names()
+      local aliases = require("pickers.actions.dir").alias_names()
       local candidates = vim.list_extend({}, ACTIONS)
       vim.list_extend(candidates, aliases)
-      for i = 1, 9 do candidates[#candidates + 1] = tostring(i) end
+      for i = 1, 9 do
+        candidates[#candidates + 1] = tostring(i)
+      end
       candidates[#candidates + 1] = "path="
       return filter(candidates)
     elseif n_finished == 2 then

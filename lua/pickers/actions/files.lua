@@ -7,10 +7,10 @@ local M = {}
 ---@param engine_mod table
 function M.run(source, engine_mod)
   engine_mod.pick_files({
-    roots        = source.roots,
-    prompt       = source.prompt,
+    roots = source.roots,
+    prompt = source.prompt,
     find_command = source.find_command,
-    find         = require("pickers.config").get().find,
+    find = require("pickers.config").get().find,
   })
 end
 

@@ -4,9 +4,13 @@
 local M = {}
 
 local BASE_SCOPES = {
-  "cwd", "config", "folder",
-  "repos", "wkdbooks",
-  "system", "drives",
+  "cwd",
+  "config",
+  "folder",
+  "repos",
+  "wkdbooks",
+  "system",
+  "drives",
   "dir",
 }
 
@@ -18,9 +22,7 @@ local function build_scope_list()
   if ok then
     local cfg = cfg_mod.get()
     for _, coll in ipairs(cfg.collections or {}) do
-      if type(coll.name) == "string" then
-        scopes[#scopes + 1] = coll.name
-      end
+      if type(coll.name) == "string" then scopes[#scopes + 1] = coll.name end
     end
   end
   return scopes
@@ -33,8 +35,8 @@ function M.open(callback)
   local ok, hover = pcall(require, "lib.nvim.ui.hover_select")
   if ok and hover and type(hover.open) == "function" then
     hover.open({
-      title     = "Pickers — Scope",
-      items     = scopes,
+      title = "Pickers — Scope",
+      items = scopes,
       on_select = callback,
     })
   else
