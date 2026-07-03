@@ -15,6 +15,7 @@
 --- Engine is always taken from config; it is never exposed in the command.
 
 local notify = require("lib.nvim.notify").create("[pickers.command]")
+local perr   = require("pickers.error")
 
 local M = {}
 
@@ -91,7 +92,7 @@ local function run_standard_scope(scope, action, engine_mod)
   local cfg         = require("pickers.config").get()
   local ok, src_mod = pcall(require, "pickers.sources." .. scope)
   if not ok or not src_mod then
-    notify.error("Unknown scope '" .. scope .. "'")
+    notify.error(perr.tostring(perr.new("SourceError", "no source module for scope '" .. scope .. "'")))
     return
   end
   -- folder / repos / wkdbooks need engine_mod for their sub-pickers
@@ -181,11 +182,12 @@ function M.handle(opts)
     return
   end
 
-  notify.error(
+  notify.error(perr.tostring(perr.new(
+    "UnknownScopeError",
     "Unknown scope '" .. scope .. "'. "
     .. "Built-in: " .. table.concat(BASE_SCOPES, ", ") .. ". "
     .. "Run :checkhealth pickers to see your collections."
-  )
+  )))
 end
 
 -- ── Public: complete ──────────────────────────────────────────────────────────

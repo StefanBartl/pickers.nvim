@@ -47,5 +47,7 @@ Distilled from `docs/CHECKLISTS/` (applied Lua/Neovim checklists). Ordered by va
 - [x] Add `stylua.toml` + `.luacheckrc` and a GitHub Actions CI (advisory lint +
   `nvim -l docs/TESTS/pickers_spec.lua` as the gate).
 - [ ] Flip CI linters (stylua/luacheck) from advisory to gating once triaged.
-- [ ] (Optional) Structured error types (`InvalidStateError`, …) if flows grow.
-- [ ] (Optional) Per-subdirectory `@types` folders instead of the single central one.
+- [x] Structured error types — `lua/pickers/error.lua` (`Pickers.Error`/`ErrorKind`
+  + `safe_call`), adopted in the command dispatcher.
+- [x] Per-subdirectory `@types` folders (engines/sources/command/config) replacing
+  the single central one; root `@types` is now an index.
