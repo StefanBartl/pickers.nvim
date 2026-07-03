@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  # Linters are advisory: the codebase uses manual column alignment that stylua
+  # cannot reproduce, and luacheck has not been fully triaged yet. Flip
+  # `continue-on-error` to false once the repo is confirmed clean.
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: stylua (check)
+        uses: JohnnyMorganz/stylua-action@v4
+        continue-on-error: true
+        with:
+          version: latest
+          args: --check lua plugin docs/TESTS docs/BINDINGS.lua
+
+      - name: Set up Lua
+        uses: leafo/gh-actions-lua@v10
+        with:
+          luaVersion: "luajit-2.1.0-beta3"
+      - name: Set up LuaRocks
+        uses: leafo/gh-actions-luarocks@v4
+      - name: Install luacheck
+        run: luarocks install luacheck
+      - name: luacheck
+        continue-on-error: true
+        run: luacheck lua plugin docs/TESTS
+
+  # Real gate: the framework-free unit suite. lib.nvim is checked out as a
+  # sibling so the command.complete tests run too (they need lib.nvim.notify).
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout pickers.nvim
+        uses: actions/checkout@v4
+        with:
+          path: pickers.nvim
+
+      - name: Checkout lib.nvim
+        uses: actions/checkout@v4
+        with:
+          repository: StefanBartl/lib.nvim
+          path: lib.nvim
+
+      - name: Install Neovim (stable)
+        uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+          version: stable
+
+      - name: Run tests
+        working-directory: pickers.nvim
+        env:
+          REPOS_DIR: ${{ github.workspace }}
+        run: nvim -l docs/TESTS/pickers_spec.lua
