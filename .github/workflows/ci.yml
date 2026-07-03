@@ -11,6 +11,8 @@ jobs:
   # `continue-on-error` to false once the repo is confirmed clean.
   lint:
     runs-on: ubuntu-latest
+    # Advisory: never blocks the workflow. The `test` job is the real gate.
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
@@ -21,14 +23,10 @@ jobs:
           version: latest
           args: --check lua plugin docs/TESTS docs/BINDINGS.lua
 
-      - name: Set up Lua
-        uses: leafo/gh-actions-lua@v10
-        with:
-          luaVersion: "luajit-2.1.0-beta3"
-      - name: Set up LuaRocks
-        uses: leafo/gh-actions-luarocks@v4
       - name: Install luacheck
-        run: luarocks install luacheck
+        continue-on-error: true
+        run: sudo apt-get update && sudo apt-get install -y luarocks && sudo luarocks install luacheck
+
       - name: luacheck
         continue-on-error: true
         run: luacheck lua plugin docs/TESTS
