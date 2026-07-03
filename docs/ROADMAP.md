@@ -40,10 +40,12 @@ a promise; it is a backlog of ideas ordered roughly by usefulness.
 
 Distilled from `docs/CHECKLISTS/` (applied Lua/Neovim checklists). Ordered by value.
 
-- [ ] Use `lib.nvim.usercmd` instead of raw `nvim_create_user_command`
-  (`plugin/pickers.lua`, `lua/pickers/bindings/util.lua`).
-- [ ] Use `lib.nvim.autocmd` + a named augroup instead of raw `nvim_create_autocmd`
-  (`lua/pickers/bindings/autocmds.lua`).
-- [ ] Add `stylua.toml` + `.luacheckrc` and a GitHub Actions CI (lint + `nvim -l docs/TESTS/pickers_spec.lua`).
+- [x] Use `lib.nvim.usercmd` instead of raw `nvim_create_user_command`
+  (`plugin/pickers.lua`, `lua/pickers/bindings/util.lua`), with raw fallback.
+- [x] Use `lib.nvim.autocmd` + a named augroup (`pickers.nvim`) instead of raw
+  `nvim_create_autocmd` (`lua/pickers/bindings/autocmds.lua`), with raw fallback.
+- [x] Add `stylua.toml` + `.luacheckrc` and a GitHub Actions CI (advisory lint +
+  `nvim -l docs/TESTS/pickers_spec.lua` as the gate).
+- [ ] Flip CI linters (stylua/luacheck) from advisory to gating once triaged.
 - [ ] (Optional) Structured error types (`InvalidStateError`, …) if flows grow.
 - [ ] (Optional) Per-subdirectory `@types` folders instead of the single central one.

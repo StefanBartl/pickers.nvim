@@ -15,11 +15,11 @@
 | 7 | Structured error wrapping (`safe_call`) | ⚠️ | Engines have a local `safe_call` that notifies on error. No structured error **types** (`InvalidStateError`, …) — not needed at this size; the flows fail soft with a notify. |
 | 8–11 | Performance / weak tables / memoisation / GC / hot-path table+string tricks | N/A | No hot paths, no large tables, no string building in loops. Micro-optimisation rules don't apply to a thin command→engine dispatcher. |
 | MISC | Cross-platform (POSIX + Windows) | ✅ | Windows-tested this session; `drives` uses `lib.nvim.cross`; the `system` fd-pattern bug was fixed. |
-| lib | Use `lib.nvim` wrappers (notify/map/cross/hover_select/usercmd/autocmd) | ⚠️ | notify ✅, map ✅, cross ✅, hover_select ✅. **Gap:** raw `vim.api.nvim_create_user_command` (`plugin/pickers.lua`, `bindings/util.lua`) and raw `nvim_create_autocmd` (`bindings/autocmds.lua`) instead of `lib.nvim.usercmd` / `lib.nvim.autocmd`. → ROADMAP. |
+| lib | Use `lib.nvim` wrappers (notify/map/cross/hover_select/usercmd/autocmd) | ✅ | notify ✅, map ✅, cross ✅, hover_select ✅, usercmd ✅ (`lib.nvim.usercmd`, raw fallback), autocmd ✅ (`lib.nvim.autocmd` + `pickers.nvim` augroup, raw fallback). |
 | Import order | System → Debug/Notify → Config/Utils → State → UI → Controller → Keymaps | ✅ | `notify` is required near the top; lazy requires inside callbacks. |
 
 ## Open items (→ ROADMAP)
-- Replace raw `nvim_create_user_command` with `lib.nvim.usercmd` (2 call sites).
-- Replace raw `nvim_create_autocmd` with `lib.nvim.autocmd` + a named augroup.
+- ✅ Replaced raw `nvim_create_user_command` with `lib.nvim.usercmd` (2 call sites).
+- ✅ Replaced raw `nvim_create_autocmd` with `lib.nvim.autocmd` + `pickers.nvim` augroup.
 - (Optional) structured error types if flows grow.
 - (Optional) per-subdirectory `@types` split.

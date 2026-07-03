@@ -25,7 +25,7 @@
 | 4 | UI-State: central getter/setter, snapshot/restore | N/A (no persistent UI state) |
 | 5 | Doc head-tags, function tags, aliases/types, comment convention | ✅ |
 | 6 | DI over hard-wiring, pure functions, test entry | ✅ (engine passed in as `engine_mod`; config injectable via `setup()`) |
-| 7 | **Tooling: Lua LS settings; formatter/linter (stylua, luacheck) in CI** | ⚠️ `.luarc.json` added ✅; **stylua/luacheck/CI still missing** ❌ |
+| 7 | **Tooling: Lua LS settings; formatter/linter (stylua, luacheck) in CI** | ✅ `.luarc.json` ✅; `stylua.toml` + `.luacheckrc` + GitHub Actions CI added (linters advisory, test suite gating) |
 
 ## Coding checklist (A–F)
 
@@ -43,4 +43,6 @@ Sorting algorithms · insert/delete/update/search data structures · complexity
 notation · bit tricks — pickers.nvim implements none of these.
 
 ## Open items (→ ROADMAP)
-- Add `stylua.toml` + `.luacheckrc` and a GitHub Actions workflow (lint + `nvim -l docs/TESTS`).
+- ✅ Added `stylua.toml` + `.luacheckrc` + GitHub Actions (`.github/workflows/ci.yml`);
+  linters advisory, `nvim -l docs/TESTS/pickers_spec.lua` is the gate.
+- Flip stylua/luacheck from advisory to gating once triaged.

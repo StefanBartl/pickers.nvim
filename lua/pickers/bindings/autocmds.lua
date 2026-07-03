@@ -11,20 +11,30 @@ local M = {}
 
 ---Register the VimEnter default-binding fallback. Called from plugin/pickers.lua.
 function M.register()
-  vim.api.nvim_create_autocmd("VimEnter", {
-    once     = true,
-    callback = function()
-      if not vim.g.pickers_nvim_setup_called then
-        local ok, cfg_mod = pcall(require, "pickers.config")
-        if ok then
-          local ok2, bindings = pcall(require, "pickers.bindings")
-          if ok2 then
-            bindings.setup(cfg_mod.get())
-          end
+  local callback = function()
+    if not vim.g.pickers_nvim_setup_called then
+      local ok, cfg_mod = pcall(require, "pickers.config")
+      if ok then
+        local ok2, bindings = pcall(require, "pickers.bindings")
+        if ok2 then
+          bindings.setup(cfg_mod.get())
         end
       end
-    end,
-  })
+    end
+  end
+
+  -- Prefer lib.nvim.autocmd (named augroup + pcall-wrapped callback); fall back
+  -- to the raw API so the fallback still fires without lib.nvim.
+  local ok, lib_autocmd = pcall(require, "lib.nvim.autocmd")
+  if ok and type(lib_autocmd) == "table" and type(lib_autocmd.create) == "function" then
+    lib_autocmd.create("VimEnter", callback, {
+      group = "pickers.nvim",
+      once  = true,
+      desc  = "pickers.nvim: register default bindings when setup() was not called",
+    })
+  else
+    vim.api.nvim_create_autocmd("VimEnter", { once = true, callback = callback })
+  end
 end
 
 return M
