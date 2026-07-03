@@ -12,7 +12,9 @@ local M = {}
 function M.register()
   usercmd("DirPicker", function(opts)
     local fargs = { "dir" }
-    for _, a in ipairs(opts.fargs) do fargs[#fargs + 1] = a end
+    for _, a in ipairs(opts.fargs) do
+      fargs[#fargs + 1] = a
+    end
     require("pickers.command").handle({ fargs = fargs })
   end, "[pickers compat] :DirPicker [nav] → :Pickers dir [nav]", "*")
 

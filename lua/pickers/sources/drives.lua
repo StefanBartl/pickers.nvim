@@ -15,7 +15,7 @@ local notify = require("lib.nvim.notify").create("[pickers.sources.drives]")
 local M = {}
 
 -- Module-level cache — drives don't change during a session.
-local _cache = nil  ---@type string[]|nil
+local _cache = nil ---@type string[]|nil
 
 -- ── Platform detection ────────────────────────────────────────────────────────
 
@@ -41,16 +41,14 @@ local function windows_roots()
   local roots = {}
   local ps = io.popen(
     [[powershell -NoProfile -ExecutionPolicy Bypass -Command ]]
-    .. [["Get-PSDrive -PSProvider FileSystem | Select -ExpandProperty Root"]]
+      .. [["Get-PSDrive -PSProvider FileSystem | Select -ExpandProperty Root"]]
   )
   if ps then
     for line in ps:lines() do
       local r = line:match("^%s*(.-)%s*$")
       if r and r ~= "" then
         r = r:gsub("[/\\]+$", "\\")
-        if vim.fn.isdirectory(r) == 1 then
-          roots[#roots + 1] = r
-        end
+        if vim.fn.isdirectory(r) == 1 then roots[#roots + 1] = r end
       end
     end
     ps:close()
@@ -59,9 +57,7 @@ local function windows_roots()
   if #roots == 0 then
     for byte = string.byte("A"), string.byte("Z") do
       local d = string.char(byte) .. ":\\"
-      if vim.fn.isdirectory(d) == 1 then
-        roots[#roots + 1] = d
-      end
+      if vim.fn.isdirectory(d) == 1 then roots[#roots + 1] = d end
     end
   end
   return roots
@@ -71,9 +67,7 @@ local function wsl_roots()
   local dirs = {}
   for letter in ("abcdefghijklmnopqrstuvwxyz"):gmatch(".") do
     local p = "/mnt/" .. letter
-    if vim.fn.isdirectory(p) == 1 then
-      dirs[#dirs + 1] = p
-    end
+    if vim.fn.isdirectory(p) == 1 then dirs[#dirs + 1] = p end
   end
   return dirs
 end
@@ -84,17 +78,13 @@ local function posix_roots()
   if handle then
     for line in handle:lines() do
       local p = line:match("^%s*(.-)%s*$")
-      if p and p ~= "" and vim.fn.isdirectory(p) == 1 then
-        dirs[#dirs + 1] = p
-      end
+      if p and p ~= "" and vim.fn.isdirectory(p) == 1 then dirs[#dirs + 1] = p end
     end
     handle:close()
   end
   if #dirs == 0 then
     for _, p in ipairs({ "/", "/Volumes", "/media", "/mnt" }) do
-      if vim.fn.isdirectory(p) == 1 then
-        dirs[#dirs + 1] = p
-      end
+      if vim.fn.isdirectory(p) == 1 then dirs[#dirs + 1] = p end
     end
   end
   return dirs
@@ -113,11 +103,11 @@ local function get_roots()
   end
 
   -- Deduplicate while preserving order
-  local seen   = {}
+  local seen = {}
   local unique = {}
   for _, p in ipairs(raw) do
     if not seen[p] then
-      seen[p]            = true
+      seen[p] = true
       unique[#unique + 1] = p
     end
   end
@@ -139,17 +129,24 @@ function M.get(_cfg, callback)
   end
 
   callback({
-    roots           = roots,
-    prompt          = "All Drives> ",
+    roots = roots,
+    prompt = "All Drives> ",
     -- Exclude noisy directories that would explode search time
     additional_args = {
-      "-g", "!.git/",
-      "-g", "!node_modules/",
-      "-g", "!dist/",
-      "-g", "!build/",
-      "-g", "!target/",
-      "-g", "!vendor/",
-      "-g", "!.cache/",
+      "-g",
+      "!.git/",
+      "-g",
+      "!node_modules/",
+      "-g",
+      "!dist/",
+      "-g",
+      "!build/",
+      "-g",
+      "!target/",
+      "-g",
+      "!vendor/",
+      "-g",
+      "!.cache/",
     },
   })
 end

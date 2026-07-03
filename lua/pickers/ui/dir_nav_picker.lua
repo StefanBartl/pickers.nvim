@@ -65,8 +65,8 @@ function M.open(cfg, callback)
   local ok, hover = pcall(require, "lib.nvim.ui.hover_select")
   if ok and hover and type(hover.open) == "function" then
     hover.open({
-      title     = "Dir — Navigate to",
-      items     = items,
+      title = "Dir — Navigate to",
+      items = items,
       on_select = on_select,
     })
   else

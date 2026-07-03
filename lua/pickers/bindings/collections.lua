@@ -12,10 +12,10 @@ local M = {}
 ---Register compat commands and optional keymaps for one collection.
 ---@param coll Pickers.Collection
 function M.register(coll)
-  local pascal    = util.to_pascal(coll.name)
+  local pascal = util.to_pascal(coll.name)
   local files_cmd = pascal .. "Files"
-  local grep_cmd  = pascal .. "Grep"
-  local name      = coll.name
+  local grep_cmd = pascal .. "Grep"
+  local name = coll.name
 
   -- Skip if the compat command already exists (e.g. WkdBookFiles from usrcmds)
   if vim.fn.exists(":" .. files_cmd) ~= 2 then

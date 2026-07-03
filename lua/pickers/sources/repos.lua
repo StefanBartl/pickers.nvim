@@ -19,9 +19,9 @@ function M.get(cfg, callback, engine_mod)
   end
 
   require("pickers.sources.collection").get({
-    name     = "repos",
-    dir      = cfg.repos_dir,
-    prefix   = "",
+    name = "repos",
+    dir = cfg.repos_dir,
+    prefix = "",
     only_git = true,
   }, cfg, callback, engine_mod)
 end

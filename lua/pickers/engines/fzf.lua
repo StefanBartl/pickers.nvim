@@ -30,21 +30,19 @@ local function setup_double_esc()
 
   -- t-mode: intercept <Esc> before fzf sees it → exit terminal mode
   vim.keymap.set("t", "<Esc>", "<C-\\><C-n>", {
-    buffer  = buf,
-    silent  = true,
-    nowait  = true,
+    buffer = buf,
+    silent = true,
+    nowait = true,
   })
 
   -- n-mode: second <Esc> closes the floating window; fzf exits on stdin close
   vim.keymap.set("n", "<Esc>", function()
     local ok, err = pcall(vim.api.nvim_win_close, 0, true)
-    if not ok then
-      notify.debug("win_close error (already closed?): " .. tostring(err))
-    end
+    if not ok then notify.debug("win_close error (already closed?): " .. tostring(err)) end
   end, {
-    buffer  = buf,
-    silent  = true,
-    nowait  = true,
+    buffer = buf,
+    silent = true,
+    nowait = true,
   })
 end
 
@@ -64,9 +62,9 @@ end
 local function fd_opts_string(find)
   local f = find or {}
   local parts = { "--color=never", "--type", "f", "--exclude", ".git" }
-  if f.hidden    then parts[#parts + 1] = "--hidden" end
+  if f.hidden then parts[#parts + 1] = "--hidden" end
   if f.no_ignore then parts[#parts + 1] = "--no-ignore" end
-  if f.follow    then parts[#parts + 1] = "--follow" end
+  if f.follow then parts[#parts + 1] = "--follow" end
   if type(f.exclude) == "table" then
     for _, g in ipairs(f.exclude) do
       parts[#parts + 1] = "--exclude"
@@ -94,9 +92,7 @@ end
 ---@param opts table
 local function safe_call(fn, opts)
   local ok, err = pcall(fn, opts)
-  if not ok then
-    notify.error("fzf-lua error: " .. tostring(err))
-  end
+  if not ok then notify.error("fzf-lua error: " .. tostring(err)) end
 end
 
 -- ── Public engine interface ───────────────────────────────────────────────────
@@ -110,20 +106,20 @@ end
 ---@param opts Pickers.EngineOpts
 function M.pick_files(opts)
   local ok, fzf = pcall(require, "fzf-lua")
-  if not ok then notify.error("fzf-lua unavailable") return end
+  if not ok then
+    notify.error("fzf-lua unavailable")
+    return
+  end
 
   local base = {
-    prompt  = opts.prompt,
-    query   = opts.query,
+    prompt = opts.prompt,
+    query = opts.query,
     winopts = { on_create = setup_double_esc },
   }
 
   -- Custom find command (system source: pre-built fd argv)
   if opts.find_command then
-    local cmd_str = table.concat(
-      vim.tbl_map(vim.fn.shellescape, opts.find_command),
-      " "
-    )
+    local cmd_str = table.concat(vim.tbl_map(vim.fn.shellescape, opts.find_command), " ")
     base.cmd = cmd_str
     safe_call(fzf.files, base)
     return
@@ -137,7 +133,7 @@ function M.pick_files(opts)
   end
 
   -- Single root: standard fzf.files with cwd + user find flags
-  base.cwd     = opts.roots[1]
+  base.cwd = opts.roots[1]
   base.fd_opts = fd_opts_string(opts.find)
   safe_call(fzf.files, base)
 end
@@ -145,17 +141,20 @@ end
 ---@param opts Pickers.EngineOpts
 function M.live_grep(opts)
   local ok, fzf = pcall(require, "fzf-lua")
-  if not ok then notify.error("fzf-lua unavailable") return end
+  if not ok then
+    notify.error("fzf-lua unavailable")
+    return
+  end
 
   local extra = opts.additional_args or {}
   local rg_opts_list = vim.list_extend({ "--hidden", "--no-ignore-vcs", "-S" }, extra)
 
   safe_call(fzf.live_grep, {
     search_dirs = opts.roots,
-    prompt      = opts.prompt,
-    rg_opts     = table.concat(rg_opts_list, " "),
-    query       = opts.query,
-    winopts     = { on_create = setup_double_esc },
+    prompt = opts.prompt,
+    rg_opts = table.concat(rg_opts_list, " "),
+    query = opts.query,
+    winopts = { on_create = setup_double_esc },
   })
 end
 
@@ -163,17 +162,18 @@ end
 ---@param opts { items: string[], prompt: string, on_select: fun(string) }
 function M.pick_item(opts)
   local ok, fzf = pcall(require, "fzf-lua")
-  if not ok then notify.error("fzf-lua unavailable") return end
+  if not ok then
+    notify.error("fzf-lua unavailable")
+    return
+  end
 
   fzf.fzf_exec(opts.items, {
-    prompt   = opts.prompt,
+    prompt = opts.prompt,
     fzf_opts = { ["--no-multi"] = true },
-    winopts  = { on_create = setup_double_esc },
-    actions  = {
+    winopts = { on_create = setup_double_esc },
+    actions = {
       ["default"] = function(selected)
-        if selected and selected[1] then
-          opts.on_select(selected[1])
-        end
+        if selected and selected[1] then opts.on_select(selected[1]) end
       end,
     },
   })
@@ -183,16 +183,19 @@ end
 ---@param opts { prompt: string, cwd: string|nil, on_select: fun(string) }
 function M.pick_dir(opts)
   local ok, fzf = pcall(require, "fzf-lua")
-  if not ok then notify.error("fzf-lua unavailable") return end
+  if not ok then
+    notify.error("fzf-lua unavailable")
+    return
+  end
 
   local cwd = opts.cwd or vim.fn.getcwd()
 
   fzf.files({
-    prompt   = opts.prompt or "Folder> ",
-    cwd      = cwd,
-    fd_opts  = "--type d --hidden --follow --exclude .git",
-    winopts  = { on_create = setup_double_esc },
-    actions  = {
+    prompt = opts.prompt or "Folder> ",
+    cwd = cwd,
+    fd_opts = "--type d --hidden --follow --exclude .git",
+    winopts = { on_create = setup_double_esc },
+    actions = {
       ["default"] = function(selected)
         if not selected or not selected[1] then return end
         local path = vim.fs.normalize(cwd .. "/" .. selected[1])

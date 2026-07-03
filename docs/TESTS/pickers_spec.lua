@@ -8,18 +8,16 @@
 -- failure so it can be used in CI.
 
 -- ── Self-bootstrapping runtimepath ──────────────────────────────────────────
-local this      = debug.getinfo(1, "S").source:sub(2) -- strip leading '@'
+local this = debug.getinfo(1, "S").source:sub(2) -- strip leading '@'
 local tests_dir = vim.fn.fnamemodify(this, ":h")
-local root      = vim.fn.fnamemodify(tests_dir, ":h:h") -- docs/TESTS → repo root
+local root = vim.fn.fnamemodify(tests_dir, ":h:h") -- docs/TESTS → repo root
 vim.opt.runtimepath:append(root)
 
 local lib = vim.fn.fnamemodify(root, ":h") .. "/lib.nvim"
 if vim.env.REPOS_DIR and vim.fn.isdirectory(vim.env.REPOS_DIR .. "/lib.nvim") == 1 then
   lib = vim.env.REPOS_DIR .. "/lib.nvim"
 end
-if vim.fn.isdirectory(lib) == 1 then
-  vim.opt.runtimepath:append(lib)
-end
+if vim.fn.isdirectory(lib) == 1 then vim.opt.runtimepath:append(lib) end
 
 -- ── Tiny assertion harness ──────────────────────────────────────────────────
 local passed, failed = 0, 0
@@ -32,14 +30,16 @@ local function check(name, cond, detail)
     print("  FAIL " .. name .. (detail and ("  → " .. detail) or ""))
   end
 end
-local function has(list, val) return vim.tbl_contains(list, val) end
+local function has(list, val)
+  return vim.tbl_contains(list, val)
+end
 
 -- ── to_pascal ───────────────────────────────────────────────────────────────
 do
   local util = require("pickers.bindings.util")
-  check("to_pascal: notes",     util.to_pascal("notes") == "Notes")
+  check("to_pascal: notes", util.to_pascal("notes") == "Notes")
   check("to_pascal: notes_lua", util.to_pascal("notes_lua") == "NotesLua")
-  check("to_pascal: a_b_c",     util.to_pascal("a_b_c") == "ABC")
+  check("to_pascal: a_b_c", util.to_pascal("a_b_c") == "ABC")
 end
 
 -- ── config.apply — collection normalisation & merges ────────────────────────
@@ -49,9 +49,9 @@ do
     engine = "fzf",
     collections = {
       { name = "notes", dir = "/tmp/notes" },
-      { name = "",      dir = "/x" },       -- invalid: empty name → dropped
-      { dir = "/y" },                        -- invalid: no name    → dropped
-      { name = "proj",  dir = "/tmp/proj", prefix = "", only_git = true },
+      { name = "", dir = "/x" }, -- invalid: empty name → dropped
+      { dir = "/y" }, -- invalid: no name    → dropped
+      { name = "proj", dir = "/tmp/proj", prefix = "", only_git = true },
     },
     keymaps = { cwd_grep = "<leader>zz" },
   })

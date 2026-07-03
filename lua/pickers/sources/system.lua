@@ -30,9 +30,9 @@ end
 ---@param fd     string   fd executable name
 ---@return string[]
 local function build_fd_cmd(input, fd)
-  local name   = nil
-  local ext    = nil
-  local paths  = {}
+  local name = nil
+  local ext = nil
+  local paths = {}
 
   for token in input:gmatch("%S+") do
     if token:match("^%.[%w]+$") then
@@ -44,9 +44,7 @@ local function build_fd_cmd(input, fd)
     end
   end
 
-  if #paths == 0 then
-    paths = { "/" }
-  end
+  if #paths == 0 then paths = { "/" } end
 
   -- fd argv is: fd [OPTIONS] <pattern> <path...>. The pattern must always be the
   -- first positional — an empty string matches everything. Without it fd would
@@ -87,8 +85,8 @@ function M.get(_cfg, callback)
 
     local cmd = build_fd_cmd(input, fd)
     callback({
-      roots        = { "/" },
-      prompt       = "System> ",
+      roots = { "/" },
+      prompt = "System> ",
       find_command = cmd,
     })
   end)

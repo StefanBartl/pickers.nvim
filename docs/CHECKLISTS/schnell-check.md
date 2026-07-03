@@ -43,6 +43,6 @@ Sorting algorithms · insert/delete/update/search data structures · complexity
 notation · bit tricks — pickers.nvim implements none of these.
 
 ## Open items (→ ROADMAP)
-- ✅ Added `stylua.toml` + `.luacheckrc` + GitHub Actions (`.github/workflows/ci.yml`);
-  linters advisory, `nvim -l docs/TESTS/pickers_spec.lua` is the gate.
-- Flip stylua/luacheck from advisory to gating once triaged.
+- ✅ Added `stylua.toml` + `.luacheckrc` + GitHub Actions (`.github/workflows/ci.yml`).
+- ✅ Linters are now **gating**: repo is stylua-formatted and luacheck-clean
+  (0 warnings). `docs/BINDINGS.lua` is excluded from stylua (`.styluaignore`).

@@ -47,9 +47,7 @@ end
 ---@return Pickers.Result
 function M.safe_call(kind, fn, ...)
   local ok, res = pcall(fn, ...)
-  if ok then
-    return { ok = true, result = res, err = nil }
-  end
+  if ok then return { ok = true, result = res, err = nil } end
   return { ok = false, result = nil, err = M.new(kind, tostring(res)) }
 end
 

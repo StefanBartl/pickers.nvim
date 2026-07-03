@@ -16,9 +16,7 @@ function M.register()
       local ok, cfg_mod = pcall(require, "pickers.config")
       if ok then
         local ok2, bindings = pcall(require, "pickers.bindings")
-        if ok2 then
-          bindings.setup(cfg_mod.get())
-        end
+        if ok2 then bindings.setup(cfg_mod.get()) end
       end
     end
   end
@@ -29,8 +27,8 @@ function M.register()
   if ok and type(lib_autocmd) == "table" and type(lib_autocmd.create) == "function" then
     lib_autocmd.create("VimEnter", callback, {
       group = "pickers.nvim",
-      once  = true,
-      desc  = "pickers.nvim: register default bindings when setup() was not called",
+      once = true,
+      desc = "pickers.nvim: register default bindings when setup() was not called",
     })
   else
     vim.api.nvim_create_autocmd("VimEnter", { once = true, callback = callback })

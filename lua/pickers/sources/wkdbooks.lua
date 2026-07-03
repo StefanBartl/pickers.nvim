@@ -26,15 +26,15 @@ function M.get(cfg, callback, engine_mod)
   if not dir then
     notify.error(
       "wkdbooks not configured. Add { name='wkdbooks', dir=..., prefix='wkdbook-' } "
-      .. "to collections in setup(), or set repos_dir."
+        .. "to collections in setup(), or set repos_dir."
     )
     callback(nil)
     return
   end
 
   require("pickers.sources.collection").get({
-    name   = "wkdbooks",
-    dir    = dir,
+    name = "wkdbooks",
+    dir = dir,
     prefix = "wkdbook-",
   }, cfg, callback, engine_mod)
 end

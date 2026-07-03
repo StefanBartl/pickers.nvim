@@ -6,29 +6,23 @@ on:
   pull_request:
 
 jobs:
-  # Linters are advisory: the codebase uses manual column alignment that stylua
-  # cannot reproduce, and luacheck has not been fully triaged yet. Flip
-  # `continue-on-error` to false once the repo is confirmed clean.
+  # Gating: stylua + luacheck must pass. docs/BINDINGS.lua is excluded from stylua
+  # (aligned reference data, see .styluaignore).
   lint:
     runs-on: ubuntu-latest
-    # Advisory: never blocks the workflow. The `test` job is the real gate.
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
       - name: stylua (check)
         uses: JohnnyMorganz/stylua-action@v4
-        continue-on-error: true
         with:
           version: latest
-          args: --check lua plugin docs/TESTS docs/BINDINGS.lua
+          args: --check lua plugin docs/TESTS
 
       - name: Install luacheck
-        continue-on-error: true
         run: sudo apt-get update && sudo apt-get install -y luarocks && sudo luarocks install luacheck
 
       - name: luacheck
-        continue-on-error: true
         run: luacheck lua plugin docs/TESTS
 
   # Real gate: the framework-free unit suite. lib.nvim is checked out as a

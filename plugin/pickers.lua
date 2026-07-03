@@ -5,8 +5,8 @@ if vim.g.pickers_nvim_loaded then return end
 vim.g.pickers_nvim_loaded = true
 
 local pickers_cmd_opts = {
-  nargs    = "*",
-  desc     = "[pickers.nvim] :Pickers [scope] [nav|action] [action]",
+  nargs = "*",
+  desc = "[pickers.nvim] :Pickers [scope] [nav|action] [action]",
   complete = function(arglead, cmdline, cursorpos)
     return require("pickers.command").complete(arglead, cmdline, cursorpos)
   end,

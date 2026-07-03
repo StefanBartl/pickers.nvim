@@ -4,8 +4,8 @@
 
 ---@type Pickers.Config
 local M = {
-  engine      = "auto",
-  repos_dir   = vim.env.REPOS_DIR or nil,
+  engine = "auto",
+  repos_dir = vim.env.REPOS_DIR or nil,
   collections = {},
 
   depth_aliases = {
@@ -26,8 +26,8 @@ local M = {
     git = function()
       local found = vim.fs.find(".git", {
         upward = true,
-        type   = "directory",
-        path   = vim.uv.cwd() or vim.fn.getcwd(),
+        type = "directory",
+        path = vim.uv.cwd() or vim.fn.getcwd(),
       })
       if found and found[1] then return vim.fs.dirname(found[1]) end
       return vim.uv.cwd() or vim.fn.getcwd()
@@ -35,13 +35,13 @@ local M = {
   },
 
   keymaps = {
-    enable       = true,
-    cwd_files    = nil,
-    cwd_grep     = "<leader>li",
+    enable = true,
+    cwd_files = nil,
+    cwd_grep = "<leader>li",
     config_files = "<leader>fc",
-    config_grep  = "<leader>gc",
+    config_grep = "<leader>gc",
     folder_files = "<leader>fb",
-    dir_pick     = "<leader>dp",
+    dir_pick = "<leader>dp",
   },
 
   -- File-listing behaviour for the built-in file pickers (config/cwd/folder/
@@ -49,10 +49,10 @@ local M = {
   -- command. no_ignore stays false so per-repo .gitignore rules keep working
   -- (e.g. generated data dirs); flip it to true to also list ignored files.
   find = {
-    hidden    = true,
+    hidden = true,
     no_ignore = false,
-    follow    = true,
-    exclude   = nil,
+    follow = true,
+    exclude = nil,
   },
 
   usercmds = {

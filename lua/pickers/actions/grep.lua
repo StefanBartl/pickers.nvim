@@ -8,13 +8,11 @@ local M = {}
 ---@param extra_args      string[]|nil   Additional rg flags (merged with source.additional_args)
 function M.run(source, engine_mod, extra_args)
   local args = vim.list_extend({}, source.additional_args or {})
-  if extra_args then
-    vim.list_extend(args, extra_args)
-  end
+  if extra_args then vim.list_extend(args, extra_args) end
 
   engine_mod.live_grep({
-    roots           = source.roots,
-    prompt          = source.prompt,
+    roots = source.roots,
+    prompt = source.prompt,
     additional_args = args,
   })
 end
