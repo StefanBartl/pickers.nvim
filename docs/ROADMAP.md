@@ -38,7 +38,7 @@ a promise; it is a backlog of ideas ordered roughly by usefulness.
 
 ## Checklist audit — open items
 
-Distilled from `docs/CHECKLISTS/` (applied Lua/Neovim checklists). Ordered by value.
+Distilled from `docs/ROADMAP/` audit files (applied Lua/Neovim checklists). Ordered by value.
 
 - [x] Use `lib.nvim.usercmd` instead of raw `nvim_create_user_command`
   (`plugin/pickers.lua`, `lua/pickers/bindings/util.lua`), with raw fallback.

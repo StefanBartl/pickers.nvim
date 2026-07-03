@@ -16,4 +16,7 @@ The remaining Checklist.md sections — sorting algorithms, data-structure
 operations, complexity notation, bit tricks — are **N/A**: pickers.nvim
 implements none of these; it delegates all listing/sorting to telescope/fzf-lua.
 
+See also [NEOTREE_FEATURES.md](NEOTREE_FEATURES.md) — filetree feature audit for a
+future `filetree.nvim`.
+
 Open action items distilled from these audits live in [../ROADMAP.md](../ROADMAP.md).
