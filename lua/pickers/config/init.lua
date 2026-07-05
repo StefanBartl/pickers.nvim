@@ -103,6 +103,22 @@ local function normalise_selected_index(raw, current)
     result.highlight = hl
   end
 
+  if raw.toggle_key ~= nil then
+    if type(raw.toggle_key) == "string" and raw.toggle_key ~= "" then
+      result.toggle_key = raw.toggle_key
+    elseif raw.toggle_key == false then
+      result.toggle_key = nil
+    else
+      vim.notify(
+        string.format(
+          "[pickers] Invalid selected_index.toggle_key %s, keeping previous",
+          vim.inspect(raw.toggle_key)
+        ),
+        vim.log.levels.WARN
+      )
+    end
+  end
+
   return result
 end
 

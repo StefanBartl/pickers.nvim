@@ -10,6 +10,7 @@ local M = {}
 local _ns_by_bufnr = {}
 local _ns_counter = 0
 local _cleanup_by_bufnr = {}
+local _visible_by_bufnr = {}
 
 ---Get or create the extmark namespace for a specific results buffer.
 ---@param results_bufnr integer
@@ -32,6 +33,7 @@ local function cleanup_namespace(results_bufnr)
     pcall(vim.api.nvim_buf_clear_namespace, results_bufnr, ns, 0, -1)
   end
   _ns_by_bufnr[results_bufnr] = nil
+  _visible_by_bufnr[results_bufnr] = nil
 
   local cleanup_fn = _cleanup_by_bufnr[results_bufnr]
   if cleanup_fn then
@@ -62,6 +64,8 @@ local function make_update_selected_index(action_state, ns, get_picker)
     if not results_bufnr or results_bufnr == 0 then return end
 
     vim.api.nvim_buf_clear_namespace(results_bufnr, ns, 0, -1)
+
+    if _visible_by_bufnr[results_bufnr] == false then return end
 
     local row = nil
     if type(picker.get_selection_row) == "function" then
@@ -127,6 +131,9 @@ function M.attach_mappings(prompt_bufnr, map)
 
   local results_bufnr = picker.results_bufnr
   local ns = get_or_create_namespace(results_bufnr)
+  local cfg = require("pickers.config").get().selected_index
+
+  _visible_by_bufnr[results_bufnr] = cfg.enabled
 
   local update_selected_index = make_update_selected_index(action_state, ns, get_picker)
 
@@ -134,7 +141,15 @@ function M.attach_mappings(prompt_bufnr, map)
     vim.defer_fn(update_selected_index, 50)
   end)
 
-  require("pickers.selected_index.actions").attach(map, update_selected_index)
+  local si_actions = require("pickers.selected_index.actions")
+  si_actions.attach(map, update_selected_index)
+
+  if cfg.toggle_key then
+    si_actions.attach_toggle(map, cfg.toggle_key, function()
+      _visible_by_bufnr[results_bufnr] = not _visible_by_bufnr[results_bufnr]
+      update_selected_index()
+    end)
+  end
 
   local augname = "PickersSelectedIndexAUG_" .. tostring(results_bufnr)
   local aug = vim.api.nvim_create_augroup(augname, { clear = true })
@@ -161,13 +176,15 @@ function M.attach_mappings(prompt_bufnr, map)
 end
 
 ---Wrap an existing `attach_mappings` function so it also renders the
----selected-index overlay, when the feature is enabled in config. Returns
----`orig` unchanged (including nil) when the feature is disabled.
+---selected-index overlay, when the feature is enabled or a `toggle_key` is
+---configured (so it can be switched on live for an already-open picker).
+---Returns `orig` unchanged (including nil) when neither applies, keeping
+---`enabled = false` with no `toggle_key` fully inert.
 ---@param orig (fun(prompt_bufnr:integer, map:function):boolean|nil)|nil
 ---@return (fun(prompt_bufnr:integer, map:function):boolean|nil)|nil
 function M.wrap_attach_mappings(orig)
   local cfg = require("pickers.config").get().selected_index
-  if not cfg.enabled then return orig end
+  if not cfg.enabled and not cfg.toggle_key then return orig end
 
   return function(prompt_bufnr, map)
     if orig then orig(prompt_bufnr, map) end

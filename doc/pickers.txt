@@ -87,9 +87,10 @@ Full options: >lua
     },
     usercmds = { enable = true },
     selected_index = {
-      enabled   = false,             -- telescope-only, off by default
-      position  = "right_align",     -- "overlay"|"right_align"|"eol"|"top"|"down"
-      highlight = { preset = "default" },
+      enabled    = false,             -- telescope-only, off by default
+      position   = "right_align",     -- "overlay"|"right_align"|"eol"|"top"|"down"
+      highlight  = { preset = "default" },
+      toggle_key = nil,                -- e.g. "<M-i>" to toggle live in an open picker
     },
   })
 <
@@ -319,9 +320,10 @@ All keys are optional.  Unset keys retain their default values.
     enable (bool, default true)
 
   selected_index (table)~
-    enabled   (bool, default false)          — master toggle, telescope-only
-    position  (string, default "right_align") — see |pickers-selected-index|
-    highlight (table, default { preset = "default" })
+    enabled    (bool, default false)          — master toggle, telescope-only
+    position   (string, default "right_align") — see |pickers-selected-index|
+    highlight  (table, default { preset = "default" })
+    toggle_key (string|nil, default nil)      — in-picker live toggle keymap
 
 ==============================================================================
 10. SELECTED INDEX DISPLAY                              *pickers-selected-index*
@@ -360,6 +362,21 @@ highlight.custom (used when preset = "custom")~
 
 The highlight group is named `PickersSelectedIndex` — link or override it
 directly via `vim.api.nvim_set_hl` if preferred over the preset system.
+
+Live toggle~
+  toggle_key registers an in-picker keymap (insert + normal mode) that
+  switches the overlay on/off for the currently open results list, e.g.: >lua
+  require("pickers").setup({
+    selected_index = {
+      enabled    = false,     -- starts hidden
+      toggle_key = "<M-i>",   -- press inside any Telescope picker to show/hide
+    },
+  })
+<
+  toggle_key works independently of enabled: with enabled = true the overlay
+  starts visible and toggle_key hides it; with enabled = false it starts
+  hidden and toggle_key shows it. Leaving toggle_key unset (the default)
+  registers no extra keymap, so enabled = false alone stays fully inert.
 
 ==============================================================================
 11. HEALTH CHECK                                                *pickers-health*

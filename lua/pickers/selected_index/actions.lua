@@ -39,4 +39,20 @@ function M.attach(map, update_fn)
   wrap_move(map, "<Up>", "n", actions.move_selection_previous, update_fn)
 end
 
+---Attach an in-picker keymap (insert + normal mode) that calls `toggle_fn`.
+---@param map function
+---@param key string
+---@param toggle_fn fun():nil
+---@return nil
+function M.attach_toggle(map, key, toggle_fn)
+  map("i", key, function()
+    toggle_fn()
+    return true
+  end)
+  map("n", key, function()
+    toggle_fn()
+    return true
+  end)
+end
+
 return M

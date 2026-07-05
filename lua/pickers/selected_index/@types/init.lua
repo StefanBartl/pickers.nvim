@@ -33,5 +33,6 @@
 ---@field enabled boolean Toggle for the whole feature (default: false)
 ---@field position Pickers.SelectedIndex.Position Where to render the index (default: "right_align")
 ---@field highlight Pickers.SelectedIndex.HighlightConfig
+---@field toggle_key string|nil In-picker keymap (insert+normal) to toggle live; nil registers no keymap (default: nil)
 
 return {}
