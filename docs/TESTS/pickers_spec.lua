@@ -131,6 +131,24 @@ do
     "selected_index: unknown custom field dropped",
     cfg3.selected_index.highlight.custom.not_a_field == nil
   )
+
+  check("selected_index: toggle_key default nil", cfg3.selected_index.toggle_key == nil)
+
+  config.apply({ selected_index = { toggle_key = "<M-i>" } })
+  local cfg4 = config.get()
+  check("selected_index: toggle_key set", cfg4.selected_index.toggle_key == "<M-i>")
+
+  config.apply({ selected_index = { toggle_key = 42 } })
+  local cfg5 = config.get()
+  check(
+    "selected_index: invalid toggle_key type keeps previous",
+    cfg5.selected_index.toggle_key == "<M-i>",
+    tostring(cfg5.selected_index.toggle_key)
+  )
+
+  config.apply({ selected_index = { toggle_key = false } })
+  local cfg6 = config.get()
+  check("selected_index: toggle_key = false clears it", cfg6.selected_index.toggle_key == nil)
 end
 
 -- ── command.complete — needs lib.nvim; skip cleanly if absent ───────────────

@@ -9,5 +9,6 @@ pickers-intro	pickers.txt	/*pickers-intro*
 pickers-keymaps	pickers.txt	/*pickers-keymaps*
 pickers-requirements	pickers.txt	/*pickers-requirements*
 pickers-scopes	pickers.txt	/*pickers-scopes*
+pickers-selected-index	pickers.txt	/*pickers-selected-index*
 pickers-setup	pickers.txt	/*pickers-setup*
 pickers.txt	pickers.txt	/*pickers.txt*

@@ -67,6 +67,10 @@ local M = {
     highlight = {
       preset = "default",
     },
+    -- In-picker keymap (insert + normal mode) that toggles the overlay live
+    -- for the currently open results list. nil (default) registers no
+    -- keymap at all, keeping enabled=false fully inert.
+    toggle_key = nil,
   },
 }
 

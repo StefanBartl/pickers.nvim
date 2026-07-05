@@ -350,6 +350,7 @@ require("pickers").setup({
     enabled = false,
     position = "right_align",         -- "overlay" | "right_align" | "eol" | "top" | "down"
     highlight = { preset = "default" }, -- see presets below
+    toggle_key = nil,                 -- e.g. "<M-i>" to toggle live in an open picker
   },
 })
 ```
@@ -397,6 +398,26 @@ highlight = {
 
 The highlight group is named `PickersSelectedIndex` if you want to link or
 override it yourself via `vim.api.nvim_set_hl`.
+
+**Live toggle.** Set `toggle_key` to an in-picker keymap (insert + normal
+mode) that switches the overlay on/off for the *currently open* results list
+— useful when `enabled = false` by default but you still want it available
+on demand:
+
+```lua
+require("pickers").setup({
+  selected_index = {
+    enabled = false,     -- starts hidden
+    toggle_key = "<M-i>", -- press inside any Telescope picker to show/hide it
+  },
+})
+```
+
+`toggle_key` works independently of `enabled`: with `enabled = true` the
+overlay starts visible and `toggle_key` can hide it; with `enabled = false`
+it starts hidden and `toggle_key` can show it. Leaving `toggle_key` unset
+(the default) registers no extra keymap at all, so `enabled = false` alone
+stays fully inert.
 
 ---
 
