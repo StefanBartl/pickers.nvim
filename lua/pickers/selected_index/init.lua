@@ -184,7 +184,9 @@ end
 ---@return (fun(prompt_bufnr:integer, map:function):boolean|nil)|nil
 function M.wrap_attach_mappings(orig)
   local cfg = require("pickers.config").get().selected_index
-  if not cfg.enabled and not cfg.toggle_key then return orig end
+  -- Defensive: a config without `selected_index` (e.g. a stale vim.loader cache
+  -- of an older DEFAULTS, or a partial config) must never crash the picker.
+  if not cfg or (not cfg.enabled and not cfg.toggle_key) then return orig end
 
   return function(prompt_bufnr, map)
     if orig then orig(prompt_bufnr, map) end

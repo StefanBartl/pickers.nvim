@@ -6,7 +6,7 @@
 ---@see pickers.bindings.autocmds
 ---@description
 --- A structured, human-readable reference of every binding lives in
---- `docs/BINDINGS.lua`. Keep it in sync when changing registrations here.
+--- `docs/BINDINGS.md`. Keep it in sync when changing registrations here.
 
 local M = {}
 

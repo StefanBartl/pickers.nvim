@@ -45,4 +45,4 @@ notation · bit tricks — pickers.nvim implements none of these.
 ## Open items (→ ROADMAP)
 - ✅ Added `stylua.toml` + `.luacheckrc` + GitHub Actions (`.github/workflows/ci.yml`).
 - ✅ Linters are now **gating**: repo is stylua-formatted and luacheck-clean
-  (0 warnings). `docs/BINDINGS.lua` is excluded from stylua (`.styluaignore`).
+  (0 warnings). `docs/BINDINGS.md` is excluded from stylua (`.styluaignore`).

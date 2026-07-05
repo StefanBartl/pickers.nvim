@@ -247,7 +247,7 @@ For a collection named `"notes_lua"`:
 
 ## Keymaps
 
-All keymaps are registered in `lua/pickers/bindings/` (see also `docs/BINDINGS.lua`).  
+All keymaps are registered in `lua/pickers/bindings/` (see also `docs/BINDINGS.md`).  
 They mirror the keymaps from the original individual modules exactly:
 
 | Keymap | Action | Was |
