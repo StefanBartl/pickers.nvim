@@ -58,6 +58,16 @@ local M = {
   usercmds = {
     enable = true,
   },
+
+  -- Overlay showing the index of the currently selected entry in the results
+  -- buffer. Telescope-only, disabled by default. See pickers.selected_index.
+  selected_index = {
+    enabled = false,
+    position = "right_align",
+    highlight = {
+      preset = "default",
+    },
+  },
 }
 
 return M

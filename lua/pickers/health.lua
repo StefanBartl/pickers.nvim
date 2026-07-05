@@ -80,6 +80,26 @@ function M.check()
   end
   vim.health.info("depth_aliases: " .. alias_count .. " registered")
 
+  if cfg.selected_index.enabled then
+    if has_telescope then
+      vim.health.ok(
+        "selected_index enabled (position="
+          .. cfg.selected_index.position
+          .. ", highlight="
+          .. (cfg.selected_index.highlight.preset or "default")
+          .. ")"
+      )
+    else
+      vim.health.warn(
+        "selected_index enabled but telescope.nvim not found — feature has no effect (telescope-only)"
+      )
+    end
+  else
+    vim.health.info(
+      "selected_index disabled (default) — enable via setup({ selected_index = { enabled = true } })"
+    )
+  end
+
   -- ── Collections ───────────────────────────────────────────────────────────
   vim.health.start("pickers.nvim — collections")
 

@@ -33,6 +33,7 @@ Consolidates seven separate picker modules into one plugin with a single `:Picke
 - [Keymaps](#keymaps)
 - [Compat commands](#compat-commands)
 - [Configuration](#configuration)
+- [Selected index display](#selected-index-display)
 - [Health check](#health-check)
 
 ---
@@ -342,8 +343,60 @@ require("pickers").setup({
   },
 
   usercmds = { enable = true },
+
+  -- Overlay showing the index of the currently selected entry. Telescope-only,
+  -- disabled by default. See "Selected index display" below.
+  selected_index = {
+    enabled = false,
+    position = "right_align",         -- "overlay" | "right_align" | "eol" | "top" | "down"
+    highlight = { preset = "default" }, -- see presets below
+  },
 })
 ```
+
+---
+
+## Selected index display
+
+An optional overlay that shows the index (e.g. `12. `) of the currently
+selected entry directly in the results buffer, updated as you move the
+selection. **Telescope-only** — fzf-lua already shows a position/total
+counter natively, so the overlay has no effect there and is skipped.
+**Disabled by default.**
+
+```lua
+require("pickers").setup({
+  selected_index = {
+    enabled = true,
+    position = "right_align",   -- "overlay" | "right_align" | "eol" | "top" | "down"
+    highlight = { preset = "accent" },
+  },
+})
+```
+
+Positions:
+
+| Position | Effect |
+|---|---|
+| `overlay` | Drawn over the start of the line |
+| `right_align` | Right-aligned virtual text (default) |
+| `eol` | Appended at end of line |
+| `top` | Virtual line above the entry |
+| `down` | Virtual line below the entry |
+
+Highlight presets (`highlight.preset`): `default` (inherits Telescope's
+result-function color) · `subtle` · `bold` · `accent` · `minimal` · `error` ·
+`success` · `custom` (provide your own spec via `highlight.custom`):
+
+```lua
+highlight = {
+  preset = "custom",
+  custom = { fg = "#89dceb", bold = true }, -- fg/bg/bold/italic/underline/undercurl/strikethrough/blend
+},
+```
+
+The highlight group is named `PickersSelectedIndex` if you want to link or
+override it yourself via `vim.api.nvim_set_hl`.
 
 ---
 
@@ -353,4 +406,4 @@ require("pickers").setup({
 :checkhealth pickers
 ```
 
-Verifies: lib.nvim · telescope/fzf-lua · rg · fd/fdfind · repos_dir · registered aliases · each collection directory.
+Verifies: lib.nvim · telescope/fzf-lua · rg · fd/fdfind · repos_dir · registered aliases · selected_index status · each collection directory.

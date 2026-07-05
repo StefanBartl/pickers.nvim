@@ -31,6 +31,81 @@ local function normalise_collection(raw)
   }
 end
 
+---Validate and normalise the `selected_index` sub-config, merging into `current`.
+---@param raw table
+---@param current Pickers.SelectedIndexConfig
+---@return Pickers.SelectedIndexConfig
+local function normalise_selected_index(raw, current)
+  local result = vim.deepcopy(current)
+
+  if type(raw.enabled) == "boolean" then result.enabled = raw.enabled end
+
+  if type(raw.position) == "string" then
+    local allowed = {
+      overlay = true,
+      right_align = true,
+      eol = true,
+      top = true,
+      down = true,
+    }
+    local pos = raw.position == "right" and "right_align" or raw.position
+    if allowed[pos] then
+      result.position = pos
+    else
+      vim.notify(
+        string.format(
+          "[pickers] Invalid selected_index.position %q, keeping %q",
+          raw.position,
+          result.position
+        ),
+        vim.log.levels.WARN
+      )
+    end
+  end
+
+  if type(raw.highlight) == "table" then
+    local hl = { preset = result.highlight.preset }
+    local valid_presets = {
+      default = true,
+      subtle = true,
+      bold = true,
+      accent = true,
+      minimal = true,
+      error = true,
+      success = true,
+      custom = true,
+    }
+
+    if raw.highlight.preset ~= nil then
+      if valid_presets[raw.highlight.preset] then
+        hl.preset = raw.highlight.preset
+      else
+        vim.notify(
+          string.format(
+            '[pickers] Invalid selected_index.highlight.preset %q, using "default"',
+            tostring(raw.highlight.preset)
+          ),
+          vim.log.levels.WARN
+        )
+        hl.preset = "default"
+      end
+    end
+
+    if type(raw.highlight.custom) == "table" then
+      hl.custom = {}
+      local valid_attrs =
+        { "fg", "bg", "bold", "italic", "underline", "undercurl", "strikethrough", "blend" }
+      for _, attr in ipairs(valid_attrs) do
+        if raw.highlight.custom[attr] ~= nil then hl.custom[attr] = raw.highlight.custom[attr] end
+      end
+    end
+
+    result.highlight = hl
+  end
+
+  return result
+end
+
 ---Merge user-provided options into the active configuration.
 ---@param opts Pickers.Config|nil
 function M.apply(opts)
@@ -73,6 +148,11 @@ function M.apply(opts)
   end
   if type(opts.usercmds) == "table" then
     cfg.usercmds = vim.tbl_deep_extend("force", cfg.usercmds, opts.usercmds)
+  end
+
+  if type(opts.selected_index) == "table" then
+    cfg.selected_index = normalise_selected_index(opts.selected_index, cfg.selected_index)
+    require("pickers.selected_index.highlight").apply(cfg.selected_index.highlight)
   end
 end
 

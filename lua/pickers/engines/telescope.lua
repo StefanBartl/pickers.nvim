@@ -69,6 +69,8 @@ function M.pick_files(opts)
     end
   end
 
+  call_opts.attach_mappings = require("pickers.selected_index").wrap_attach_mappings(nil)
+
   safe_call(builtin.find_files, call_opts)
 end
 
@@ -88,6 +90,7 @@ function M.live_grep(opts)
     additional_args = function()
       return vim.list_extend({ "--hidden", "--no-ignore-vcs", "-S" }, extra)
     end,
+    attach_mappings = require("pickers.selected_index").wrap_attach_mappings(nil),
   })
 end
 
@@ -106,14 +109,14 @@ function M.pick_item(opts)
       prompt_title = opts.prompt,
       finder = finders.new_table({ results = opts.items }),
       sorter = conf.values.generic_sorter({}),
-      attach_mappings = function(_, _map)
+      attach_mappings = require("pickers.selected_index").wrap_attach_mappings(function(_, _map)
         actions.select_default:replace(function(bufnr)
           actions.close(bufnr)
           local sel = action_state.get_selected_entry()
           if sel then opts.on_select(sel[1]) end
         end)
         return true
-      end,
+      end),
     })
     :find()
 end
@@ -148,14 +151,14 @@ function M.pick_dir(opts)
       ),
       sorter = conf.values.file_sorter({}),
       previewer = conf.values.file_previewer({}),
-      attach_mappings = function(_, _map)
+      attach_mappings = require("pickers.selected_index").wrap_attach_mappings(function(_, _map)
         actions.select_default:replace(function(bufnr)
           actions.close(bufnr)
           local sel = action_state.get_selected_entry()
           if sel then opts.on_select(vim.fs.normalize(sel.path or sel.value or sel[1])) end
         end)
         return true
-      end,
+      end),
     })
     :find()
 end
