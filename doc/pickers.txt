@@ -15,7 +15,8 @@ CONTENTS                                                      *pickers-contents*
   7. Keymaps .......................... |pickers-keymaps|
   8. Compat commands .................. |pickers-compat|
   9. Configuration reference .......... |pickers-config|
- 10. Health check ..................... |pickers-health|
+ 10. Selected index display .......... |pickers-selected-index|
+ 11. Health check ..................... |pickers-health|
 
 ==============================================================================
 1. INTRODUCTION                                                  *pickers-intro*
@@ -85,6 +86,11 @@ Full options: >lua
       cwd_files    = nil,
     },
     usercmds = { enable = true },
+    selected_index = {
+      enabled   = false,             -- telescope-only, off by default
+      position  = "right_align",     -- "overlay"|"right_align"|"eol"|"top"|"down"
+      highlight = { preset = "default" },
+    },
   })
 <
 
@@ -312,15 +318,59 @@ All keys are optional.  Unset keys retain their default values.
   usercmds (table)~
     enable (bool, default true)
 
+  selected_index (table)~
+    enabled   (bool, default false)          — master toggle, telescope-only
+    position  (string, default "right_align") — see |pickers-selected-index|
+    highlight (table, default { preset = "default" })
+
 ==============================================================================
-10. HEALTH CHECK                                                *pickers-health*
+10. SELECTED INDEX DISPLAY                              *pickers-selected-index*
+
+An optional overlay showing the index of the currently selected entry
+(e.g. "12. ") directly in the results buffer, kept in sync as the selection
+moves.  Telescope-only — fzf-lua already shows a position/total counter
+natively, so the overlay is skipped there.  Disabled by default.
+
+Enable: >lua
+  require("pickers").setup({
+    selected_index = {
+      enabled   = true,
+      position  = "right_align",
+      highlight = { preset = "accent" },
+    },
+  })
+<
+
+position (one of)~
+  "overlay"      drawn over the start of the line
+  "right_align"  right-aligned virtual text (default)
+  "eol"          appended at end of line
+  "top"          virtual line above the entry
+  "down"         virtual line below the entry
+
+highlight.preset (one of)~
+  "default"  inherits TelescopeResultsFunction
+  "subtle" | "bold" | "accent" | "minimal" | "error" | "success"
+  "custom"   provide your own spec via highlight.custom
+
+highlight.custom (used when preset = "custom")~
+  { fg?, bg?, bold?, italic?, underline?, undercurl?, strikethrough?, blend? } >lua
+  highlight = { preset = "custom", custom = { fg = "#89dceb", bold = true } },
+<
+
+The highlight group is named `PickersSelectedIndex` — link or override it
+directly via `vim.api.nvim_set_hl` if preferred over the preset system.
+
+==============================================================================
+11. HEALTH CHECK                                                *pickers-health*
 
 Run: >
   :checkhealth pickers
 <
 
 Checks: lib.nvim availability, telescope / fzf-lua presence, rg / fd in PATH,
-repos_dir existence, registered aliases count, and each collection directory.
+repos_dir existence, registered aliases count, selected_index status, and
+each collection directory.
 
 ==============================================================================
 vim:ft=help:tw=78:ts=2:et:

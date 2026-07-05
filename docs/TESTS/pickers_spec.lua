@@ -77,6 +77,62 @@ do
   check("find: hidden still default", cfg2.find.hidden == true)
 end
 
+-- ── config.apply — selected_index normalisation ─────────────────────────────
+do
+  local config = require("pickers.config")
+  local cfg0 = config.get()
+  check("selected_index: default disabled", cfg0.selected_index.enabled == false)
+  check("selected_index: default position", cfg0.selected_index.position == "right_align")
+  check("selected_index: default preset", cfg0.selected_index.highlight.preset == "default")
+
+  config.apply({
+    selected_index = {
+      enabled = true,
+      position = "right",
+      highlight = { preset = "accent" },
+    },
+  })
+  local cfg1 = config.get()
+  check("selected_index: enabled overridden", cfg1.selected_index.enabled == true)
+  check(
+    "selected_index: 'right' normalised to 'right_align'",
+    cfg1.selected_index.position == "right_align",
+    tostring(cfg1.selected_index.position)
+  )
+  check("selected_index: preset overridden", cfg1.selected_index.highlight.preset == "accent")
+
+  config.apply({
+    selected_index = {
+      position = "not_a_real_position",
+      highlight = { preset = "not_a_real_preset" },
+    },
+  })
+  local cfg2 = config.get()
+  check(
+    "selected_index: invalid position falls back to previous",
+    cfg2.selected_index.position == "right_align",
+    tostring(cfg2.selected_index.position)
+  )
+  check(
+    "selected_index: invalid preset falls back to default",
+    cfg2.selected_index.highlight.preset == "default",
+    tostring(cfg2.selected_index.highlight.preset)
+  )
+
+  config.apply({
+    selected_index = {
+      highlight = { preset = "custom", custom = { fg = "#ff0000", bold = true, not_a_field = 1 } },
+    },
+  })
+  local cfg3 = config.get()
+  check("selected_index: custom fg kept", cfg3.selected_index.highlight.custom.fg == "#ff0000")
+  check("selected_index: custom bold kept", cfg3.selected_index.highlight.custom.bold == true)
+  check(
+    "selected_index: unknown custom field dropped",
+    cfg3.selected_index.highlight.custom.not_a_field == nil
+  )
+end
+
 -- ── command.complete — needs lib.nvim; skip cleanly if absent ───────────────
 do
   local ok, cmd = pcall(require, "pickers.command")

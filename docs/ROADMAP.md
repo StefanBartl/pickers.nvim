@@ -13,6 +13,10 @@ a promise; it is a backlog of ideas ordered roughly by usefulness.
   per-scope find overrides.
 - [ ] **Result-count / preview toggles** surfaced through `setup()`.
 - [ ] **Remember last scope/action** for a `:Pickers` repeat command.
+- [x] **Selected-index overlay.** `selected_index = { enabled, position, highlight }`
+  in `setup()` — shows the index of the selected entry in the results buffer.
+  Telescope-only, disabled by default. Native port of the (now retired)
+  `telescope-selected-index.nvim` companion plugin — see `lua/pickers/selected_index/`.
 
 ## Commands
 
