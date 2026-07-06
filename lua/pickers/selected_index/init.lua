@@ -164,6 +164,16 @@ function M.attach_mappings(prompt_bufnr, map)
     callback = debounced_update,
   })
 
+  -- Typing in the prompt re-sorts the results, so the selected entry's rank
+  -- changes without the results cursor moving (no CursorMoved fires). Recompute
+  -- the overlay on prompt edits too; the debounce lets telescope's async sort
+  -- settle first.
+  vim.api.nvim_create_autocmd({ "TextChangedI", "TextChanged" }, {
+    group = aug,
+    buffer = prompt_bufnr,
+    callback = debounced_update,
+  })
+
   vim.api.nvim_create_autocmd("BufDelete", {
     buffer = results_bufnr,
     once = true,
