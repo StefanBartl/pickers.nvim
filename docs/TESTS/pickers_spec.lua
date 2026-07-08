@@ -172,6 +172,40 @@ do
   end
 end
 
+-- ── sources.repos — list_names / resolve / complete; needs lib.nvim ─────────
+do
+  local ok, repos = pcall(require, "pickers.sources.repos")
+  if not ok then
+    print("  skip sources.repos tests (lib.nvim not on runtimepath)")
+  else
+    local config = require("pickers.config")
+
+    local base = vim.fn.tempname()
+    vim.fn.mkdir(base, "p")
+    vim.fn.mkdir(base .. "/lib.nvim/.git", "p")
+    vim.fn.mkdir(base .. "/markdown.nvim/.git", "p")
+    vim.fn.mkdir(base .. "/not_a_repo", "p") -- no .git → excluded
+
+    config.apply({ repos_dir = base })
+    local cfg = config.get()
+
+    local names = repos.list_names(cfg)
+    check("repos.list_names: finds lib.nvim", has(names, "lib.nvim"))
+    check("repos.list_names: finds markdown.nvim", has(names, "markdown.nvim"))
+    check("repos.list_names: excludes non-git dirs", not has(names, "not_a_repo"))
+
+    check("repos.resolve: known repo", repos.resolve(cfg, "lib.nvim") ~= nil)
+    check("repos.resolve: unknown repo", repos.resolve(cfg, "nope") == nil)
+    check("repos.resolve: non-git dir", repos.resolve(cfg, "not_a_repo") == nil)
+
+    local completed = repos.complete("lib")
+    check("repos.complete: prefix match", has(completed, "lib.nvim"))
+    check("repos.complete: prefix excludes non-match", not has(completed, "markdown.nvim"))
+
+    vim.fn.delete(base, "rf")
+  end
+end
+
 -- ── Summary ─────────────────────────────────────────────────────────────────
 print(string.format("\n%d passed, %d failed", passed, failed))
 os.exit(failed == 0 and 0 or 1)

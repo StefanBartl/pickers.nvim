@@ -272,8 +272,11 @@ with configs that used the original individual modules:
   :AllDrives          → :Pickers drives files
   :AllDrivesGrep      → :Pickers drives grep
   :FindOnSystem       → :Pickers system files
-  :RepoFiles          → :Pickers repos files
-  :RepoGrep           → :Pickers repos grep
+  :RepoFiles [repo]   → :Pickers repos files (or files in [repo] directly)
+  :RepoGrep [repo]    → :Pickers repos grep  (or grep in [repo] directly)
+
+  [repo] tab-completes from REPOS_DIR and, when given, skips the repo
+  picker and jumps straight into files/grep for that repo.
   :WkdBookFiles       → :Pickers wkdbooks files
   :WkdBookGrep        → :Pickers wkdbooks grep
 

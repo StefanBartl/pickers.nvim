@@ -288,8 +288,8 @@ All commands from the original modules are preserved as aliases:
 | `:AllDrives` | `:Pickers drives files` |
 | `:AllDrivesGrep` | `:Pickers drives grep` |
 | `:FindOnSystem` | `:Pickers system files` |
-| `:RepoFiles` | `:Pickers repos files` |
-| `:RepoGrep` | `:Pickers repos grep` |
+| `:RepoFiles [repo]` | `:Pickers repos files` (or jump straight to `[repo]`, tab-completed) |
+| `:RepoGrep [repo]` | `:Pickers repos grep` (or jump straight to `[repo]`, tab-completed) |
 | `:WkdBookFiles` | `:Pickers wkdbooks files` |
 | `:WkdBookGrep` | `:Pickers wkdbooks grep` |
 
