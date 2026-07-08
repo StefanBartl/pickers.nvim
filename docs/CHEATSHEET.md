@@ -59,8 +59,8 @@
 | `:AllDrives` | `:Pickers drives files` |
 | `:AllDrivesGrep` | `:Pickers drives grep` |
 | `:FindOnSystem` | `:Pickers system files` |
-| `:RepoFiles` | `:Pickers repos files` |
-| `:RepoGrep` | `:Pickers repos grep` |
+| `:RepoFiles [repo]` | `:Pickers repos files` (`[repo]` tab-completes from `REPOS_DIR` and skips the repo picker) |
+| `:RepoGrep [repo]` | `:Pickers repos grep` (`[repo]` tab-completes from `REPOS_DIR` and skips the repo picker) |
 | `:WkdBookFiles` | `:Pickers wkdbooks files` |
 | `:WkdBookGrep` | `:Pickers wkdbooks grep` |
 

@@ -43,8 +43,8 @@ A single, machine-readable reference of every keymap, user-command and autocomma
 | `:AllDrives` | `:Pickers drives files` | `?` | Find files across all drives |
 | `:AllDrivesGrep` | `:Pickers drives grep` | `?` | Live grep across all drives |
 | `:FindOnSystem` | `:Pickers system files` | `?` | Systemwide fd search (prompts) |
-| `:RepoFiles` | `:Pickers repos files` | `?` | Pick a repo, then find files |
-| `:RepoGrep` | `:Pickers repos grep` | `?` | Pick a repo, then live grep |
+| `:RepoFiles [repo]` | `:Pickers repos files` | `?` | Pick a repo, then find files. With `[repo]` (tab-completed from `REPOS_DIR`), jumps straight into files for that repo |
+| `:RepoGrep [repo]` | `:Pickers repos grep` | `?` | Pick a repo, then live grep. With `[repo]` (tab-completed from `REPOS_DIR`), jumps straight into grep for that repo |
 | `:WkdBookFiles` | `:Pickers wkdbooks files` | `?` | Pick a wkdbook, then find files |
 | `:WkdBookGrep` | `:Pickers wkdbooks grep` | `?` | Pick a wkdbook, then live grep |
 

@@ -43,6 +43,17 @@ end
 
 -- ── Public API ────────────────────────────────────────────────────────────────
 
+---List immediate subdirectories, optionally filtered by prefix and/or .git presence.
+---Exposed for callers that need the raw path list without going through the
+---engine sub-picker (e.g. command-line completion).
+---@param dir      string
+---@param prefix   string|nil   nil or "" = all dirs, "xyz-" = prefix match
+---@param only_git boolean
+---@return string[]  absolute paths
+function M.list_subdirs(dir, prefix, only_git)
+  return list_subdirs(dir, prefix, only_git)
+end
+
 ---Resolve a collection to a Pickers.Source and call `callback`.
 ---
 --- For prefix=nil collections the callback fires synchronously.
