@@ -1,5 +1,5 @@
 ---@module 'pickers.ui.scope_picker'
----@brief Interactive scope selection via hover_select (with vim.ui.select fallback).
+---@brief Interactive scope selection via lib.nvim.ui.kit (with vim.ui.select fallback).
 
 local M = {}
 
@@ -32,9 +32,9 @@ end
 ---@param callback fun(string|nil)
 function M.open(callback)
   local scopes = build_scope_list()
-  local ok, hover = pcall(require, "lib.nvim.ui.hover_select")
-  if ok and hover and type(hover.open) == "function" then
-    hover.open({
+  local ok, kit = pcall(require, "lib.nvim.ui.kit")
+  if ok and kit and type(kit.select) == "function" then
+    kit.select({
       title = "Pickers — Scope",
       items = scopes,
       on_select = callback,
