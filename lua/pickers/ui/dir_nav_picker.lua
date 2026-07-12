@@ -1,5 +1,5 @@
 ---@module 'pickers.ui.dir_nav_picker'
----@brief Interactive directory navigation picker via hover_select.
+---@brief Interactive directory navigation picker via lib.nvim.ui.kit.
 ---@description
 --- Displays:
 ---   • Named aliases from config.depth_aliases (sorted alphabetically)
@@ -62,9 +62,9 @@ function M.open(cfg, callback)
   end
 
   -- 4. Show picker
-  local ok, hover = pcall(require, "lib.nvim.ui.hover_select")
-  if ok and hover and type(hover.open) == "function" then
-    hover.open({
+  local ok, kit = pcall(require, "lib.nvim.ui.kit")
+  if ok and kit and type(kit.select) == "function" then
+    kit.select({
       title = "Dir — Navigate to",
       items = items,
       on_select = on_select,
