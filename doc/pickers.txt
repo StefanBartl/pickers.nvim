@@ -15,8 +15,9 @@ CONTENTS                                                      *pickers-contents*
   7. Keymaps .......................... |pickers-keymaps|
   8. Compat commands .................. |pickers-compat|
   9. Configuration reference .......... |pickers-config|
- 10. Selected index display .......... |pickers-selected-index|
- 11. Health check ..................... |pickers-health|
+ 10. History .......................... |pickers-history|
+ 11. Selected index display .......... |pickers-selected-index|
+ 12. Health check ..................... |pickers-health|
 
 ==============================================================================
 1. INTRODUCTION                                                  *pickers-intro*
@@ -86,6 +87,12 @@ Full options: >lua
       cwd_files    = nil,
     },
     usercmds = { enable = true },
+    history = {
+      enabled   = false,             -- off by default
+      fzf_scope = "plugin",          -- "plugin"|"global"|"patch" (fzf-lua only)
+      dir       = nil,               -- default: stdpath("data")/pickers.nvim/history
+      limit     = 200,
+    },
     selected_index = {
       enabled    = false,             -- telescope-only, off by default
       position   = "right_align",     -- "overlay"|"right_align"|"eol"|"top"|"down"
@@ -322,6 +329,12 @@ All keys are optional.  Unset keys retain their default values.
   usercmds (table)~
     enable (bool, default true)
 
+  history (table)~
+    enabled   (bool, default false)   — master toggle, see |pickers-history|
+    fzf_scope (string, default "plugin") — "plugin"|"global"|"patch", fzf-lua only
+    dir       (string|nil, default nil) — override history dir
+    limit     (integer, default 200)  — max entries kept per history file
+
   selected_index (table)~
     enabled    (bool, default false)          — master toggle, telescope-only
     position   (string, default "right_align") — see |pickers-selected-index|
@@ -329,7 +342,50 @@ All keys are optional.  Unset keys retain their default values.
     toggle_key (string|nil, default nil)      — in-picker live toggle keymap
 
 ==============================================================================
-10. SELECTED INDEX DISPLAY                              *pickers-selected-index*
+10. HISTORY                                                    *pickers-history*
+
+File-based picker history, disabled by default. Files live under
+`stdpath("data")/pickers.nvim/history` (override with `history.dir`).
+
+Enable: >lua
+  require("pickers").setup({
+    history = {
+      enabled   = true,
+      fzf_scope = "plugin",  -- "plugin"|"global"|"patch"
+      limit     = 200,
+    },
+  })
+<
+
+Telescope has no scope knob~
+  Telescope's history is a process-wide singleton (one `History` object,
+  created on first use and reused for the rest of the session by *every*
+  telescope picker, not just pickers.nvim's — see |telescope.defaults.history|
+  upstream). There is no per-call override, so enabling history for telescope
+  always behaves like a global default regardless of `fzf_scope` — a
+  Telescope architecture limitation, not a choice made here. If you already
+  use `telescope-smart-history` (sqlite-backed, scoped by picker+cwd), keep
+  managing that yourself instead of enabling history here for telescope —
+  this feature is plain file-based, with no sqlite involvement.
+
+fzf_scope (fzf-lua only)~
+  Each fzf-lua provider call can carry its own `--history` file, so this knob
+  is meaningful there:
+    "plugin" (default) — separate history files per provider (files/grep/
+              item), set only on pickers.nvim's own fzf-lua calls. Doesn't
+              touch your own `fzf-lua.setup()`.
+    "global" — pickers.nvim doesn't set its own `fzf_opts`; use
+              `require("pickers.history").fzf_opts()` /
+              `.telescope_opts()` yourself in your own `fzf-lua.setup()` /
+              `telescope.setup({defaults={history=...}})` calls. One shared
+              history file, same as "patch".
+    "patch"  — pickers.nvim calls fzf-lua's `setup()` itself (deferred via
+              `vim.schedule`, merged non-destructively) so your own direct
+              `:FzfLua` usage also gets the shared history file — no config
+              change needed on your end.
+
+==============================================================================
+11. SELECTED INDEX DISPLAY                              *pickers-selected-index*
 
 An optional overlay showing the index of the currently selected entry
 (e.g. "12. ") directly in the results buffer, kept in sync as the selection
@@ -382,7 +438,7 @@ Live toggle~
   registers no extra keymap, so enabled = false alone stays fully inert.
 
 ==============================================================================
-11. HEALTH CHECK                                                *pickers-health*
+12. HEALTH CHECK                                                *pickers-health*
 
 Run: >
   :checkhealth pickers

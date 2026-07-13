@@ -59,6 +59,23 @@ local M = {
     enable = true,
   },
 
+  -- Native picker-history file(s) under stdpath("data")/pickers.nvim/history.
+  -- Disabled by default. See pickers.history.
+  --   fzf_scope only affects fzf-lua (telescope's history is a process-wide
+  --   singleton with no per-call scoping — see pickers.history for details):
+  --     "plugin" - per-provider files (files/grep/item), pickers.nvim's own
+  --                calls only, no external setup() call.
+  --     "global" - pickers.nvim exports history.fzf_opts()/telescope_opts()
+  --                for you to merge into your own setup() calls yourself.
+  --     "patch"  - pickers.nvim calls fzf-lua's/telescope's setup() itself so
+  --                your own (and any other) fzf-lua/telescope usage inherits it.
+  history = {
+    enabled = false,
+    fzf_scope = "plugin",
+    dir = nil,
+    limit = 200,
+  },
+
   -- Overlay showing the index of the currently selected entry in the results
   -- buffer. Telescope-only, disabled by default. See pickers.selected_index.
   selected_index = {

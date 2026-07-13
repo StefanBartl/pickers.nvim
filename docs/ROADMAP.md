@@ -19,6 +19,20 @@ a promise; it is a backlog of ideas ordered roughly by usefulness.
   `telescope-selected-index.nvim` companion plugin — see `lua/pickers/selected_index/`.
   `toggle_key` registers an in-picker keymap to switch it on/off live for an
   already-open results list, independent of the `enabled` default.
+  - [ ] Move config under an `experimental = { selected_index = {...} }` namespace
+    (opt-in, signals it's not yet stable).
+  - [ ] Indexing is wrong both on initial open and after prompt updates. Investigate
+    re-numbering the overlay after the results list actually finishes updating
+    (e.g. debounced, triggered off a results-changed event) instead of the current
+    approach — or another mechanism if a better one exists.
+- [x] **Native picker history.** `history = { enabled, fzf_scope, dir, limit }` in
+  `setup()` — file-based history under `stdpath("data")/pickers.nvim/history`,
+  disabled by default. See `lua/pickers/history/`. `fzf_scope` (`"plugin"` |
+  `"global"` | `"patch"`) only affects fzf-lua, where each provider call can carry
+  its own `--history` file. Telescope's history is a process-wide singleton with no
+  per-call override, so enabling it always behaves like a global default there
+  regardless of `fzf_scope` — a Telescope architecture limitation, not a choice
+  made here.
 
 ## Commands
 

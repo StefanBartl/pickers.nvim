@@ -151,6 +151,34 @@ do
   check("selected_index: toggle_key = false clears it", cfg6.selected_index.toggle_key == nil)
 end
 
+-- ── config.apply — history normalisation ────────────────────────────────────
+do
+  local config = require("pickers.config")
+  local cfg0 = config.get()
+  check("history: default disabled", cfg0.history.enabled == false)
+  check("history: default fzf_scope", cfg0.history.fzf_scope == "plugin")
+  check("history: default limit", cfg0.history.limit == 200)
+
+  config.apply({ history = { enabled = true, fzf_scope = "patch", dir = "/tmp/hist", limit = 50 } })
+  local cfg1 = config.get()
+  check("history: enabled overridden", cfg1.history.enabled == true)
+  check("history: fzf_scope overridden", cfg1.history.fzf_scope == "patch")
+  check("history: dir overridden", cfg1.history.dir == "/tmp/hist")
+  check("history: limit overridden", cfg1.history.limit == 50)
+
+  config.apply({ history = { fzf_scope = "not_a_real_scope" } })
+  local cfg2 = config.get()
+  check(
+    "history: invalid fzf_scope falls back to previous",
+    cfg2.history.fzf_scope == "patch",
+    tostring(cfg2.history.fzf_scope)
+  )
+
+  config.apply({ history = { limit = -5 } })
+  local cfg3 = config.get()
+  check("history: invalid limit keeps previous", cfg3.history.limit == 50, tostring(cfg3.history.limit))
+end
+
 -- ── command.complete — needs lib.nvim; skip cleanly if absent ───────────────
 do
   local ok, cmd = pcall(require, "pickers.command")
@@ -204,6 +232,38 @@ do
 
     vim.fn.delete(base, "rf")
   end
+end
+
+-- ── pickers.history — dir / telescope_opts / fzf_path / fzf_opts ────────────
+do
+  local config = require("pickers.config")
+  local history = require("pickers.history")
+
+  local base = vim.fn.tempname()
+  config.apply({ history = { enabled = true, dir = base, limit = 42 } })
+  local cfg = config.get()
+
+  local dir = history.dir(cfg)
+  check("history.dir: uses override", dir == vim.fs.normalize(base), dir)
+  check("history.dir: creates the directory", vim.fn.isdirectory(dir) == 1)
+
+  local topts = history.telescope_opts(cfg)
+  check("history.telescope_opts: path under dir", topts.path == dir .. "/telescope.txt", topts.path)
+  check("history.telescope_opts: limit passed through", topts.limit == 42)
+
+  check(
+    "history.fzf_path: per-kind file",
+    history.fzf_path(cfg, "files") == dir .. "/fzf_files.txt"
+  )
+  check(
+    "history.fzf_path: differs per kind",
+    history.fzf_path(cfg, "grep") ~= history.fzf_path(cfg, "files")
+  )
+
+  local fopts = history.fzf_opts(cfg)
+  check("history.fzf_opts: unified history file", fopts["--history"] == dir .. "/fzf_global.txt")
+
+  vim.fn.delete(base, "rf")
 end
 
 -- ── Summary ─────────────────────────────────────────────────────────────────

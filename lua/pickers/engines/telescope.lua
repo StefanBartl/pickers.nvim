@@ -29,6 +29,16 @@ local function safe_call(fn, opts)
   if not ok then notify.error("telescope error: " .. tostring(err)) end
 end
 
+---History opts for `call_opts.history`, or nil when history is disabled.
+---Always the same value regardless of `fzf_scope` — see `pickers.history`
+---@brief for why telescope has no per-call/per-scope history isolation.
+---@return table|nil
+local function history_opts()
+  local cfg = require("pickers.config").get()
+  if not cfg.history.enabled then return nil end
+  return require("pickers.history").telescope_opts(cfg)
+end
+
 -- ── Public engine interface ───────────────────────────────────────────────────
 
 ---@return boolean
@@ -70,6 +80,7 @@ function M.pick_files(opts)
   end
 
   call_opts.attach_mappings = require("pickers.selected_index").wrap_attach_mappings(nil)
+  call_opts.history = history_opts()
 
   safe_call(builtin.find_files, call_opts)
 end
@@ -91,6 +102,7 @@ function M.live_grep(opts)
       return vim.list_extend({ "--hidden", "--no-ignore-vcs", "-S" }, extra)
     end,
     attach_mappings = require("pickers.selected_index").wrap_attach_mappings(nil),
+    history = history_opts(),
   })
 end
 
@@ -109,6 +121,7 @@ function M.pick_item(opts)
       prompt_title = opts.prompt,
       finder = finders.new_table({ results = opts.items }),
       sorter = conf.values.generic_sorter({}),
+      history = history_opts(),
       attach_mappings = require("pickers.selected_index").wrap_attach_mappings(function(_, _map)
         actions.select_default:replace(function(bufnr)
           actions.close(bufnr)
@@ -151,6 +164,7 @@ function M.pick_dir(opts)
       ),
       sorter = conf.values.file_sorter({}),
       previewer = conf.values.file_previewer({}),
+      history = history_opts(),
       attach_mappings = require("pickers.selected_index").wrap_attach_mappings(function(_, _map)
         actions.select_default:replace(function(bufnr)
           actions.close(bufnr)
