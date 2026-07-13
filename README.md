@@ -344,6 +344,14 @@ require("pickers").setup({
 
   usercmds = { enable = true },
 
+  -- Native picker history, disabled by default. See "History" below.
+  history = {
+    enabled = false,
+    fzf_scope = "plugin",  -- "plugin" | "global" | "patch" — fzf-lua only
+    dir = nil,             -- default: stdpath("data") .. "/pickers.nvim/history"
+    limit = 200,
+  },
+
   -- Overlay showing the index of the currently selected entry. Telescope-only,
   -- disabled by default. See "Selected index display" below.
   selected_index = {
@@ -354,6 +362,42 @@ require("pickers").setup({
   },
 })
 ```
+
+---
+
+## History
+
+File-based picker history, disabled by default. Files live under
+`stdpath("data")/pickers.nvim/history` (override with `history.dir`).
+
+```lua
+require("pickers").setup({
+  history = {
+    enabled = true,
+    fzf_scope = "plugin", -- "plugin" | "global" | "patch"
+    limit = 200,
+  },
+})
+```
+
+**Telescope has no scope knob.** Telescope's history is a process-wide
+singleton (one `History` object, created on first use and reused for the rest
+of the session by *every* telescope picker, not just pickers.nvim's — see
+`:h telescope.defaults.history`). There's no per-call override, so enabling
+history for telescope always behaves like a global default regardless of
+`fzf_scope` — this is a Telescope architecture limitation, not a choice made
+here. If you already use `telescope-smart-history` (sqlite-backed, scoped by
+picker+cwd), keep managing that yourself instead of enabling history here for
+telescope — this feature is plain file-based, with no sqlite involvement.
+
+**`fzf_scope` only affects fzf-lua**, where each provider call *can* carry
+its own `--history` file:
+
+| `fzf_scope` | Effect |
+|---|---|
+| `"plugin"` (default) | Separate history files per provider (files/grep/item), set only on pickers.nvim's own fzf-lua calls. Doesn't touch your own `fzf-lua.setup()`. |
+| `"global"` | pickers.nvim doesn't set its own `fzf_opts`; use `require("pickers.history").fzf_opts()` / `.telescope_opts()` yourself in your own `fzf-lua.setup()` / `telescope.setup({defaults={history=...}})` calls. One shared history file, same as `"patch"`. |
+| `"patch"` | pickers.nvim calls `fzf-lua`'s `setup()` itself (deferred via `vim.schedule`, merged non-destructively) so your own direct `:FzfLua` usage also gets the shared history file — no config change needed on your end. |
 
 ---
 

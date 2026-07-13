@@ -95,6 +95,17 @@ local function safe_call(fn, opts)
   if not ok then notify.error("fzf-lua error: " .. tostring(err)) end
 end
 
+---`fzf_opts` for `--history`, or nil when history is disabled or scope isn't
+---"plugin" (under "global"/"patch" the global fzf-lua default already covers
+---it — see `pickers.history`).
+---@param kind "files"|"grep"|"item"|"dir"
+---@return table|nil
+local function history_fzf_opts(kind)
+  local cfg = require("pickers.config").get()
+  if not cfg.history.enabled or cfg.history.fzf_scope ~= "plugin" then return nil end
+  return { ["--history"] = require("pickers.history").fzf_path(cfg, kind) }
+end
+
 -- ── Public engine interface ───────────────────────────────────────────────────
 
 ---@return boolean
@@ -115,6 +126,7 @@ function M.pick_files(opts)
     prompt = opts.prompt,
     query = opts.query,
     winopts = { on_create = setup_double_esc },
+    fzf_opts = history_fzf_opts("files"),
   }
 
   -- Custom find command (system source: pre-built fd argv)
@@ -155,6 +167,7 @@ function M.live_grep(opts)
     rg_opts = table.concat(rg_opts_list, " "),
     query = opts.query,
     winopts = { on_create = setup_double_esc },
+    fzf_opts = history_fzf_opts("grep"),
   })
 end
 
@@ -169,7 +182,7 @@ function M.pick_item(opts)
 
   fzf.fzf_exec(opts.items, {
     prompt = opts.prompt,
-    fzf_opts = { ["--no-multi"] = true },
+    fzf_opts = vim.tbl_extend("force", { ["--no-multi"] = true }, history_fzf_opts("item") or {}),
     winopts = { on_create = setup_double_esc },
     actions = {
       ["default"] = function(selected)
@@ -195,6 +208,7 @@ function M.pick_dir(opts)
     cwd = cwd,
     fd_opts = "--type d --hidden --follow --exclude .git",
     winopts = { on_create = setup_double_esc },
+    fzf_opts = history_fzf_opts("dir"),
     actions = {
       ["default"] = function(selected)
         if not selected or not selected[1] then return end

@@ -31,6 +31,47 @@ local function normalise_collection(raw)
   }
 end
 
+---Validate and normalise the `history` sub-config, merging into `current`.
+---@param raw table
+---@param current Pickers.HistoryConfig
+---@return Pickers.HistoryConfig
+local function normalise_history(raw, current)
+  local result = vim.deepcopy(current)
+
+  if type(raw.enabled) == "boolean" then result.enabled = raw.enabled end
+
+  if raw.fzf_scope ~= nil then
+    local allowed = { plugin = true, global = true, patch = true }
+    if type(raw.fzf_scope) == "string" and allowed[raw.fzf_scope] then
+      result.fzf_scope = raw.fzf_scope
+    else
+      vim.notify(
+        string.format(
+          "[pickers] Invalid history.fzf_scope %q, keeping %q",
+          tostring(raw.fzf_scope),
+          result.fzf_scope
+        ),
+        vim.log.levels.WARN
+      )
+    end
+  end
+
+  if type(raw.dir) == "string" and raw.dir ~= "" then result.dir = raw.dir end
+
+  if raw.limit ~= nil then
+    if type(raw.limit) == "number" and raw.limit > 0 then
+      result.limit = raw.limit
+    else
+      vim.notify(
+        string.format("[pickers] Invalid history.limit %s, keeping %s", vim.inspect(raw.limit), result.limit),
+        vim.log.levels.WARN
+      )
+    end
+  end
+
+  return result
+end
+
 ---Validate and normalise the `selected_index` sub-config, merging into `current`.
 ---@param raw table
 ---@param current Pickers.SelectedIndexConfig
@@ -164,6 +205,10 @@ function M.apply(opts)
   end
   if type(opts.usercmds) == "table" then
     cfg.usercmds = vim.tbl_deep_extend("force", cfg.usercmds, opts.usercmds)
+  end
+
+  if type(opts.history) == "table" then
+    cfg.history = normalise_history(opts.history, cfg.history)
   end
 
   if type(opts.selected_index) == "table" then

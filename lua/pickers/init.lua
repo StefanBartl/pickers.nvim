@@ -36,6 +36,8 @@ function M.setup(opts)
   require("pickers.config").apply(opts)
   local cfg = require("pickers.config").get()
   require("pickers.bindings").setup(cfg)
+
+  if cfg.history.enabled then require("pickers.history").patch(cfg) end
 end
 
 return M

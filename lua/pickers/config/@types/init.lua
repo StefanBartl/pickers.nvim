@@ -39,6 +39,7 @@
 ---@field find           Pickers.FindOpts
 ---@field keymaps        Pickers.Keymaps
 ---@field usercmds       Pickers.Usercmds
+---@field history        Pickers.HistoryConfig
 ---@field selected_index Pickers.SelectedIndexConfig
 
 return {}
