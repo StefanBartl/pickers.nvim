@@ -15,7 +15,7 @@
 ![Contributions](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)
 
 **Unified fuzzy-picker plugin for Neovim.**  
-Consolidates seven separate picker modules into one plugin with a single `:Pickers` command, backed by telescope.nvim or fzf-lua.
+Consolidates seven separate picker modules into one plugin with a single `:Pickers` command, backed by telescope.nvim, fzf-lua, or snacks.nvim.
 
 > 💡 Pairs well with [project-insight.nvim](https://github.com/StefanBartl/project-insight.nvim):
 > use `pickers.nvim` to jump into any repo, then get an instant structural
@@ -43,13 +43,14 @@ Consolidates seven separate picker modules into one plugin with a single `:Picke
 **Hard required:**
 - [lib.nvim](https://github.com/StefanBartl/lib.nvim)
 
-**One of (auto-detected, telescope preferred):**
+**One of (auto-detected, telescope preferred, then fzf-lua, then snacks.nvim):**
 - [telescope.nvim](https://github.com/nvim-telescope/telescope.nvim)
 - [fzf-lua](https://github.com/ibhagwan/fzf-lua)
+- [snacks.nvim](https://github.com/folke/snacks.nvim) (picker module)
 
 **Recommended CLI tools:**
 - `rg` (ripgrep) — live grep
-- `fd` / `fdfind` — system source, dir picker (telescope)
+- `fd` / `fdfind` — system source, dir picker (telescope, snacks)
 
 ---
 
@@ -64,7 +65,7 @@ Consolidates seven separate picker modules into one plugin with a single `:Picke
   dependencies = { "StefanBartl/lib.nvim" },
   config = function()
     require("pickers").setup({
-      engine    = "auto",            -- "auto" | "telescope" | "fzf"
+      engine    = "auto",            -- "auto" | "telescope" | "fzf" | "snacks"
       repos_dir = vim.env.REPOS_DIR,
       collections = {
         { name = "notes", dir = vim.env.REPOS_DIR .. "/Notes",
@@ -301,8 +302,8 @@ All keys are optional. Unset keys keep their default values.
 
 ```lua
 require("pickers").setup({
-  -- "auto" detects telescope first, then fzf-lua
-  engine = "auto",                      -- "auto" | "telescope" | "fzf"
+  -- "auto" detects telescope first, then fzf-lua, then snacks.nvim
+  engine = "auto",                      -- "auto" | "telescope" | "fzf" | "snacks"
 
   -- Root directory that contains git repositories (default: $REPOS_DIR)
   repos_dir = vim.env.REPOS_DIR,
@@ -330,6 +331,7 @@ require("pickers").setup({
     no_ignore = false,  -- respect .gitignore/.ignore; set true to list ignored files too
     follow    = true,   -- follow symlinks
     exclude   = nil,    -- optional list of extra globs to skip, e.g. { "node_modules", "*.min.js" }
+    -- Honoured by telescope, fzf-lua, and snacks.nvim.
   },
 
   keymaps = {
@@ -359,6 +361,18 @@ require("pickers").setup({
     position = "right_align",         -- "overlay" | "right_align" | "eol" | "top" | "down"
     highlight = { preset = "default" }, -- see presets below
     toggle_key = nil,                 -- e.g. "<M-i>" to toggle live in an open picker
+  },
+
+  -- In-picker "create file/folder" and "open in background" entry actions,
+  -- shared across telescope/fzf-lua/snacks.nvim. See lua/pickers/entry_actions/README.md.
+  entry_actions = {
+    enable = true,
+    keys = {
+      create_file     = "<C-a>",
+      open_background = { "<S-CR>", "<C-o>" },
+    },
+    -- fzf-lua's ctrl-a/ctrl-o/shift-enter bindings are fixed; not affected
+    -- by `keys` (fzf's own bind syntax, not Neovim keymap syntax).
   },
 })
 ```
@@ -471,4 +485,4 @@ stays fully inert.
 :checkhealth pickers
 ```
 
-Verifies: lib.nvim · telescope/fzf-lua · rg · fd/fdfind · repos_dir · registered aliases · selected_index status · each collection directory.
+Verifies: lib.nvim · telescope/fzf-lua/snacks.nvim · rg · fd/fdfind · repos_dir · registered aliases · selected_index status · each collection directory.
