@@ -5,9 +5,10 @@
 -- Engine identifier
 
 ---@alias Pickers.Engine
----| '"auto"'       # Detect: telescope → fzf → vim.ui.select
+---| '"auto"'       # Detect: telescope → fzf → snacks
 ---| '"telescope"'
 ---| '"fzf"'
+---| '"snacks"'
 
 -- ###########################################################################
 -- Engine call-options (passed from action → engine)

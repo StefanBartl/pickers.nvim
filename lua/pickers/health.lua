@@ -18,6 +18,7 @@ function M.check()
 
   local has_telescope = pcall(require, "telescope.builtin")
   local has_fzf = pcall(require, "fzf-lua")
+  local has_snacks = pcall(require, "snacks.picker")
 
   if has_telescope then
     vim.health.ok("telescope.nvim available")
@@ -31,8 +32,14 @@ function M.check()
     vim.health.warn("fzf-lua not found")
   end
 
-  if not has_telescope and not has_fzf then
-    vim.health.error("No picker engine found — install telescope.nvim or fzf-lua")
+  if has_snacks then
+    vim.health.ok("snacks.nvim (picker) available")
+  else
+    vim.health.warn("snacks.nvim (picker) not found")
+  end
+
+  if not has_telescope and not has_fzf and not has_snacks then
+    vim.health.error("No picker engine found — install telescope.nvim, fzf-lua, or snacks.nvim")
   end
 
   -- ── CLI tools ─────────────────────────────────────────────────────────────
