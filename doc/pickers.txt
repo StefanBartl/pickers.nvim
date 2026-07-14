@@ -34,7 +34,7 @@ into one unified plugin:
   • system_find       — systemwide fd-based file search
 
 All scopes share one unified command `:Pickers` and are backed by a single
-engine (telescope.nvim or fzf-lua, auto-detected).
+engine (telescope.nvim, fzf-lua, or snacks.nvim — auto-detected).
 
 ==============================================================================
 2. REQUIREMENTS                                           *pickers-requirements*
@@ -42,13 +42,14 @@ engine (telescope.nvim or fzf-lua, auto-detected).
 Required:
   • lib.nvim  https://github.com/StefanBartl/lib.nvim
 
-One of (auto-detected, telescope preferred):
+One of (auto-detected, telescope preferred, then fzf-lua, then snacks.nvim):
   • telescope.nvim  https://github.com/nvim-telescope/telescope.nvim
   • fzf-lua         https://github.com/ibhagwan/fzf-lua
+  • snacks.nvim     https://github.com/folke/snacks.nvim  (picker module)
 
 Recommended CLI tools:
   • ripgrep (rg)   — live_grep support
-  • fd / fdfind    — system source, dir-picker (telescope)
+  • fd / fdfind    — system source, dir-picker (telescope, snacks)
 
 ==============================================================================
 3. SETUP                                                         *pickers-setup*
@@ -65,7 +66,7 @@ Minimal (lazy.nvim): >lua
 
 Full options: >lua
   require("pickers").setup({
-    engine    = "auto",               -- "auto" | "telescope" | "fzf"
+    engine    = "auto",               -- "auto" | "telescope" | "fzf" | "snacks"
     repos_dir = vim.env.REPOS_DIR,
     collections = {
       { name = "notes",    dir = vim.env.REPOS_DIR .. "/Notes",
@@ -293,9 +294,10 @@ with configs that used the original individual modules:
 All keys are optional.  Unset keys retain their default values.
 
   engine (string, default "auto")~
-    "auto"       detect: telescope → fzf
+    "auto"       detect: telescope → fzf → snacks
     "telescope"  always use telescope.nvim
     "fzf"        always use fzf-lua
+    "snacks"     always use snacks.nvim (picker module)
 
   repos_dir (string|nil, default $REPOS_DIR)~
     Root directory that contains git repositories.  Used by the `repos` scope.
@@ -311,7 +313,7 @@ All keys are optional.  Unset keys retain their default values.
   find (table)~
     File-listing flags for the built-in file pickers (config/cwd/folder/repos/
     collections).  The `system` scope is unaffected (it builds its own fd
-    command).  Honoured by both telescope and fzf-lua.
+    command).  Honoured by telescope, fzf-lua, and snacks.nvim.
       hidden    (bool, default true)   — show dotfiles / hidden entries
       no_ignore (bool, default false)  — ignore .gitignore/.ignore rules
       follow    (bool, default true)   — follow symlinks
@@ -340,6 +342,16 @@ All keys are optional.  Unset keys retain their default values.
     position   (string, default "right_align") — see |pickers-selected-index|
     highlight  (table, default { preset = "default" })
     toggle_key (string|nil, default nil)      — in-picker live toggle keymap
+
+  entry_actions (table)~
+    In-picker "create file/folder" and "open in background" actions, shared
+    across telescope/fzf-lua/snacks.nvim. See lua/pickers/entry_actions/README.md.
+      enable (bool, default true)
+      keys.create_file      (string|nil, default "<C-a>")
+      keys.open_background  (string|string[]|nil, default { "<S-CR>", "<C-o>" })
+    keys uses Neovim keymap syntax, honoured by the telescope/snacks adapters
+    only — fzf-lua's ctrl-a/ctrl-o/shift-enter bindings are fixed (fzf's own
+    bind syntax, not translatable from Neovim keymap syntax in general).
 
 ==============================================================================
 10. HISTORY                                                    *pickers-history*
@@ -444,9 +456,9 @@ Run: >
   :checkhealth pickers
 <
 
-Checks: lib.nvim availability, telescope / fzf-lua presence, rg / fd in PATH,
-repos_dir existence, registered aliases count, selected_index status, and
-each collection directory.
+Checks: lib.nvim availability, telescope / fzf-lua / snacks.nvim presence,
+rg / fd in PATH, repos_dir existence, registered aliases count, selected_index
+status, and each collection directory.
 
 ==============================================================================
 vim:ft=help:tw=78:ts=2:et:
