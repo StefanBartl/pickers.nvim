@@ -1,7 +1,7 @@
 ---@module 'pickers.engines'
 ---@brief Engine loader: detects availability and returns the right adapter.
 ---@description
---- Priority order for "auto": telescope → fzf.
+--- Priority order for "auto": telescope → fzf → snacks.
 --- The resolved engine module exposes:
 ---   pick_files(opts)   pick_item(opts)
 ---   live_grep(opts)    pick_dir(opts)
@@ -11,7 +11,7 @@ local notify = require("lib.nvim.notify").create("[pickers.engines]")
 local M = {}
 
 ---Try to load and verify an engine module.
----@param name string  "telescope"|"fzf"
+---@param name string  "telescope"|"fzf"|"snacks"
 ---@return table|nil
 local function try_load(name)
   local ok, mod = pcall(require, "pickers.engines." .. name)
@@ -33,12 +33,12 @@ function M.load(requested)
     notify.warn("Engine '" .. want .. "' not available — falling back to auto-detect")
   end
 
-  for _, name in ipairs({ "telescope", "fzf" }) do
+  for _, name in ipairs({ "telescope", "fzf", "snacks" }) do
     local mod = try_load(name)
     if mod then return mod end
   end
 
-  notify.error("No picker engine found. Install telescope.nvim or fzf-lua.")
+  notify.error("No picker engine found. Install telescope.nvim, fzf-lua, or snacks.nvim.")
   return nil
 end
 
