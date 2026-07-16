@@ -102,17 +102,7 @@ local function get_roots()
     raw = posix_roots()
   end
 
-  -- Deduplicate while preserving order
-  local seen = {}
-  local unique = {}
-  for _, p in ipairs(raw) do
-    if not seen[p] then
-      seen[p] = true
-      unique[#unique + 1] = p
-    end
-  end
-
-  _cache = unique
+  _cache = require("lib.lua.tables").dedup_list(raw)
   return _cache
 end
 
