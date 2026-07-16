@@ -266,6 +266,28 @@ do
   vim.fn.delete(base, "rf")
 end
 
+-- ── selected_index.debounce — thin adapter over lib.nvim.debounce ───────────
+do
+  local ok, debounce = pcall(require, "pickers.selected_index.debounce")
+  if not ok then
+    print("  skip selected_index.debounce tests (lib.nvim not on runtimepath)")
+  else
+    local calls = {}
+    local fn, cleanup = debounce.debounce(function(v)
+      calls[#calls + 1] = v
+    end, 20)
+
+    fn("a")
+    fn("b") -- resets the timer; only "b" should fire
+    vim.wait(200, function() return #calls > 0 end)
+
+    check("debounce: fires exactly once", #calls == 1, "#=" .. #calls)
+    check("debounce: fires with the most recent args", calls[1] == "b", tostring(calls[1]))
+    check("debounce: cleanup is callable", type(cleanup) == "function")
+    cleanup() -- must not error when idle
+  end
+end
+
 -- ── Summary ─────────────────────────────────────────────────────────────────
 print(string.format("\n%d passed, %d failed", passed, failed))
 os.exit(failed == 0 and 0 or 1)
