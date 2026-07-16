@@ -18,18 +18,12 @@ local M = {}
 -- ── Path resolution helpers ───────────────────────────────────────────────────
 
 ---Expand ~ / %WINVAR% / $POSIXVAR in an explicit path string.
+---Delegates to lib.nvim.cross.fs.expand_path (this module's own version
+---re-implemented the same ~/%VAR%/$VAR expansion by hand).
 ---@param raw string
 ---@return string
 local function expand_vars(raw)
-  local home = vim.uv.os_homedir() or vim.fn.expand("~")
-  local s = raw:gsub("^~", home)
-  s = s:gsub("%%([^%%]+)%%", function(v)
-    return os.getenv(v) or ("%" .. v .. "%")
-  end)
-  s = s:gsub("%$([%w_]+)", function(v)
-    return os.getenv(v) or ("$" .. v)
-  end)
-  return vim.fs.normalize(s)
+  return vim.fs.normalize(require("lib.nvim.cross.fs.expand_path")(raw))
 end
 
 ---Walk up `depth` directory levels from cwd.
