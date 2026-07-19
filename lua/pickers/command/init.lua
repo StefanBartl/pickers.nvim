@@ -1,5 +1,6 @@
 ---@module 'pickers.command'
----@brief :Pickers command handler and tab-completion logic.
+---@brief :Pickers command handler.
+---@see pickers.command.composer for :Pickers registration + tab-completion
 ---@description
 --- Command syntax:
 ---   :Pickers                              → interactive scope picker
@@ -13,6 +14,9 @@
 ---   :Pickers <collection> <action>        → collection root + direct action
 ---
 --- Engine is always taken from config; it is never exposed in the command.
+--- M.handle is the dispatch engine called both by the composer-registered
+--- :Pickers command and every compat alias (usrcmds.lua, collections.lua,
+--- keymaps.lua) via `{ fargs = {...} }`.
 
 local notify = require("lib.nvim.notify").create("[pickers.command]")
 local perr = require("pickers.error")
@@ -22,31 +26,14 @@ local M = {}
 -- ── Constants ─────────────────────────────────────────────────────────────────
 
 local BASE_SCOPES = { "cwd", "config", "folder", "repos", "wkdbooks", "system", "drives", "dir" }
-local ACTIONS = { "files", "grep" }
 
 local BASE_SCOPES_SET = {}
 for _, s in ipairs(BASE_SCOPES) do
   BASE_SCOPES_SET[s] = true
 end
-local ACTIONS_SET = {}
-for _, a in ipairs(ACTIONS) do
-  ACTIONS_SET[a] = true
-end
+local ACTIONS_SET = { files = true, grep = true }
 
 -- ── Helpers ───────────────────────────────────────────────────────────────────
-
----Return collection names from the active config.
----@return string[]
-local function get_collection_names()
-  local ok, cfg_mod = pcall(require, "pickers.config")
-  if not ok then return {} end
-  local cfg = cfg_mod.get()
-  local names = {}
-  for _, coll in ipairs(cfg.collections or {}) do
-    if type(coll.name) == "string" then names[#names + 1] = coll.name end
-  end
-  return names
-end
 
 ---Find a collection by name in the active config.
 ---@param name string
@@ -208,59 +195,6 @@ function M.handle(opts)
       )
     )
   )
-end
-
--- ── Public: complete ──────────────────────────────────────────────────────────
-
----Tab-completion for :Pickers.
----@param arglead  string
----@param cmdline  string
----@return string[]
-function M.complete(arglead, cmdline, _)
-  local after_cmd = cmdline:match("^%s*Pickers%s+(.-)%s*$") or ""
-  local tokens = {}
-  for t in after_cmd:gmatch("%S+") do
-    tokens[#tokens + 1] = t
-  end
-
-  local n_finished = #tokens
-  if arglead ~= "" and tokens[#tokens] == arglead then n_finished = n_finished - 1 end
-
-  local function filter(candidates)
-    if arglead == "" then return candidates end
-    local lead = arglead:lower()
-    local out = {}
-    for _, c in ipairs(candidates) do
-      if c:lower():sub(1, #lead) == lead then out[#out + 1] = c end
-    end
-    return out
-  end
-
-  -- Position 0: completing scope → built-ins + collection names
-  if n_finished == 0 then
-    local all_scopes = vim.list_extend(vim.list_extend({}, BASE_SCOPES), get_collection_names())
-    return filter(all_scopes)
-  end
-
-  local scope = tokens[1]
-  if scope == "dir" then
-    if n_finished == 1 then
-      local aliases = require("pickers.actions.dir").alias_names()
-      local candidates = vim.list_extend({}, ACTIONS)
-      vim.list_extend(candidates, aliases)
-      for i = 1, 9 do
-        candidates[#candidates + 1] = tostring(i)
-      end
-      candidates[#candidates + 1] = "path="
-      return filter(candidates)
-    elseif n_finished == 2 then
-      return filter(ACTIONS)
-    end
-  else
-    if n_finished == 1 then return filter(ACTIONS) end
-  end
-
-  return {}
 end
 
 return M

@@ -13,6 +13,15 @@ function M.check()
     vim.health.error("lib.nvim not found — add 'github.com/StefanBartl/lib.nvim' as a dependency")
   end
 
+  -- lib.nvim.usercmd.composer: required — the :Pickers command layer is built
+  -- on it, with no raw-API fallback (unlike the compat aliases in
+  -- bindings/util.lua, which still degrade gracefully without lib.nvim).
+  if pcall(require, "lib.nvim.usercmd.composer") then
+    vim.health.ok("lib.nvim.usercmd.composer available (:Pickers command layer)")
+  else
+    vim.health.error(":Pickers will fail to register — lib.nvim.usercmd.composer not found")
+  end
+
   -- ── Picker engines ────────────────────────────────────────────────────────
   vim.health.start("pickers.nvim — picker engines")
 

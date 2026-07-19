@@ -19,5 +19,7 @@ it CI-friendly.
 |---|---|
 | `pickers_spec.lua` | PascalCase conversion, `config.apply` collection normalisation & keymap merging, `:Pickers` tab-completion (scopes, actions, filtering) |
 
-`command.complete` tests are skipped automatically if `lib.nvim` is not on the
-runtimepath (the command module hard-requires it).
+The `:Pickers` completion tests (which register the real composer-backed
+command and drive it via `getcompletion()`) are skipped automatically if
+`lib.nvim` is not on the runtimepath (`pickers.command.composer`
+hard-requires `lib.nvim.usercmd.composer`).

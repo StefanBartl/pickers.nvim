@@ -183,22 +183,27 @@ do
   check("history: invalid limit keeps previous", cfg3.history.limit == 50, tostring(cfg3.history.limit))
 end
 
--- ── command.complete — needs lib.nvim; skip cleanly if absent ───────────────
+-- ── :Pickers completion (composer) — needs lib.nvim; skip cleanly if absent ─
+-- Registers the real :Pickers command (as plugin/pickers.lua would) and drives
+-- its actual completion via getcompletion(), exercising the composer route
+-- tree end-to-end rather than a since-removed pure-function shim.
 do
-  local ok, cmd = pcall(require, "pickers.command")
+  local ok, cmp = pcall(require, "pickers.command.composer")
   if not ok then
-    print("  skip command.complete tests (lib.nvim not on runtimepath)")
+    print("  skip :Pickers completion tests (lib.nvim not on runtimepath)")
   else
-    local scopes = cmd.complete("", "Pickers ", 0)
+    cmp.register(require("pickers.config").get())
+
+    local scopes = vim.fn.getcompletion("Pickers ", "cmdline")
     check("complete: built-in cwd", has(scopes, "cwd"))
     check("complete: built-in config", has(scopes, "config"))
     check("complete: collection notes", has(scopes, "notes"))
 
-    local acts = cmd.complete("", "Pickers cwd ", 0)
+    local acts = vim.fn.getcompletion("Pickers cwd ", "cmdline")
     check("complete: action files", has(acts, "files"))
     check("complete: action grep", has(acts, "grep"))
 
-    local filtered = cmd.complete("co", "Pickers co", 0)
+    local filtered = vim.fn.getcompletion("Pickers co", "cmdline")
     check("complete: filter 'co' includes config", has(filtered, "config"))
     check("complete: filter 'co' excludes cwd", not has(filtered, "cwd"))
   end
