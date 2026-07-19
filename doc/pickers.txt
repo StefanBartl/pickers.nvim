@@ -104,8 +104,11 @@ Full options: >lua
 <
 
 Note: `setup()` is optional.  The `:Pickers` command is always registered
-automatically by `plugin/pickers.lua`.  Call `setup()` only when you want to
-change defaults, add aliases, or toggle keymaps/usercmds.
+automatically by `plugin/pickers.lua`, built-in scopes included.  Collection
+scopes (see |pickers-collections|) only appear in `:Pickers <Tab>` and as
+literal subcommands once `setup()` runs, or — if you never call it — at the
+`VimEnter` fallback.  Call `setup()` to change defaults, add collections, or
+toggle keymaps/usercmds.
 
 ==============================================================================
 4. COMMAND                                                     *pickers-command*
@@ -139,6 +142,11 @@ Examples: >
 <
 
 Tab-completion is supported for all arguments.
+
+Built via `lib.nvim.usercmd.composer` — a route tree drives dispatch,
+`<Tab>` completion, and this doc's own command list from one source. An
+unknown {scope} now reports composer's own "unknown subcommand" usage block
+(every registered scope, one per line) instead of a plain error string.
 
 ==============================================================================
 5. SCOPES                                                       *pickers-scopes*

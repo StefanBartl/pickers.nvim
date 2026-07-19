@@ -30,7 +30,7 @@ A single, machine-readable reference of every keymap, user-command and autocomma
 
 ## 2. User Commands (`usercmds`)
 
-> **Note:** The core `:Pickers` dispatcher is always registered by `plugin/pickers.lua`. The additional compatibility commands listed below are registered if `usercmds.enable = true`.
+> **Note:** The core `:Pickers` dispatcher (built via `lib.nvim.usercmd.composer`) is registered immediately by `plugin/pickers.lua` with the built-in scopes; `setup()` (or the `VimEnter` fallback below) re-registers it with the current `collections`, so collection names only appear in `:Pickers <Tab>` once one of those has run. The additional compatibility commands listed below are registered if `usercmds.enable = true`.
 
 | Command Name (`name`) | Equivalent Invocation (`maps_to`) | Arguments (`nargs`) | Description |
 | --- | --- | --- | --- |

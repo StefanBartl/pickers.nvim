@@ -28,7 +28,15 @@ When an argument is omitted an interactive picker appears (`hover_select` or
 | `notes` _(collection)_ | — | `files` | find files in collection root |
 | `wkdbooks` _(collection)_ | — | `grep` | pick subdir → live grep |
 
-Tab-completion is supported for all arguments, including collection names.
+Tab-completion is supported for all arguments, including collection names
+(once `setup()` — or the `VimEnter` fallback — has registered them; see
+[docs/BINDINGS.md](BINDINGS.md)).
+
+Built via `lib.nvim.usercmd.composer`: the route tree in
+`lua/pickers/command/composer.lua` drives dispatch and `<Tab>` completion
+from one source, delegating actual dispatch to the unchanged
+`pickers.command.handle`. An unknown scope now reports composer's own
+"unknown subcommand" usage block instead of a plain error string.
 
 ---
 
