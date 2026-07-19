@@ -13,8 +13,12 @@ local tests_dir = vim.fn.fnamemodify(this, ":h")
 local root = vim.fn.fnamemodify(tests_dir, ":h:h") -- docs/TESTS → repo root
 vim.opt.runtimepath:append(root)
 
+-- $LIB_NVIM_PATH is the convention shared with lib.nvim's other dependents
+-- (see lib.nvim/nvim/templates/README.md); $REPOS_DIR is kept for back-compat.
 local lib = vim.fn.fnamemodify(root, ":h") .. "/lib.nvim"
-if vim.env.REPOS_DIR and vim.fn.isdirectory(vim.env.REPOS_DIR .. "/lib.nvim") == 1 then
+if vim.env.LIB_NVIM_PATH and vim.fn.isdirectory(vim.env.LIB_NVIM_PATH) == 1 then
+  lib = vim.env.LIB_NVIM_PATH
+elseif vim.env.REPOS_DIR and vim.fn.isdirectory(vim.env.REPOS_DIR .. "/lib.nvim") == 1 then
   lib = vim.env.REPOS_DIR .. "/lib.nvim"
 end
 if vim.fn.isdirectory(lib) == 1 then vim.opt.runtimepath:append(lib) end
