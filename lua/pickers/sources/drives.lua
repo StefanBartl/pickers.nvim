@@ -39,19 +39,16 @@ end
 
 local function windows_roots()
   local roots = {}
-  local ps = io.popen(
-    [[powershell -NoProfile -ExecutionPolicy Bypass -Command ]]
-      .. [["Get-PSDrive -PSProvider FileSystem | Select -ExpandProperty Root"]]
-  )
-  if ps then
-    for line in ps:lines() do
-      local r = line:match("^%s*(.-)%s*$")
-      if r and r ~= "" then
-        r = r:gsub("[/\\]+$", "\\")
-        if vim.fn.isdirectory(r) == 1 then roots[#roots + 1] = r end
-      end
+  local _, out = require("lib.nvim.cross.run_argv").run_blocking_captured({
+    "powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command",
+    "Get-PSDrive -PSProvider FileSystem | Select -ExpandProperty Root",
+  })
+  for line in (out or ""):gmatch("[^\r\n]+") do
+    local r = line:match("^%s*(.-)%s*$")
+    if r and r ~= "" then
+      r = r:gsub("[/\\]+$", "\\")
+      if vim.fn.isdirectory(r) == 1 then roots[#roots + 1] = r end
     end
-    ps:close()
   end
   -- Fallback: brute-force drive letter scan
   if #roots == 0 then
@@ -74,13 +71,12 @@ end
 
 local function posix_roots()
   local dirs = {}
-  local handle = io.popen("df -P --output=target 2>/dev/null | tail -n +2")
-  if handle then
-    for line in handle:lines() do
-      local p = line:match("^%s*(.-)%s*$")
-      if p and p ~= "" and vim.fn.isdirectory(p) == 1 then dirs[#dirs + 1] = p end
-    end
-    handle:close()
+  local _, out = require("lib.nvim.cross.run_argv").run_blocking_captured({ "df", "-P", "--output=target" })
+  local lines = vim.split(out or "", "\r?\n")
+  -- Drop the header line ("Mounted on") that `tail -n +2` used to strip.
+  for i = 2, #lines do
+    local p = lines[i]:match("^%s*(.-)%s*$")
+    if p and p ~= "" and vim.fn.isdirectory(p) == 1 then dirs[#dirs + 1] = p end
   end
   if #dirs == 0 then
     for _, p in ipairs({ "/", "/Volumes", "/media", "/mnt" }) do
