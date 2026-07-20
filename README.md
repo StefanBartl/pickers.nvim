@@ -17,9 +17,9 @@
 **Unified fuzzy-picker plugin for Neovim.**
 Consolidates seven separate picker modules into one plugin with a single `:Pickers` command, backed by telescope.nvim, fzf-lua, or snacks.nvim.
 
-> 💡 Pairs well with [project-insight.nvim](https://github.com/StefanBartl/project-insight.nvim):
+> 💡 Pairs well with [insights.nvim](https://github.com/StefanBartl/insights.nvim):
 > use `pickers.nvim` to jump into any repo, then get an instant structural
-> overview of it with `project-insight.nvim`.
+> overview of it with `insights.nvim`.
 
 ---
 
