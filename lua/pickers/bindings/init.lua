@@ -25,6 +25,12 @@ function M.setup(cfg)
   for _, coll in ipairs(cfg.collections or {}) do
     require("pickers.bindings.collections").register(coll)
   end
+
+  -- Patch the in-picker keys onto each engine's global config. Placed here (not
+  -- in pickers.setup) so it also fires on the VimEnter fallback when the user
+  -- never called setup() — keys default to enabled, so they should apply either
+  -- way. Unlike history (opt-in), this honours "same keys for every picker".
+  if not cfg.keys or cfg.keys.enable ~= false then require("pickers.keys").patch(cfg) end
 end
 
 return M
