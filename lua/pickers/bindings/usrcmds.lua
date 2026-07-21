@@ -4,10 +4,17 @@
 ---   :DirPicker [nav]  :FindInFolder  :FindConfig  :GrepConfig
 ---   :LiveGrep  :AllDrives  :AllDrivesGrep  :FindOnSystem
 ---   :RepoFiles [repo]  :RepoGrep [repo]  :WkdBookFiles  :WkdBookGrep
+---   :PickersResume  :PickersScopes
 ---
 --- :RepoFiles/:RepoGrep accept an optional repo-name argument (tab-completed
 --- from REPOS_DIR) that jumps straight into files/grep for that repo, skipping
 --- the interactive repo picker.
+---
+--- :PickersResume resumes the last picker on the current engine (via
+--- pickers.builtins' "resume" entry — a no-op notify.warn on fzf-lua, which
+--- has no resume concept). :PickersScopes is a named alias for bare
+--- `:Pickers` (the interactive scope picker) for discoverability/muscle
+--- memory alongside the other named compat commands.
 
 local usercmd = require("pickers.bindings.util").usercmd
 local notify = require("lib.nvim.notify").create("[pickers]")
@@ -97,6 +104,14 @@ function M.register()
   usercmd("WkdBookGrep", function(_)
     require("pickers.command").handle({ fargs = { "wkdbooks", "grep" } })
   end, "[pickers] :WkdBookGrep — pick wkdbook, then live grep", "?")
+
+  usercmd("PickersResume", function(_)
+    require("pickers.builtins").run("resume")
+  end, "[pickers] :PickersResume — resume the last picker on the current engine", "?")
+
+  usercmd("PickersScopes", function(_)
+    require("pickers.command").handle({ fargs = {} })
+  end, "[pickers] :PickersScopes — interactive scope picker (same as bare :Pickers)", "?")
 end
 
 return M

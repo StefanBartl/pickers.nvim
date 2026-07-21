@@ -300,6 +300,10 @@ with configs that used the original individual modules:
   picker and jumps straight into files/grep for that repo.
   :WkdBookFiles       → :Pickers wkdbooks files
   :WkdBookGrep        → :Pickers wkdbooks grep
+  :PickersResume      → resume the last picker on the current engine
+                        (:Pickers builtin resume; no-op notify.warn on
+                        fzf-lua, which has no resume concept)
+  :PickersScopes      → :Pickers (bare — interactive scope picker)
 
 ==============================================================================
 9. CONFIGURATION REFERENCE                                      *pickers-config*

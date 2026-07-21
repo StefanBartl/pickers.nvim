@@ -89,6 +89,8 @@ All commands from the original modules are preserved as aliases:
 | `:RepoGrep [repo]` | `:Pickers repos grep` (or jump straight to `[repo]`, tab-completed) |
 | `:WkdBookFiles` | `:Pickers wkdbooks files` |
 | `:WkdBookGrep` | `:Pickers wkdbooks grep` |
+| `:PickersResume` | Resume the last picker on the current engine (`:Pickers builtin resume`) |
+| `:PickersScopes` | `:Pickers` (bare — interactive scope picker) |
 
 ---
 
