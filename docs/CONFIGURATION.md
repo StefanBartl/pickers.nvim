@@ -47,6 +47,9 @@ require("pickers").setup({
     config_grep  = "<leader>gc",   -- Grep in nvim config
     cwd_grep     = "<leader>li",   -- Live grep in CWD
     cwd_files    = nil,            -- Find files in CWD (disabled by default)
+    repos_files  = nil,            -- Pick a repo, then find files (disabled by default)
+    repos_grep   = nil,            -- Pick a repo, then live grep  (disabled by default)
+    system_files = nil,            -- Systemwide fd search, prompts for query (disabled by default)
   },
 
   usercmds = { enable = true },
