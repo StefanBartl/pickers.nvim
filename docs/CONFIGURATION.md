@@ -83,6 +83,13 @@ require("pickers").setup({
       -- fzf-lua's ctrl-a/ctrl-o/shift-enter bindings are fixed; not affected
       -- by `keys` (fzf's own bind syntax, not Neovim keymap syntax).
     },
+
+    -- Telescope-only opt-in preview-toggle keymap. fzf-lua ships this
+    -- natively on <F4>, snacks on <A-p> -- neither needs this.
+    -- See lua/pickers/preview_toggle/README.md.
+    preview_toggle = {
+      key = nil, -- e.g. "<M-p>"
+    },
   },
 })
 ```

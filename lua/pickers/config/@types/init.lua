@@ -40,10 +40,18 @@
 ---@field keys   Pickers.EntryActionsKeys
 
 -- ###########################################################################
+-- Preview toggle (telescope-only opt-in; fzf-lua/snacks already ship a
+-- native toggle-preview keymap out of the box)
+
+---@class Pickers.PreviewToggleConfig
+---@field key string|nil  Default: nil (disabled). e.g. "<M-p>"
+
+-- ###########################################################################
 -- Unified in-picker keys namespace
 
 ---@class Pickers.KeysConfig
----@field entry_actions Pickers.EntryActionsConfig
+---@field entry_actions   Pickers.EntryActionsConfig
+---@field preview_toggle  Pickers.PreviewToggleConfig
 
 -- ###########################################################################
 -- Top-level configuration

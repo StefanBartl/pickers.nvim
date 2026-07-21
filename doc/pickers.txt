@@ -376,6 +376,12 @@ All keys are optional.  Unset keys retain their default values.
         enable (bool, default true)
         keys.create_file      (string|nil, default "<C-a>")
         keys.open_background  (string|string[]|nil, default { "<S-CR>", "<C-o>" })
+
+    keys.preview_toggle (table)~
+      Telescope-only opt-in preview-toggle keymap. fzf-lua ships this
+      natively on <F4>, snacks on <A-p> -- neither needs this. See
+      lua/pickers/preview_toggle/README.md.
+        key (string|nil, default nil)  e.g. "<M-p>"
     keys uses Neovim keymap syntax, honoured by the telescope/snacks adapters
     only — fzf-lua's ctrl-a/ctrl-o/shift-enter bindings are fixed (fzf's own
     bind syntax, not translatable from Neovim keymap syntax in general).

@@ -105,6 +105,13 @@ local M = {
         open_background = { "<S-CR>", "<C-o>" },
       },
     },
+
+    -- Telescope-only opt-in preview-toggle keymap. fzf-lua ships this
+    -- natively on <F4>, snacks on <A-p> -- neither needs pickers.nvim to
+    -- provide it. See pickers.preview_toggle.
+    preview_toggle = {
+      key = nil,
+    },
   },
 }
 

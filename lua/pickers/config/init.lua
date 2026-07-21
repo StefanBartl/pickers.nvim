@@ -194,6 +194,28 @@ local function normalise_entry_actions(raw, current)
   return result
 end
 
+---Validate and normalise the `preview_toggle` sub-config, merging into `current`.
+---@param raw table
+---@param current Pickers.PreviewToggleConfig
+---@return Pickers.PreviewToggleConfig
+local function normalise_preview_toggle(raw, current)
+  local result = vim.deepcopy(current)
+
+  if raw.key ~= nil then
+    if raw.key == false then
+      result.key = nil
+    elseif type(raw.key) == "string" and raw.key ~= "" then
+      result.key = raw.key
+    else
+      notify.warn(string.format(
+        "Invalid preview_toggle.key %s, keeping previous", vim.inspect(raw.key)
+      ))
+    end
+  end
+
+  return result
+end
+
 ---Merge user-provided options into the active configuration.
 ---@param opts Pickers.Config|nil
 function M.apply(opts)
@@ -247,6 +269,10 @@ function M.apply(opts)
   if type(opts.keys) == "table" and type(opts.keys.entry_actions) == "table" then
     cfg.keys.entry_actions =
       normalise_entry_actions(opts.keys.entry_actions, cfg.keys.entry_actions)
+  end
+  if type(opts.keys) == "table" and type(opts.keys.preview_toggle) == "table" then
+    cfg.keys.preview_toggle =
+      normalise_preview_toggle(opts.keys.preview_toggle, cfg.keys.preview_toggle)
   end
 end
 
