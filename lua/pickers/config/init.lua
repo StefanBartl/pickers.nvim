@@ -3,6 +3,7 @@
 ---@see pickers.config.DEFAULTS
 
 local expand_path = require("lib.nvim.cross.fs.expand_path")
+local notify = require("lib.nvim.notify").create("[pickers]")
 
 local M = {}
 
@@ -47,14 +48,11 @@ local function normalise_history(raw, current)
     if type(raw.fzf_scope) == "string" and allowed[raw.fzf_scope] then
       result.fzf_scope = raw.fzf_scope
     else
-      vim.notify(
-        string.format(
-          "[pickers] Invalid history.fzf_scope %q, keeping %q",
-          tostring(raw.fzf_scope),
-          result.fzf_scope
-        ),
-        vim.log.levels.WARN
-      )
+      notify.warn(string.format(
+        "Invalid history.fzf_scope %q, keeping %q",
+        tostring(raw.fzf_scope),
+        result.fzf_scope
+      ))
     end
   end
 
@@ -64,10 +62,9 @@ local function normalise_history(raw, current)
     if type(raw.limit) == "number" and raw.limit > 0 then
       result.limit = raw.limit
     else
-      vim.notify(
-        string.format("[pickers] Invalid history.limit %s, keeping %s", vim.inspect(raw.limit), result.limit),
-        vim.log.levels.WARN
-      )
+      notify.warn(string.format(
+        "Invalid history.limit %s, keeping %s", vim.inspect(raw.limit), result.limit
+      ))
     end
   end
 
@@ -95,14 +92,11 @@ local function normalise_selected_index(raw, current)
     if allowed[pos] then
       result.position = pos
     else
-      vim.notify(
-        string.format(
-          "[pickers] Invalid selected_index.position %q, keeping %q",
-          raw.position,
-          result.position
-        ),
-        vim.log.levels.WARN
-      )
+      notify.warn(string.format(
+        "Invalid selected_index.position %q, keeping %q",
+        raw.position,
+        result.position
+      ))
     end
   end
 
@@ -123,13 +117,10 @@ local function normalise_selected_index(raw, current)
       if valid_presets[raw.highlight.preset] then
         hl.preset = raw.highlight.preset
       else
-        vim.notify(
-          string.format(
-            '[pickers] Invalid selected_index.highlight.preset %q, using "default"',
-            tostring(raw.highlight.preset)
-          ),
-          vim.log.levels.WARN
-        )
+        notify.warn(string.format(
+          'Invalid selected_index.highlight.preset %q, using "default"',
+          tostring(raw.highlight.preset)
+        ))
         hl.preset = "default"
       end
     end
@@ -152,13 +143,10 @@ local function normalise_selected_index(raw, current)
     elseif raw.toggle_key == false then
       result.toggle_key = nil
     else
-      vim.notify(
-        string.format(
-          "[pickers] Invalid selected_index.toggle_key %s, keeping previous",
-          vim.inspect(raw.toggle_key)
-        ),
-        vim.log.levels.WARN
-      )
+      notify.warn(string.format(
+        "Invalid selected_index.toggle_key %s, keeping previous",
+        vim.inspect(raw.toggle_key)
+      ))
     end
   end
 
@@ -181,13 +169,10 @@ local function normalise_entry_actions(raw, current)
       elseif type(raw.keys.create_file) == "string" then
         result.keys.create_file = raw.keys.create_file
       else
-        vim.notify(
-          string.format(
-            "[pickers] Invalid entry_actions.keys.create_file %s, keeping previous",
-            vim.inspect(raw.keys.create_file)
-          ),
-          vim.log.levels.WARN
-        )
+        notify.warn(string.format(
+          "Invalid entry_actions.keys.create_file %s, keeping previous",
+          vim.inspect(raw.keys.create_file)
+        ))
       end
     end
 
@@ -198,13 +183,10 @@ local function normalise_entry_actions(raw, current)
       elseif type(v) == "string" or type(v) == "table" then
         result.keys.open_background = v
       else
-        vim.notify(
-          string.format(
-            "[pickers] Invalid entry_actions.keys.open_background %s, keeping previous",
-            vim.inspect(v)
-          ),
-          vim.log.levels.WARN
-        )
+        notify.warn(string.format(
+          "Invalid entry_actions.keys.open_background %s, keeping previous",
+          vim.inspect(v)
+        ))
       end
     end
   end
@@ -228,13 +210,10 @@ function M.apply(opts)
       if coll then
         cfg.collections[#cfg.collections + 1] = coll
       else
-        vim.notify(
-          string.format(
-            "[pickers] Invalid collection entry (name+dir required): %s",
-            vim.inspect(raw)
-          ),
-          vim.log.levels.WARN
-        )
+        notify.warn(string.format(
+          "Invalid collection entry (name+dir required): %s",
+          vim.inspect(raw)
+        ))
       end
     end
   end
