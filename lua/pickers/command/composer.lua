@@ -36,7 +36,9 @@ end
 -- is omitted) an action word — smarter than any built-in type, see
 -- docs/ROADMAP/personal/lib_nvim/usrcmd_composer.md step 2.
 composer.register_type("PICKERS_DIR_NAV", {
-  validate = function(raw) return true, raw, nil end,
+  validate = function(raw)
+    return true, raw, nil
+  end,
   complete = function(arg_lead)
     local candidates = vim.list_extend({}, ACTION_VALUES)
     vim.list_extend(candidates, require("pickers.actions.dir").alias_names())
@@ -45,6 +47,19 @@ composer.register_type("PICKERS_DIR_NAV", {
     end
     candidates[#candidates + 1] = "path="
     return prefix(candidates, arg_lead)
+  end,
+})
+
+-- Registered builtin name — see pickers.builtins. Static list (the registry
+-- doesn't depend on cfg), so a plain type (not cfg-driven like collections) is
+-- enough; a custom type (not `enum`) because the candidate list is queried
+-- from the registry rather than declared inline per-route.
+composer.register_type("PICKERS_BUILTIN_NAME", {
+  validate = function(raw)
+    return true, raw, nil
+  end,
+  complete = function(arg_lead)
+    return prefix(require("pickers.builtins").names(), arg_lead)
   end,
 })
 
@@ -76,6 +91,20 @@ local function dir_route()
   }
 end
 
+-- Native pickers (git/lsp/search/…) — not a scope×action, so it does not
+-- delegate to pickers.command.handle; it dispatches straight to
+-- pickers.builtins.run, which resolves the engine itself.
+local function builtin_route()
+  return {
+    path = { "builtin" },
+    args = { { name = "name", type = "PICKERS_BUILTIN_NAME" } },
+    desc = "Native picker (git/lsp/search/…) — see docs/BUILTINS.md",
+    run = function(ctx)
+      require("pickers.builtins").run(ctx.pos[1])
+    end,
+  }
+end
+
 ---@param name string
 local function collection_route(name)
   return {
@@ -103,6 +132,8 @@ function M.register(cfg)
   end
   routes[#routes + 1] = dir_route()
   used.dir = true
+  routes[#routes + 1] = builtin_route()
+  used.builtin = true
 
   for _, coll in ipairs(cfg.collections or {}) do
     local name = coll.name

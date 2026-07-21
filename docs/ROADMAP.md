@@ -9,6 +9,35 @@ a promise; it is a backlog of ideas ordered roughly by usefulness.
   in `setup()`, honoured by both engines for the built-in file pickers.
 - [x] **Exclude globs.** `find.exclude` (list of glob patterns) is passed to the
   engine command.
+- [x] **Unified in-picker keys.** `keys = { enable, preview_scroll_*, history_* }`
+  in `setup()` — preview scrolling + native history navigation defined once and
+  translated per engine. Patches telescope/fzf-lua globally; snacks via the
+  exported `keys.snacks_win()`. fzf-lua is a documented capability gap (no
+  horizontal preview scroll, fixed fzf-native history). See `lua/pickers/keys/`
+  and [docs/KEYMAPS.md](KEYMAPS.md#in-picker-keys-preview-scroll--history).
+  - [ ] Absorb `entry_actions` (create_file / open_background) into this layer so
+    all in-picker keys share one config surface.
+- [x] **Native builtin pickers.** `:Pickers builtin <name>` — a registry of 51
+  native pickers (git/LSP/help/vim-intrinsics/diagnostics/…) dispatched
+  straight to the resolved engine's own function, name/capability-verified
+  against the actual installed telescope/fzf-lua/snacks sources (not guessed
+  from docs). See `lua/pickers/builtins/` and [docs/BUILTINS.md](BUILTINS.md)
+  for the full parity matrix and documented per-engine gaps (e.g. `git_diff`/
+  `lsp_declarations` have no telescope picker; `gh_issue`/`gh_pr`/`projects`/
+  `git_log_line`/`notifications` are snacks-only).
+  - [x] A user config's own snacks-only picker keymaps (git/LSP/search/…, ~31
+    active bindings) migrated to call through `pickers.command.handle`
+    (files/grep) / `pickers.builtins.run` (everything else) instead of
+    `snacks.picker.*` directly — same keys, engine-agnostic now.
+  - [x] A user config's `:SnacksXxx` usercommands (~20 additional pickers with
+    no active keymap — buffers/git_files/marks/jumps/registers/quickfix/
+    loclist/autocmds/highlights/filetypes/spell_suggest/search_history/
+    treesitter/resume/undo/icons/lazy_specs/grep_word/diagnostics/
+    diagnostics_buffer) are now covered by the registry (51 entries total, up
+    from the initial 31). The `:SnacksXxx`/`:Snacks <cat> <sub>` usercommand
+    layer itself (`config/snacks/usrcmds/` in the user's config) was deleted
+    as a result — every command it exposed has an engine-agnostic
+    `:Pickers builtin <name>` equivalent now.
 - [ ] **Per-scope overrides.** Currently `find` is global; allow per-collection /
   per-scope find overrides.
 - [ ] **Result-count / preview toggles** surfaced through `setup()`.
@@ -33,6 +62,13 @@ a promise; it is a backlog of ideas ordered roughly by usefulness.
   per-call override, so enabling it always behaves like a global default there
   regardless of `fzf_scope` — a Telescope architecture limitation, not a choice
   made here.
+  - [x] ~~Snacks history~~ — investigated and closed as N/A, not a gap. Snacks'
+    picker history is built-in and unconditional (created in `Picker.new`, fixed
+    path under `stdpath("data")/snacks/`, no `enabled`/`dir`/`limit` field
+    anywhere in its opts schema) — there is nothing to opt into or patch.
+    `cfg.history.*` simply doesn't apply to snacks; `:checkhealth pickers` now
+    says so explicitly. Documented in docs/CONFIGURATION.md and the
+    `pickers.history` module @brief.
 
 ## Commands
 

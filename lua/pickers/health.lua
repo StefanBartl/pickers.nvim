@@ -96,6 +96,37 @@ function M.check()
   end
   vim.health.info("depth_aliases: " .. alias_count .. " registered")
 
+  if cfg.history.enabled then
+    if has_telescope or has_fzf then
+      vim.health.ok("history enabled (applies to telescope/fzf-lua)")
+    end
+    if has_snacks then
+      vim.health.info(
+        "history.enabled has no effect on snacks.nvim — its picker history is "
+          .. "built-in and always-on (per-source file under stdpath('data')/snacks/), "
+          .. "not configurable via pickers.nvim. See docs/CONFIGURATION.md."
+      )
+    end
+    if not has_telescope and not has_fzf and not has_snacks then
+      vim.health.warn("history enabled but no engine found to apply it to")
+    end
+  end
+
+  if has_fzf and cfg.keys and cfg.keys.enable ~= false then
+    local ok_keys, keys_mod = pcall(require, "pickers.keys")
+    if ok_keys then
+      local skipped = keys_mod.fzf_skipped(cfg)
+      if #skipped > 0 then
+        vim.health.info(
+          "fzf-lua cannot remap: "
+            .. table.concat(skipped, ", ")
+            .. " (horizontal preview scroll / history are fzf-native, fixed). "
+            .. "See docs/KEYMAPS.md."
+        )
+      end
+    end
+  end
+
   if cfg.selected_index.enabled then
     if has_telescope then
       vim.health.ok(

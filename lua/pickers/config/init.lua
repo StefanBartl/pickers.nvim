@@ -194,6 +194,32 @@ local function normalise_entry_actions(raw, current)
   return result
 end
 
+---Validate and normalise the `keys` sub-config, merging into `current`.
+---Each action accepts a single lhs string, a list of lhs strings, or `false`
+---to unbind it. Invalid values are rejected with a warning and left unchanged.
+---@param raw table
+---@param current Pickers.KeysConfig
+---@return Pickers.KeysConfig
+local function normalise_keys(raw, current)
+  local result = vim.deepcopy(current)
+
+  if type(raw.enable) == "boolean" then result.enable = raw.enable end
+
+  local actions = require("pickers.keys").ACTIONS
+  for name in pairs(actions) do
+    local v = raw[name]
+    if v ~= nil then
+      if v == false or type(v) == "string" or type(v) == "table" then
+        result[name] = v
+      else
+        notify.warn(string.format("Invalid keys.%s %s, keeping previous", name, vim.inspect(v)))
+      end
+    end
+  end
+
+  return result
+end
+
 ---Merge user-provided options into the active configuration.
 ---@param opts Pickers.Config|nil
 function M.apply(opts)
@@ -234,6 +260,8 @@ function M.apply(opts)
   if type(opts.usercmds) == "table" then
     cfg.usercmds = vim.tbl_deep_extend("force", cfg.usercmds, opts.usercmds)
   end
+
+  if type(opts.keys) == "table" then cfg.keys = normalise_keys(opts.keys, cfg.keys) end
 
   if type(opts.history) == "table" then
     cfg.history = normalise_history(opts.history, cfg.history)

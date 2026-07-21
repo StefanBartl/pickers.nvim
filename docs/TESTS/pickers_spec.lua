@@ -180,7 +180,74 @@ do
 
   config.apply({ history = { limit = -5 } })
   local cfg3 = config.get()
-  check("history: invalid limit keeps previous", cfg3.history.limit == 50, tostring(cfg3.history.limit))
+  check(
+    "history: invalid limit keeps previous",
+    cfg3.history.limit == 50,
+    tostring(cfg3.history.limit)
+  )
+end
+
+-- ── pickers.keys — resolve / per-engine adapters / normalisation ────────────
+do
+  local config = require("pickers.config")
+  local keys = require("pickers.keys")
+
+  -- Defaults
+  local cfg0 = config.get()
+  check("keys: default enabled", cfg0.keys.enable == true)
+  check("keys: default preview_scroll_down", cfg0.keys.preview_scroll_down == "<PageDown>")
+
+  -- resolve(): action → { lhs, modes }
+  local r = keys.resolve(cfg0)
+  local scroll_modes = r.preview_scroll_down.modes
+  local hist_modes = r.history_back.modes
+  check("keys.resolve: scroll lhs", has(r.preview_scroll_down.lhs, "<PageDown>"))
+  check("keys.resolve: scroll modes i+n", has(scroll_modes, "i") and has(scroll_modes, "n"))
+  check("keys.resolve: history lhs", has(r.history_back.lhs, "<C-p>"))
+  check("keys.resolve: history mode i only", has(hist_modes, "i") and not has(hist_modes, "n"))
+
+  -- snacks adapter: preview scroll reaches every window, history input-only
+  local win = keys.snacks_win(cfg0)
+  check("keys.snacks: input has PageDown", win.input.keys["<PageDown>"] ~= nil)
+  check("keys.snacks: list has PageDown", win.list.keys["<PageDown>"] == "preview_scroll_down")
+  check("keys.snacks: preview has PageDown", win.preview.keys["<PageDown>"] ~= nil)
+  check("keys.snacks: input has history <C-p>", win.input.keys["<C-p>"] ~= nil)
+  check("keys.snacks: list has NO history <C-p>", win.list.keys["<C-p>"] == nil)
+
+  -- fzf adapter: only vertical preview scroll translates
+  local fk = keys.fzf_keymap(cfg0)
+  check("keys.fzf: PageDown → preview-page-down", fk["<PageDown>"] == "preview-page-down")
+  check("keys.fzf: PageUp → preview-page-up", fk["<PageUp>"] == "preview-page-up")
+  check("keys.fzf: no horizontal scroll", fk["<C-Left>"] == nil and fk["<C-Right>"] == nil)
+  check("keys.fzf: no history binding", fk["<C-p>"] == nil and fk["<C-n>"] == nil)
+
+  -- fzf_skipped(): reports bound-but-unmappable actions, for :checkhealth
+  local skipped = keys.fzf_skipped(cfg0)
+  check("keys.fzf_skipped: lists history_back", has(skipped, "history_back"))
+  check("keys.fzf_skipped: lists preview_scroll_left", has(skipped, "preview_scroll_left"))
+  check("keys.fzf_skipped: excludes mapped scroll_down", not has(skipped, "preview_scroll_down"))
+
+  -- Normalisation: list form, false (unbind), and enable toggle
+  config.apply({ keys = { preview_scroll_down = { "<PageDown>", "<C-d>" }, history_back = false } })
+  local r1 = keys.resolve(config.get())
+  local dl = r1.preview_scroll_down.lhs
+  check("keys: list form both lhs", has(dl, "<PageDown>") and has(dl, "<C-d>"))
+  check("keys: false unbinds", #r1.history_back.lhs == 0)
+
+  -- telescope adapter degrades to empty mappings when telescope is absent
+  local tm = keys.telescope_mappings(cfg0)
+  check("keys.telescope: i/n buckets present", type(tm.i) == "table" and type(tm.n) == "table")
+
+  -- patch() must never throw, regardless of which engines are installed
+  local ok_patch = pcall(keys.patch, cfg0)
+  check("keys.patch: does not throw", ok_patch)
+
+  config.apply({ keys = { enable = false } })
+  check("keys.resolve: disabled → empty", vim.tbl_isempty(keys.resolve(config.get())))
+
+  -- Restore defaults for any later blocks relying on them.
+  config.apply({ keys = { enable = true, preview_scroll_down = "<PageDown>" } })
+  config.apply({ keys = { history_back = "<C-p>" } })
 end
 
 -- ── :Pickers completion (composer) — needs lib.nvim; skip cleanly if absent ─
@@ -206,7 +273,90 @@ do
     local filtered = vim.fn.getcompletion("Pickers co", "cmdline")
     check("complete: filter 'co' includes config", has(filtered, "config"))
     check("complete: filter 'co' excludes cwd", not has(filtered, "cwd"))
+
+    check("complete: built-in builtin", has(scopes, "builtin"))
+    local builtin_names = vim.fn.getcompletion("Pickers builtin ", "cmdline")
+    check("complete: builtin git_branches", has(builtin_names, "git_branches"))
+    check("complete: builtin lsp_definitions", has(builtin_names, "lsp_definitions"))
   end
+end
+
+-- ── pickers.builtins — registry shape, names(), run() dispatch ──────────────
+do
+  local builtins = require("pickers.builtins")
+
+  -- names(): sorted, matches REGISTRY keys 1:1
+  local names = builtins.names()
+  local sorted_copy = vim.deepcopy(names)
+  table.sort(sorted_copy)
+  check("builtins.names: sorted", vim.deep_equal(names, sorted_copy))
+
+  local registry_count = 0
+  for _ in pairs(builtins.REGISTRY) do
+    registry_count = registry_count + 1
+  end
+  check("builtins.names: matches REGISTRY size", #names == registry_count, tostring(#names))
+  check("builtins.names: includes git_branches", has(names, "git_branches"))
+  check("builtins.names: includes lsp_workspace_symbols", has(names, "lsp_workspace_symbols"))
+  check("builtins.names: includes notifications", has(names, "notifications"))
+
+  -- Registry shape: every entry has desc + at least one real (non-false)
+  -- engine implementation, and every impl has a non-empty fn.
+  local shape_ok = true
+  local zero_impl = nil
+  for name, entry in pairs(builtins.REGISTRY) do
+    if type(entry.desc) ~= "string" or entry.desc == "" then shape_ok = false end
+    local any_impl = false
+    for _, engine in ipairs({ "snacks", "telescope", "fzf" }) do
+      local impl = entry[engine]
+      if impl then
+        any_impl = true
+        if type(impl.fn) ~= "string" or impl.fn == "" then shape_ok = false end
+      elseif impl ~= false then
+        shape_ok = false -- must be exactly `false`, not nil, to mark a gap
+      end
+    end
+    if not any_impl then zero_impl = name end
+  end
+  check("builtins.REGISTRY: every entry has desc + valid impl shape", shape_ok)
+  check("builtins.REGISTRY: no entry is all-gap", zero_impl == nil, tostring(zero_impl))
+
+  -- Documented gaps match what was verified against the real plugin sources.
+  local git_diff = builtins.REGISTRY.git_diff
+  local git_log_line = builtins.REGISTRY.git_log_line
+  local lsp_decl = builtins.REGISTRY.lsp_declarations
+  local gh_issue = builtins.REGISTRY.gh_issue
+  check("builtins: git_diff has no telescope impl", git_diff.telescope == false)
+  check(
+    "builtins: git_log_line is snacks-only",
+    git_log_line.telescope == false and git_log_line.fzf == false
+  )
+  check("builtins: lsp_declarations has no telescope impl", lsp_decl.telescope == false)
+  check("builtins: gh_issue is snacks-only", gh_issue.telescope == false and gh_issue.fzf == false)
+
+  -- supported_engines()
+  local gd_engines = builtins.supported_engines("git_diff")
+  local gd_ok = has(gd_engines, "snacks")
+    and has(gd_engines, "fzf")
+    and not has(gd_engines, "telescope")
+  check("builtins.supported_engines: git_diff has snacks+fzf, not telescope", gd_ok)
+  check(
+    "builtins.supported_engines: unknown name → empty",
+    #builtins.supported_engines("nope") == 0
+  )
+
+  -- run(): unknown name doesn't throw; explicit engine_name with no impl
+  -- doesn't throw (gap path); explicit engine_name with impl but engine module
+  -- absent doesn't throw (require() failure path).
+  check("builtins.run: unknown name does not throw", pcall(builtins.run, "nope_not_real"))
+  check(
+    "builtins.run: gap engine does not throw",
+    pcall(builtins.run, "git_diff", nil, "telescope")
+  )
+  check(
+    "builtins.run: missing engine module does not throw",
+    pcall(builtins.run, "git_branches", nil, "telescope")
+  )
 end
 
 -- ── sources.repos — list_names / resolve / complete; needs lib.nvim ─────────
@@ -288,7 +438,9 @@ do
 
     fn("a")
     fn("b") -- resets the timer; only "b" should fire
-    vim.wait(200, function() return #calls > 0 end)
+    vim.wait(200, function()
+      return #calls > 0
+    end)
 
     check("debounce: fires exactly once", #calls == 1, "#=" .. #calls)
     check("debounce: fires with the most recent args", calls[1] == "b", tostring(calls[1]))

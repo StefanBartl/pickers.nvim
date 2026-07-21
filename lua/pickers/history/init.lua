@@ -11,6 +11,13 @@
 --- per-call/per-scope isolation possible for it — enabling it always behaves
 --- like a global default, regardless of `fzf_scope` (which does not apply to
 --- telescope at all). See `telescope.opts()` and `patch()`.
+---
+--- snacks.nvim is NOT covered by this module — its picker core creates a
+--- per-source history file unconditionally in `Picker.new` (fixed path under
+--- `stdpath("data")/snacks/`, no `enabled`/`dir`/`limit` field anywhere in its
+--- opts schema). There is nothing to opt into or patch; `cfg.history.*` simply
+--- does not apply when the active engine is snacks. See docs/CONFIGURATION.md
+--- ("History" section) for the user-facing explanation.
 
 local M = {}
 

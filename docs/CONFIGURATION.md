@@ -115,6 +115,19 @@ its own `--history` file:
 | `"global"` | pickers.nvim doesn't set its own `fzf_opts`; use `require("pickers.history").fzf_opts()` / `.telescope_opts()` yourself in your own `fzf-lua.setup()` / `telescope.setup({defaults={history=...}})` calls. One shared history file, same as `"patch"`. |
 | `"patch"` | pickers.nvim calls `fzf-lua`'s `setup()` itself (deferred via `vim.schedule`, merged non-destructively) so your own direct `:FzfLua` usage also gets the shared history file — no config change needed on your end. |
 
+**This `history` config has no effect on snacks.nvim.** Unlike telescope/fzf-lua
+(no history unless you opt in), snacks.picker's history is a built-in, always-on
+feature of the picker core itself — every `Snacks.picker.*` call gets its own
+per-source history file at `stdpath("data")/snacks/picker_<source>.history`,
+with no `enabled`/`dir`/`limit` knob exposed anywhere in its `opts` schema (see
+`snacks/picker/core/picker.lua` — history is created unconditionally in
+`Picker.new`, not read from config). Setting `history.enabled = true` while
+using the snacks engine is therefore a no-op for snacks specifically; it still
+takes effect for telescope/fzf-lua if you have them installed alongside it.
+Snacks history navigation (`<C-Up>`/`<C-Down>` by default) is separate from,
+and additive with, the `history_back`/`history_forward` keys in
+[docs/KEYMAPS.md](KEYMAPS.md#in-picker-keys-preview-scroll--history).
+
 ---
 
 ## Selected index display

@@ -59,6 +59,21 @@ local M = {
     enable = true,
   },
 
+  -- In-picker keymaps (preview scroll + native history navigation), unified
+  -- across telescope/fzf-lua/snacks. See pickers.keys.
+  --   Each action takes a single lhs, a list of lhs, or `false` to unbind it.
+  --   fzf-lua only binds the vertical preview scroll (its horizontal scroll and
+  --   history are fzf-native and fixed) — a documented capability gap.
+  keys = {
+    enable = true,
+    preview_scroll_down = "<PageDown>",
+    preview_scroll_up = "<PageUp>",
+    preview_scroll_left = "<C-Left>",
+    preview_scroll_right = "<C-Right>",
+    history_back = "<C-p>",
+    history_forward = "<C-n>",
+  },
+
   -- Native picker-history file(s) under stdpath("data")/pickers.nvim/history.
   -- Disabled by default. See pickers.history.
   --   fzf_scope only affects fzf-lua (telescope's history is a process-wide
