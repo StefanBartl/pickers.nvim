@@ -41,7 +41,7 @@ end
 ---Named actions table for `Snacks.picker` `opts.actions`.
 ---@return table<string, function> actions
 function M.get_actions()
-  if not require("pickers.config").get().entry_actions.enable then
+  if not require("pickers.config").get().keys.entry_actions.enable then
     return {}
   end
 
@@ -54,7 +54,7 @@ end
 ---Key -> action-name bindings for `win.list.keys`, honouring configured keys.
 ---@return table<string, string> keys
 function M.get_keys()
-  local cfg = require("pickers.config").get().entry_actions
+  local cfg = require("pickers.config").get().keys.entry_actions
   if not cfg.enable then
     return {}
   end

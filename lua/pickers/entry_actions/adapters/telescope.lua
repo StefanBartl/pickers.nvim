@@ -37,10 +37,10 @@ local function do_open_background(prompt_bufnr)
 end
 
 ---Build the {i={...}, n={...}} mapping table for telescope.setup()'s
----defaults.mappings, honouring `entry_actions.enable`/`entry_actions.keys`.
+---defaults.mappings, honouring `keys.entry_actions.enable`/`keys.entry_actions.keys`.
 ---@return table mappings
 function M.get_mappings()
-  local cfg = require("pickers.config").get().entry_actions
+  local cfg = require("pickers.config").get().keys.entry_actions
   if not cfg.enable then
     return { i = {}, n = {} }
   end

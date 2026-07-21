@@ -244,8 +244,9 @@ function M.apply(opts)
     require("pickers.selected_index.highlight").apply(cfg.selected_index.highlight)
   end
 
-  if type(opts.entry_actions) == "table" then
-    cfg.entry_actions = normalise_entry_actions(opts.entry_actions, cfg.entry_actions)
+  if type(opts.keys) == "table" and type(opts.keys.entry_actions) == "table" then
+    cfg.keys.entry_actions =
+      normalise_entry_actions(opts.keys.entry_actions, cfg.keys.entry_actions)
   end
 end
 

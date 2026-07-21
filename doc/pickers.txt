@@ -357,12 +357,17 @@ All keys are optional.  Unset keys retain their default values.
     highlight  (table, default { preset = "default" })
     toggle_key (string|nil, default nil)      — in-picker live toggle keymap
 
-  entry_actions (table)~
-    In-picker "create file/folder" and "open in background" actions, shared
-    across telescope/fzf-lua/snacks.nvim. See lua/pickers/entry_actions/README.md.
-      enable (bool, default true)
-      keys.create_file      (string|nil, default "<C-a>")
-      keys.open_background  (string|string[]|nil, default { "<S-CR>", "<C-o>" })
+  keys (table)~
+    Unified namespace for keybinding-shaped features that act *inside* an
+    open picker (as opposed to `keymaps` above, which launches a scope).
+
+    keys.entry_actions (table)~
+      In-picker "create file/folder" and "open in background" actions,
+      shared across telescope/fzf-lua/snacks.nvim. See
+      lua/pickers/entry_actions/README.md.
+        enable (bool, default true)
+        keys.create_file      (string|nil, default "<C-a>")
+        keys.open_background  (string|string[]|nil, default { "<S-CR>", "<C-o>" })
     keys uses Neovim keymap syntax, honoured by the telescope/snacks adapters
     only — fzf-lua's ctrl-a/ctrl-o/shift-enter bindings are fixed (fzf's own
     bind syntax, not translatable from Neovim keymap syntax in general).

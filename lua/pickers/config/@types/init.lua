@@ -40,6 +40,12 @@
 ---@field keys   Pickers.EntryActionsKeys
 
 -- ###########################################################################
+-- Unified in-picker keys namespace
+
+---@class Pickers.KeysConfig
+---@field entry_actions Pickers.EntryActionsConfig
+
+-- ###########################################################################
 -- Top-level configuration
 
 ---@class Pickers.Config
@@ -52,6 +58,6 @@
 ---@field usercmds       Pickers.Usercmds
 ---@field history        Pickers.HistoryConfig
 ---@field selected_index Pickers.SelectedIndexConfig
----@field entry_actions  Pickers.EntryActionsConfig
+---@field keys           Pickers.KeysConfig
 
 return {}

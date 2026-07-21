@@ -90,15 +90,20 @@ local M = {
     toggle_key = nil,
   },
 
-  -- In-picker "create file/folder" and "open in background" entry actions,
-  -- shared across telescope/fzf-lua/snacks.nvim. See pickers.entry_actions.
-  --   fzf-lua's ctrl-a/ctrl-o/shift-enter bindings are fixed (fzf's own bind
-  --   syntax, not remappable via `keys` — see entry_actions.adapters.fzf).
-  entry_actions = {
-    enable = true,
-    keys = {
-      create_file = "<C-a>",
-      open_background = { "<S-CR>", "<C-o>" },
+  -- Unified in-picker keys namespace. Bundles keybinding-shaped features that
+  -- act *inside* an open picker (as opposed to `keymaps`, which launches a
+  -- scope in the first place).
+  keys = {
+    -- In-picker "create file/folder" and "open in background" entry actions,
+    -- shared across telescope/fzf-lua/snacks.nvim. See pickers.entry_actions.
+    --   fzf-lua's ctrl-a/ctrl-o/shift-enter bindings are fixed (fzf's own bind
+    --   syntax, not remappable via `keys` — see entry_actions.adapters.fzf).
+    entry_actions = {
+      enable = true,
+      keys = {
+        create_file = "<C-a>",
+        open_background = { "<S-CR>", "<C-o>" },
+      },
     },
   },
 }

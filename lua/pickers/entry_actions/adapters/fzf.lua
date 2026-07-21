@@ -3,9 +3,9 @@
 ---@description
 --- fzf-lua action-table keys are fzf's own bind syntax ("ctrl-a", not
 --- Neovim's "<C-a>"), so unlike the telescope/snacks adapters this one does
---- not read `entry_actions.keys` — there is no general, safe way to
+--- not read `keys.entry_actions.keys` — there is no general, safe way to
 --- translate Neovim keymap syntax to fzf bind syntax. Only
---- `entry_actions.enable` is honoured; the ctrl-a/ctrl-o/shift-enter
+--- `keys.entry_actions.enable` is honoured; the ctrl-a/ctrl-o/shift-enter
 --- bindings themselves are fixed (matching the previous nvim-config
 --- behavior exactly).
 
@@ -46,7 +46,7 @@ end
 ---Build the fzf-lua `actions` table fragment for create_file/open_background.
 ---@return table<string, function> actions
 function M.get_actions()
-  if not require("pickers.config").get().entry_actions.enable then
+  if not require("pickers.config").get().keys.entry_actions.enable then
     return {}
   end
 

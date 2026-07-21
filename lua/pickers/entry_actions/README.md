@@ -54,21 +54,24 @@ require("snacks").setup({
 
 ## Configuration
 
-Via `require("pickers").setup({ entry_actions = { ... } })`:
+Via `require("pickers").setup({ keys = { entry_actions = { ... } } })` — part
+of the unified `keys` namespace for in-picker key bindings:
 
 ```lua
-entry_actions = {
-  enable = true,
-  keys = {
-    create_file     = "<C-a>",
-    open_background = { "<S-CR>", "<C-o>" },
+keys = {
+  entry_actions = {
+    enable = true,
+    keys = {
+      create_file     = "<C-a>",
+      open_background = { "<S-CR>", "<C-o>" },
+    },
   },
 }
 ```
 
-`keys` uses Neovim keymap syntax and is honoured by the **telescope and
-snacks** adapters directly. **fzf-lua's `ctrl-a`/`ctrl-o`/`shift-enter`
-bindings are fixed** — fzf-lua's action-table keys are fzf's own bind syntax
-("ctrl-a"), not Neovim keymap syntax ("<C-a>"), and there is no general, safe
-way to translate one to the other — only `entry_actions.enable` is honoured
-by the fzf adapter.
+`keys.entry_actions.keys` uses Neovim keymap syntax and is honoured by the
+**telescope and snacks** adapters directly. **fzf-lua's
+`ctrl-a`/`ctrl-o`/`shift-enter` bindings are fixed** — fzf-lua's action-table
+keys are fzf's own bind syntax ("ctrl-a"), not Neovim keymap syntax ("<C-a>"),
+and there is no general, safe way to translate one to the other — only
+`keys.entry_actions.enable` is honoured by the fzf adapter.

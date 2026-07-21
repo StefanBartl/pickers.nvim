@@ -69,16 +69,20 @@ require("pickers").setup({
     toggle_key = nil,                 -- e.g. "<M-i>" to toggle live in an open picker
   },
 
-  -- In-picker "create file/folder" and "open in background" entry actions,
-  -- shared across telescope/fzf-lua/snacks.nvim. See lua/pickers/entry_actions/README.md.
-  entry_actions = {
-    enable = true,
-    keys = {
-      create_file     = "<C-a>",
-      open_background = { "<S-CR>", "<C-o>" },
+  -- Unified in-picker keys namespace (features acting *inside* an open
+  -- picker, as opposed to `keymaps` above which launches a scope).
+  keys = {
+    -- "Create file/folder" and "open in background" entry actions, shared
+    -- across telescope/fzf-lua/snacks.nvim. See lua/pickers/entry_actions/README.md.
+    entry_actions = {
+      enable = true,
+      keys = {
+        create_file     = "<C-a>",
+        open_background = { "<S-CR>", "<C-o>" },
+      },
+      -- fzf-lua's ctrl-a/ctrl-o/shift-enter bindings are fixed; not affected
+      -- by `keys` (fzf's own bind syntax, not Neovim keymap syntax).
     },
-    -- fzf-lua's ctrl-a/ctrl-o/shift-enter bindings are fixed; not affected
-    -- by `keys` (fzf's own bind syntax, not Neovim keymap syntax).
   },
 })
 ```
