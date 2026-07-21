@@ -153,47 +153,6 @@ local function normalise_selected_index(raw, current)
   return result
 end
 
----Validate and normalise the `entry_actions` sub-config, merging into `current`.
----@param raw table
----@param current Pickers.EntryActionsConfig
----@return Pickers.EntryActionsConfig
-local function normalise_entry_actions(raw, current)
-  local result = vim.deepcopy(current)
-
-  if type(raw.enable) == "boolean" then result.enable = raw.enable end
-
-  if type(raw.keys) == "table" then
-    if raw.keys.create_file ~= nil then
-      if raw.keys.create_file == false then
-        result.keys.create_file = nil
-      elseif type(raw.keys.create_file) == "string" then
-        result.keys.create_file = raw.keys.create_file
-      else
-        notify.warn(string.format(
-          "Invalid entry_actions.keys.create_file %s, keeping previous",
-          vim.inspect(raw.keys.create_file)
-        ))
-      end
-    end
-
-    if raw.keys.open_background ~= nil then
-      local v = raw.keys.open_background
-      if v == false then
-        result.keys.open_background = {}
-      elseif type(v) == "string" or type(v) == "table" then
-        result.keys.open_background = v
-      else
-        notify.warn(string.format(
-          "Invalid entry_actions.keys.open_background %s, keeping previous",
-          vim.inspect(v)
-        ))
-      end
-    end
-  end
-
-  return result
-end
-
 ---Validate and normalise the `keys` sub-config, merging into `current`.
 ---Each action accepts a single lhs string, a list of lhs strings, or `false`
 ---to unbind it. Invalid values are rejected with a warning and left unchanged.
@@ -270,10 +229,6 @@ function M.apply(opts)
   if type(opts.selected_index) == "table" then
     cfg.selected_index = normalise_selected_index(opts.selected_index, cfg.selected_index)
     require("pickers.selected_index.highlight").apply(cfg.selected_index.highlight)
-  end
-
-  if type(opts.entry_actions) == "table" then
-    cfg.entry_actions = normalise_entry_actions(opts.entry_actions, cfg.entry_actions)
   end
 end
 

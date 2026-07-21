@@ -246,7 +246,70 @@ do
   check("keys.resolve: disabled → empty", vim.tbl_isempty(keys.resolve(config.get())))
 
   -- Restore defaults for any later blocks relying on them.
-  config.apply({ keys = { enable = true, preview_scroll_down = "<PageDown>" } })
+  config.apply({
+    keys = {
+      enable = true,
+      preview_scroll_down = "<PageDown>",
+      history_back = "<C-p>",
+      create_file = "<C-a>",
+      open_background = { "<S-CR>", "<C-o>" },
+    },
+  })
+end
+
+-- ── pickers.entry_actions — absorbed into pickers.keys, adapters read resolve() ─
+do
+  local config = require("pickers.config")
+  local keys = require("pickers.keys")
+
+  -- create_file/open_background are part of the same unified `keys` config.
+  local cfg0 = config.get()
+  check("keys: default create_file", cfg0.keys.create_file == "<C-a>")
+  check(
+    "keys: default open_background",
+    has(cfg0.keys.open_background, "<S-CR>") and has(cfg0.keys.open_background, "<C-o>")
+  )
+
+  local r = keys.resolve(cfg0)
+  check("keys.resolve: create_file lhs", has(r.create_file.lhs, "<C-a>"))
+  check(
+    "keys.resolve: open_background lhs",
+    has(r.open_background.lhs, "<S-CR>") and has(r.open_background.lhs, "<C-o>")
+  )
+
+  -- telescope adapter: get_mappings() reads keys.resolve(), not a separate config.
+  local ts = require("pickers.entry_actions.adapters.telescope")
+  local tm = ts.get_mappings()
+  check("entry_actions.telescope: create_file bound (i)", tm.i["<C-a>"] ~= nil)
+  check("entry_actions.telescope: create_file bound (n)", tm.n["<C-a>"] ~= nil)
+  check("entry_actions.telescope: open_background bound", tm.i["<S-CR>"] ~= nil)
+
+  -- snacks adapter: get_keys() reads keys.resolve() too.
+  local snacks_adapter = require("pickers.entry_actions.adapters.snacks")
+  local sk = snacks_adapter.get_keys()
+  check("entry_actions.snacks: create_file key", sk["<C-a>"] == "create_file")
+  check("entry_actions.snacks: open_background key", sk["<S-CR>"] == "open_background")
+
+  -- fzf adapter: fixed ctrl-a/ctrl-o/shift-enter, gated only by keys.enable.
+  local fzf_adapter = require("pickers.entry_actions.adapters.fzf")
+  local fa = fzf_adapter.get_actions()
+  check("entry_actions.fzf: ctrl-a present when enabled", type(fa["ctrl-a"]) == "function")
+
+  config.apply({ keys = { enable = false } })
+  check("entry_actions.telescope: empty when keys.enable=false", vim.tbl_isempty(ts.get_mappings().i))
+  check("entry_actions.fzf: empty when keys.enable=false", vim.tbl_isempty(fzf_adapter.get_actions()))
+  check("entry_actions.snacks: empty when keys.enable=false", vim.tbl_isempty(snacks_adapter.get_keys()))
+
+  -- Restore defaults for any later blocks relying on them.
+  config.apply({
+    keys = {
+      enable = true,
+      preview_scroll_down = "<PageDown>",
+      history_back = "<C-p>",
+      create_file = "<C-a>",
+      open_background = { "<S-CR>", "<C-o>" },
+    },
+  })
   config.apply({ keys = { history_back = "<C-p>" } })
 end
 

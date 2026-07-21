@@ -29,17 +29,6 @@
 ---@field exclude   string[]|nil  Extra glob patterns to exclude (default: nil)
 
 -- ###########################################################################
--- Entry actions (in-picker create_file / open_background)
-
----@class Pickers.EntryActionsKeys
----@field create_file      string|nil          Default: "<C-a>"
----@field open_background  string|string[]|nil Default: { "<S-CR>", "<C-o>" }
-
----@class Pickers.EntryActionsConfig
----@field enable boolean
----@field keys   Pickers.EntryActionsKeys
-
--- ###########################################################################
 -- Top-level configuration
 
 ---@class Pickers.Config
@@ -53,6 +42,5 @@
 ---@field keys           Pickers.KeysConfig
 ---@field history        Pickers.HistoryConfig
 ---@field selected_index Pickers.SelectedIndexConfig
----@field entry_actions  Pickers.EntryActionsConfig
 
 return {}

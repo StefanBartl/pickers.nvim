@@ -9,14 +9,17 @@ a promise; it is a backlog of ideas ordered roughly by usefulness.
   in `setup()`, honoured by both engines for the built-in file pickers.
 - [x] **Exclude globs.** `find.exclude` (list of glob patterns) is passed to the
   engine command.
-- [x] **Unified in-picker keys.** `keys = { enable, preview_scroll_*, history_* }`
-  in `setup()` — preview scrolling + native history navigation defined once and
-  translated per engine. Patches telescope/fzf-lua globally; snacks via the
-  exported `keys.snacks_win()`. fzf-lua is a documented capability gap (no
-  horizontal preview scroll, fixed fzf-native history). See `lua/pickers/keys/`
-  and [docs/KEYMAPS.md](KEYMAPS.md#in-picker-keys-preview-scroll--history).
-  - [ ] Absorb `entry_actions` (create_file / open_background) into this layer so
-    all in-picker keys share one config surface.
+- [x] **Unified in-picker keys.** `keys = { enable, preview_scroll_*, history_*,
+  create_file, open_background }` in `setup()` — preview scrolling, native
+  history navigation, and the create_file/open_background entry actions all
+  share one config surface. Preview scroll/history are patched globally into
+  telescope/fzf-lua (snacks via the exported `keys.snacks_win()`); create_file/
+  open_background stay merge-it-yourself, like before, since they run
+  pickers.nvim logic rather than a built-in engine action. fzf-lua is a
+  documented capability gap for all four (no horizontal preview scroll, fixed
+  fzf-native history, fixed ctrl-a/ctrl-o/shift-enter entry actions). See
+  `lua/pickers/keys/`, `lua/pickers/entry_actions/`, and
+  [docs/KEYMAPS.md](KEYMAPS.md#in-picker-keys-preview-scroll--history--entry-actions).
 - [x] **Native builtin pickers.** `:Pickers builtin <name>` — a registry of 51
   native pickers (git/LSP/help/vim-intrinsics/diagnostics/…) dispatched
   straight to the resolved engine's own function, name/capability-verified

@@ -37,28 +37,21 @@ local function do_open_background(prompt_bufnr)
 end
 
 ---Build the {i={...}, n={...}} mapping table for telescope.setup()'s
----defaults.mappings, honouring `entry_actions.enable`/`entry_actions.keys`.
+---defaults.mappings, honouring `keys.enable`/`keys.create_file`/`keys.open_background`
+---(via `pickers.keys.resolve()`, the single source of truth for in-picker keys).
 ---@return table mappings
 function M.get_mappings()
-  local cfg = require("pickers.config").get().entry_actions
-  if not cfg.enable then
-    return { i = {}, n = {} }
-  end
-
+  local resolved = require("pickers.keys").resolve()
   local mappings = { i = {}, n = {} }
 
-  if cfg.keys.create_file then
-    mappings.i[cfg.keys.create_file] = do_create_file
-    mappings.n[cfg.keys.create_file] = do_create_file
+  for _, key in ipairs((resolved.create_file or {}).lhs or {}) do
+    mappings.i[key] = do_create_file
+    mappings.n[key] = do_create_file
   end
 
-  local bg_keys = type(cfg.keys.open_background) == "table" and cfg.keys.open_background
-    or { cfg.keys.open_background }
-  for _, key in ipairs(bg_keys) do
-    if key then
-      mappings.i[key] = do_open_background
-      mappings.n[key] = do_open_background
-    end
+  for _, key in ipairs((resolved.open_background or {}).lhs or {}) do
+    mappings.i[key] = do_open_background
+    mappings.n[key] = do_open_background
   end
 
   return mappings

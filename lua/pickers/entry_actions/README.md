@@ -54,21 +54,27 @@ require("snacks").setup({
 
 ## Configuration
 
-Via `require("pickers").setup({ entry_actions = { ... } })`:
+Part of the unified `pickers.keys` namespace (see `lua/pickers/keys/`) —
+`create_file`/`open_background` are two of its actions, alongside preview
+scroll and history navigation, sharing one config surface and one master
+`enable` switch:
 
 ```lua
-entry_actions = {
-  enable = true,
+require("pickers").setup({
   keys = {
+    enable = true,
     create_file     = "<C-a>",
     open_background = { "<S-CR>", "<C-o>" },
+    -- ...preview_scroll_*/history_* also live here, see docs/KEYMAPS.md
   },
-}
+})
 ```
 
-`keys` uses Neovim keymap syntax and is honoured by the **telescope and
-snacks** adapters directly. **fzf-lua's `ctrl-a`/`ctrl-o`/`shift-enter`
-bindings are fixed** — fzf-lua's action-table keys are fzf's own bind syntax
-("ctrl-a"), not Neovim keymap syntax ("<C-a>"), and there is no general, safe
-way to translate one to the other — only `entry_actions.enable` is honoured
-by the fzf adapter.
+The adapters above call `require("pickers.keys").resolve()` to read these —
+they don't read `pickers.config` directly. `create_file`/`open_background`
+use Neovim keymap syntax and are honoured by the **telescope and snacks**
+adapters directly. **fzf-lua's `ctrl-a`/`ctrl-o`/`shift-enter` bindings are
+fixed** — fzf-lua's action-table keys are fzf's own bind syntax ("ctrl-a"),
+not Neovim keymap syntax ("<C-a>"), and there is no general, safe way to
+translate one to the other — only `keys.enable` is honoured by the fzf
+adapter.

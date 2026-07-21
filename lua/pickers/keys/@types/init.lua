@@ -15,5 +15,7 @@
 ---@field preview_scroll_right Pickers.KeyBinding Default: "<C-Right>"
 ---@field history_back         Pickers.KeyBinding Default: "<C-p>"
 ---@field history_forward      Pickers.KeyBinding Default: "<C-n>"
+---@field create_file          Pickers.KeyBinding Default: "<C-a>"
+---@field open_background      Pickers.KeyBinding Default: { "<S-CR>", "<C-o>" }
 
 return {}
