@@ -2,7 +2,9 @@
 
 Collections are user-defined named scopes. Each collection becomes a first-class
 `:Pickers` scope, gets auto-generated compat commands (`{PascalName}Files` /
-`{PascalName}Grep`), and optional keymaps.
+`{PascalName}Grep`), and optional keymaps. `dir` is expanded on merge (`~`,
+`$VAR`, `%VAR%`), so a literal `"$REPOS_DIR/Notes"` string works too — not
+just a pre-expanded `vim.env.*` value.
 
 ## Collection config
 

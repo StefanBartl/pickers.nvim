@@ -229,7 +229,8 @@ Collection fields:
     Unique scope identifier.  Used verbatim in `:Pickers <name>`.
 
   dir (string, required)~
-    Absolute path to the collection root.
+    Absolute path to the collection root.  Expanded on merge (`~`, `$VAR`,
+    `%VAR%`), so a literal `"$REPOS_DIR/Notes"` string works too.
 
   prefix (string|nil)~
     nil    — use `dir` directly as the search root
@@ -309,10 +310,14 @@ All keys are optional.  Unset keys retain their default values.
 
   repos_dir (string|nil, default $REPOS_DIR)~
     Root directory that contains git repositories.  Used by the `repos` scope.
+    `~`, `$VAR`, and `%VAR%` are expanded on merge, so a literal string like
+    `"$REPOS_DIR"` resolves correctly (not just a pre-expanded `vim.env.*`
+    value).
 
   collections (Pickers.Collection[], default {})~
     User-defined named scopes.  See |pickers-collections| for the full field
-    reference and auto-generated compat commands.
+    reference and auto-generated compat commands.  Each collection's `dir` is
+    expanded the same way as `repos_dir` (`~`/`$VAR`/`%VAR%`).
 
   depth_aliases (table<string, fun():string>)~
     Map alias name → function that returns an absolute path.  Merged with the
@@ -342,7 +347,8 @@ All keys are optional.  Unset keys retain their default values.
   history (table)~
     enabled   (bool, default false)   — master toggle, see |pickers-history|
     fzf_scope (string, default "plugin") — "plugin"|"global"|"patch", fzf-lua only
-    dir       (string|nil, default nil) — override history dir
+    dir       (string|nil, default nil) — override history dir, expanded like
+              `repos_dir` (`~`/`$VAR`/`%VAR%`)
     limit     (integer, default 200)  — max entries kept per history file
 
   selected_index (table)~

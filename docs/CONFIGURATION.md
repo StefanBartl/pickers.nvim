@@ -7,10 +7,13 @@ require("pickers").setup({
   -- "auto" detects telescope first, then fzf-lua, then snacks.nvim
   engine = "auto",                      -- "auto" | "telescope" | "fzf" | "snacks"
 
-  -- Root directory that contains git repositories (default: $REPOS_DIR)
+  -- Root directory that contains git repositories (default: $REPOS_DIR).
+  -- `~`, "$VAR", and "%VAR%" are expanded on merge, so a literal "$REPOS_DIR"
+  -- string works too -- not just a pre-expanded vim.env.* value.
   repos_dir = vim.env.REPOS_DIR,
 
-  -- User-defined named scopes (see docs/COLLECTIONS.md)
+  -- User-defined named scopes (see docs/COLLECTIONS.md). Each collection's
+  -- `dir` is expanded the same way as repos_dir.
   collections = {
     { name = "notes",    dir = vim.env.REPOS_DIR .. "/Notes",
       keys = { files = "<leader>mnf", grep = "<leader>mng" } },
@@ -53,6 +56,7 @@ require("pickers").setup({
     enabled = false,
     fzf_scope = "plugin",  -- "plugin" | "global" | "patch" — fzf-lua only
     dir = nil,             -- default: stdpath("data") .. "/pickers.nvim/history"
+                           -- (expanded like repos_dir if set: ~/$VAR/%VAR%)
     limit = 200,
   },
 
