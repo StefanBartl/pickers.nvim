@@ -266,6 +266,12 @@ function M.apply(opts)
     require("pickers.selected_index.highlight").apply(cfg.selected_index.highlight)
   end
 
+  if type(opts.result_count) == "table" then
+    if type(opts.result_count.enabled) == "boolean" then
+      cfg.result_count.enabled = opts.result_count.enabled
+    end
+  end
+
   if type(opts.keys) == "table" and type(opts.keys.entry_actions) == "table" then
     cfg.keys.entry_actions =
       normalise_entry_actions(opts.keys.entry_actions, cfg.keys.entry_actions)

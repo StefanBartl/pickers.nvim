@@ -54,6 +54,13 @@
 ---@field preview_toggle  Pickers.PreviewToggleConfig
 
 -- ###########################################################################
+-- Result count (live count shown in the prompt title). Telescope-only;
+-- fzf-lua/snacks already show a position/total counter natively.
+
+---@class Pickers.ResultCountConfig
+---@field enabled boolean  Default: false
+
+-- ###########################################################################
 -- Top-level configuration
 
 ---@class Pickers.Config
@@ -66,6 +73,7 @@
 ---@field usercmds       Pickers.Usercmds
 ---@field history        Pickers.HistoryConfig
 ---@field selected_index Pickers.SelectedIndexConfig
+---@field result_count   Pickers.ResultCountConfig
 ---@field keys           Pickers.KeysConfig
 
 return {}

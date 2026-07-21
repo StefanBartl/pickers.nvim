@@ -17,8 +17,9 @@ CONTENTS                                                      *pickers-contents*
   9. Configuration reference .......... |pickers-config|
  10. History .......................... |pickers-history|
  11. Selected index display .......... |pickers-selected-index|
- 12. Builtins ......................... |pickers-builtins|
- 13. Health check ..................... |pickers-health|
+ 12. Result count ..................... |pickers-result-count|
+ 13. Builtins ......................... |pickers-builtins|
+ 14. Health check ..................... |pickers-health|
 
 ==============================================================================
 1. INTRODUCTION                                                  *pickers-intro*
@@ -365,6 +366,10 @@ All keys are optional.  Unset keys retain their default values.
     highlight  (table, default { preset = "default" })
     toggle_key (string|nil, default nil)      — in-picker live toggle keymap
 
+  result_count (table)~
+    enabled (bool, default false) — master toggle, telescope-only, see
+                                     |pickers-result-count|
+
   keys (table)~
     Unified namespace for keybinding-shaped features that act *inside* an
     open picker (as opposed to `keymaps` above, which launches a scope).
@@ -483,7 +488,25 @@ Live toggle~
   registers no extra keymap, so enabled = false alone stays fully inert.
 
 ==============================================================================
-12. BUILTINS                                                  *pickers-builtins*
+12. RESULT COUNT                                          *pickers-result-count*
+
+Shows the live result count in the prompt window's title, e.g. "Find Files
+(128)".  Telescope-only — fzf-lua and snacks.nvim both already show a
+position/total counter natively, so this has no effect there and is
+skipped.  Disabled by default. >lua
+  require("pickers").setup({
+    result_count = {
+      enabled = true,
+    },
+  })
+<
+Updates by polling the entry manager every 150ms while the results buffer
+is open (not event-driven) — result counts can change asynchronously as a
+live finder (e.g. live_grep) streams in matches, with no CursorMoved or
+TextChanged event to hang the update off of.
+
+==============================================================================
+13. BUILTINS                                                  *pickers-builtins*
 
 :Pickers builtin {name}                                    dispatches one of
 ~46 native picker-engine builtins (buffers, help/man, marks/jumps/registers,
@@ -505,7 +528,7 @@ docs/BUILTINS.md.  Source of truth: `lua/pickers/builtins/init.lua`'s
 from docs).
 
 ==============================================================================
-13. HEALTH CHECK                                                *pickers-health*
+14. HEALTH CHECK                                                *pickers-health*
 
 Run: >
   :checkhealth pickers

@@ -90,6 +90,13 @@ local M = {
     toggle_key = nil,
   },
 
+  -- Live result count shown in the prompt title (e.g. "Find Files (128)").
+  -- Telescope-only, disabled by default -- fzf-lua and snacks.nvim both
+  -- already show a position/total counter natively. See pickers.result_count.
+  result_count = {
+    enabled = false,
+  },
+
   -- Unified in-picker keys namespace. Bundles keybinding-shaped features that
   -- act *inside* an open picker (as opposed to `keymaps`, which launches a
   -- scope in the first place).

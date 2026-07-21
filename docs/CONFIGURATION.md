@@ -69,6 +69,13 @@ require("pickers").setup({
     toggle_key = nil,                 -- e.g. "<M-i>" to toggle live in an open picker
   },
 
+  -- Live result count in the prompt title (e.g. "Find Files (128)").
+  -- Telescope-only, disabled by default -- fzf-lua and snacks.nvim both
+  -- already show a position/total counter natively.
+  result_count = {
+    enabled = false,
+  },
+
   -- Unified in-picker keys namespace (features acting *inside* an open
   -- picker, as opposed to `keymaps` above which launches a scope).
   keys = {
@@ -193,3 +200,25 @@ overlay starts visible and `toggle_key` can hide it; with `enabled = false`
 it starts hidden and `toggle_key` can show it. Leaving `toggle_key` unset
 (the default) registers no extra keymap at all, so `enabled = false` alone
 stays fully inert.
+
+---
+
+## Result count
+
+Shows the live result count in the prompt window's title, e.g. `Find Files
+(128)`. **Telescope-only** — fzf-lua and snacks.nvim both already show a
+position/total counter natively, so this has no effect there and is
+skipped. **Disabled by default.**
+
+```lua
+require("pickers").setup({
+  result_count = {
+    enabled = true,
+  },
+})
+```
+
+Updates by polling the entry manager every 150ms while the results buffer
+is open (not event-driven) — result counts can change asynchronously as a
+live finder (e.g. `live_grep`) streams in matches, with no `CursorMoved` or
+`TextChanged` event to hang the update off of.
