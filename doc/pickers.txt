@@ -274,6 +274,33 @@ Change a keymap: >lua
   require("pickers").setup({ keymaps = { cwd_grep = "<leader>sg" } })
 <
 
+In-picker keys (preview scroll + history + entry actions)~
+  Separate from the keymaps above, `keys` controls bindings that act *inside*
+  an open picker — one config surface for everything in this category,
+  defined once and translated per engine.  See |pickers-config| and
+  lua/pickers/keys/. >lua
+    require("pickers").setup({
+      keys = {
+        preview_scroll_down = { "<PageDown>", "<C-d>" },  -- two bindings
+        history_back        = false,                       -- unbind
+      },
+    })
+<
+  telescope and fzf-lua are patched globally (`defaults.mappings` /
+  `keymap.builtin`) — every picker they open, pickers.nvim's own and native
+  builtins alike, inherits the keys.  snacks cannot be self-patched
+  (pickers.nvim does not own `Snacks.setup()`); merge the exported `win`
+  table into your own setup: >lua
+    require("snacks").setup({
+      picker = { win = require("pickers.keys").snacks_win() },
+    })
+<
+  `create_file`/`open_background` (the in-picker entry actions) are the
+  exception: they are NOT patched globally, since they run pickers.nvim
+  logic rather than a built-in engine action — merge
+  lua/pickers/entry_actions/'s adapters into your own setup() manually, as
+  documented there.
+
 ==============================================================================
 8. COMPAT COMMANDS                                               *pickers-compat*
 
@@ -351,15 +378,23 @@ All keys are optional.  Unset keys retain their default values.
     highlight  (table, default { preset = "default" })
     toggle_key (string|nil, default nil)      — in-picker live toggle keymap
 
-  entry_actions (table)~
-    In-picker "create file/folder" and "open in background" actions, shared
-    across telescope/fzf-lua/snacks.nvim. See lua/pickers/entry_actions/README.md.
-      enable (bool, default true)
-      keys.create_file      (string|nil, default "<C-a>")
-      keys.open_background  (string|string[]|nil, default { "<S-CR>", "<C-o>" })
-    keys uses Neovim keymap syntax, honoured by the telescope/snacks adapters
-    only — fzf-lua's ctrl-a/ctrl-o/shift-enter bindings are fixed (fzf's own
-    bind syntax, not translatable from Neovim keymap syntax in general).
+  keys (table)~
+    Unified in-picker keys: preview scroll + history navigation (patched
+    globally into telescope/fzf-lua/snacks) plus the create_file/
+    open_background entry actions (merged manually into your own engine
+    setup() — see lua/pickers/entry_actions/README.md). See |pickers-keymaps|.
+      enable               (bool, default true) — master switch
+      preview_scroll_down  (string|string[]|false, default "<PageDown>")
+      preview_scroll_up    (string|string[]|false, default "<PageUp>")
+      preview_scroll_left  (string|string[]|false, default "<C-Left>")
+      preview_scroll_right (string|string[]|false, default "<C-Right>")
+      history_back         (string|string[]|false, default "<C-p>")
+      history_forward      (string|string[]|false, default "<C-n>")
+      create_file          (string|string[]|false, default "<C-a>")
+      open_background      (string|string[]|false, default { "<S-CR>", "<C-o>" })
+    fzf-lua only binds the vertical preview scroll and the fixed ctrl-a/
+    ctrl-o/shift-enter entry actions — horizontal scroll, history, and
+    remapping the entry-action keys are all fzf-native/fixed there.
 
 ==============================================================================
 10. HISTORY                                                    *pickers-history*

@@ -1,18 +1,20 @@
 ---@module 'pickers.keys'
----@brief Engine-agnostic in-picker keymaps (preview scroll + history navigation).
+---@brief Engine-agnostic in-picker keymaps: preview scroll, history navigation,
+---and the create_file/open_background entry actions — one config surface for
+---everything that acts *inside* an open picker (as opposed to `keymaps`, which
+---launches a scope in the first place).
 ---@description
---- One source of truth for the keys that act *inside* an open picker — preview
---- scrolling and native history navigation — expressed as engine-neutral action
---- names and translated per engine:
+--- Engine-neutral action names, translated per engine:
 ---
 ---   preview_scroll_down   preview_scroll_up
 ---   preview_scroll_left   preview_scroll_right
 ---   history_back          history_forward
+---   create_file           open_background
 ---
 --- Installation mirrors `pickers.history`: rather than injecting per-call into
---- every engine adapter, the keys are patched onto each engine's *global*
---- config, so they apply to every picker that engine opens — pickers.nvim's own
---- pickers AND native builtins (git/lsp/…):
+--- every engine adapter, preview-scroll/history are patched onto each engine's
+--- *global* config, so they apply to every picker that engine opens —
+--- pickers.nvim's own pickers AND native builtins (git/lsp/…):
 ---
 ---   telescope → `telescope.setup({ defaults = { mappings = ... } })`  (patch)
 ---   fzf-lua   → `fzf-lua.setup({ keymap = { builtin = ... } })`       (patch)
@@ -26,6 +28,14 @@
 --- preview scroll but no horizontal scroll, and its `--history` binds ctrl-p /
 --- ctrl-n natively (not remappable here). Unmappable actions are skipped and
 --- reported once via `notify.debug` — see `pickers.keys.adapters.fzf`.
+---
+--- `create_file`/`open_background` are NOT patched globally like the other
+--- four actions — unlike preview-scroll/history (built-in engine actions),
+--- they run pickers.nvim-specific logic (`pickers.entry_actions.*`), so they
+--- follow the same "you merge it into your own setup()" model as before. Only
+--- the *config* (`cfg.keys.create_file`/`cfg.keys.open_background`) moved into
+--- this unified namespace; see `pickers.entry_actions` for the adapters that
+--- read `pickers.keys.resolve()` to build their mapping tables.
 
 local M = {}
 
@@ -33,7 +43,7 @@ local M = {}
 --- The concrete lhs come from `cfg.keys`; `modes` are fixed per action (preview
 --- scroll works in insert + normal, history only in insert, matching how the
 --- prompt is used).
----@type table<string, { default: string, modes: string[] }>
+---@type table<string, { default: string|string[], modes: string[] }>
 M.ACTIONS = {
   preview_scroll_down = { default = "<PageDown>", modes = { "i", "n" } },
   preview_scroll_up = { default = "<PageUp>", modes = { "i", "n" } },
@@ -41,6 +51,8 @@ M.ACTIONS = {
   preview_scroll_right = { default = "<C-Right>", modes = { "i", "n" } },
   history_back = { default = "<C-p>", modes = { "i" } },
   history_forward = { default = "<C-n>", modes = { "i" } },
+  create_file = { default = "<C-a>", modes = { "i", "n" } },
+  open_background = { default = { "<S-CR>", "<C-o>" }, modes = { "i", "n" } },
 }
 
 --- Stable iteration order (pairs() is unordered; adapters and tests want
@@ -53,6 +65,8 @@ M.ORDER = {
   "preview_scroll_right",
   "history_back",
   "history_forward",
+  "create_file",
+  "open_background",
 }
 
 --- Normalise one raw config value into a list of lhs strings.

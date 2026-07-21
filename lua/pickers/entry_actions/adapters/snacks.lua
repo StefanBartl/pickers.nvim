@@ -41,7 +41,7 @@ end
 ---Named actions table for `Snacks.picker` `opts.actions`.
 ---@return table<string, function> actions
 function M.get_actions()
-  if not require("pickers.config").get().entry_actions.enable then
+  if require("pickers.config").get().keys.enable == false then
     return {}
   end
 
@@ -51,26 +51,19 @@ function M.get_actions()
   }
 end
 
----Key -> action-name bindings for `win.list.keys`, honouring configured keys.
+---Key -> action-name bindings for `win.list.keys`, honouring `pickers.keys`'
+---resolved `create_file`/`open_background` config.
 ---@return table<string, string> keys
 function M.get_keys()
-  local cfg = require("pickers.config").get().entry_actions
-  if not cfg.enable then
-    return {}
-  end
-
+  local resolved = require("pickers.keys").resolve()
   local keys = {}
 
-  if cfg.keys.create_file then
-    keys[cfg.keys.create_file] = "create_file"
+  for _, key in ipairs((resolved.create_file or {}).lhs or {}) do
+    keys[key] = "create_file"
   end
 
-  local bg_keys = type(cfg.keys.open_background) == "table" and cfg.keys.open_background
-    or { cfg.keys.open_background }
-  for _, key in ipairs(bg_keys) do
-    if key then
-      keys[key] = "open_background"
-    end
+  for _, key in ipairs((resolved.open_background or {}).lhs or {}) do
+    keys[key] = "open_background"
   end
 
   return keys

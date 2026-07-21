@@ -26,12 +26,13 @@ All keymaps carry a `desc` and are labelled through [which-key](https://github.c
 automatically when it is installed — no configuration required, and no hard
 dependency if it is not.
 
-## In-picker keys (preview scroll + history)
+## In-picker keys (preview scroll + history + entry actions)
 
 Separate from the normal-mode keymaps above, `keys` controls the bindings that
-act **inside** an open picker. They are defined once and translated per engine,
-so preview scrolling and history navigation behave the same on telescope,
-fzf-lua and snacks. See `lua/pickers/keys/`.
+act **inside** an open picker — one config surface for everything in this
+category. They are defined once and translated per engine, so preview
+scrolling and history navigation behave the same on telescope, fzf-lua and
+snacks. See `lua/pickers/keys/`.
 
 | Action | Default | telescope | fzf-lua | snacks |
 |---|---|---|---|---|
@@ -41,11 +42,23 @@ fzf-lua and snacks. See `lua/pickers/keys/`.
 | `preview_scroll_right` | `<C-Right>` | ✓ | — | ✓ |
 | `history_back` | `<C-p>` | ✓ | — | ✓ |
 | `history_forward` | `<C-n>` | ✓ | — | ✓ |
+| `create_file` | `<C-a>` | ✓ | fixed (`ctrl-a`) | ✓ |
+| `open_background` | `<S-CR>`, `<C-o>` | ✓ | fixed (`ctrl-o`/`shift-enter`) | ✓ |
 
 fzf-lua is the capability gap: its builtin previewer has no horizontal preview
-scroll, and its history is fzf's own `--history` bound to `ctrl-p`/`ctrl-n`
-natively (not remappable here). Unmappable actions are skipped and reported once
-via `notify.debug`.
+scroll, its history is fzf's own `--history` bound to `ctrl-p`/`ctrl-n`
+natively, and its entry-action bindings are fixed to `ctrl-a`/`ctrl-o`/
+`shift-enter` (fzf's own bind syntax, not translatable from Neovim keymap
+syntax) — none of these four are remappable there. Unmappable actions are
+skipped and reported once via `notify.debug` (or surfaced in `:checkhealth
+pickers` for the static, always-true gaps).
+
+**`create_file`/`open_background` are not patched globally** like the other
+four actions — they run pickers.nvim-specific logic
+(`lua/pickers/entry_actions/`), not a built-in engine action, so you still
+merge them into your own engine `setup()` manually. See
+`lua/pickers/entry_actions/README.md` for the adapters
+(`get_mappings()`/`get_actions()`/`get_keys()`).
 
 Each action takes a single lhs, a list of lhs, or `false` to unbind it:
 ```lua

@@ -59,11 +59,15 @@ local M = {
     enable = true,
   },
 
-  -- In-picker keymaps (preview scroll + native history navigation), unified
-  -- across telescope/fzf-lua/snacks. See pickers.keys.
+  -- Unified in-picker keys namespace: preview scroll + native history
+  -- navigation (patched globally into telescope/fzf-lua/snacks) plus the
+  -- create_file/open_background entry actions (merged manually into your own
+  -- engine setup() -- see pickers.entry_actions). See pickers.keys.
   --   Each action takes a single lhs, a list of lhs, or `false` to unbind it.
-  --   fzf-lua only binds the vertical preview scroll (its horizontal scroll and
-  --   history are fzf-native and fixed) — a documented capability gap.
+  --   fzf-lua only binds the vertical preview scroll and the fixed ctrl-a/
+  --   ctrl-o/shift-enter entry actions (horizontal scroll, history, and
+  --   remapping the entry-action keys are all fzf-native/fixed) — a
+  --   documented capability gap.
   keys = {
     enable = true,
     preview_scroll_down = "<PageDown>",
@@ -72,6 +76,8 @@ local M = {
     preview_scroll_right = "<C-Right>",
     history_back = "<C-p>",
     history_forward = "<C-n>",
+    create_file = "<C-a>",
+    open_background = { "<S-CR>", "<C-o>" },
   },
 
   -- Native picker-history file(s) under stdpath("data")/pickers.nvim/history.
@@ -103,18 +109,6 @@ local M = {
     -- for the currently open results list. nil (default) registers no
     -- keymap at all, keeping enabled=false fully inert.
     toggle_key = nil,
-  },
-
-  -- In-picker "create file/folder" and "open in background" entry actions,
-  -- shared across telescope/fzf-lua/snacks.nvim. See pickers.entry_actions.
-  --   fzf-lua's ctrl-a/ctrl-o/shift-enter bindings are fixed (fzf's own bind
-  --   syntax, not remappable via `keys` — see entry_actions.adapters.fzf).
-  entry_actions = {
-    enable = true,
-    keys = {
-      create_file = "<C-a>",
-      open_background = { "<S-CR>", "<C-o>" },
-    },
   },
 }
 
