@@ -5,6 +5,7 @@
 ```
 :Pickers [scope] [action]
 :Pickers dir [nav] [action]
+:Pickers builtin <name>
 ```
 
 When an argument is omitted an interactive picker appears (`hover_select` or
@@ -27,6 +28,7 @@ When an argument is omitted an interactive picker appears (`hover_select` or
 | `dir` | `path=/tmp` | `grep` | explicit path → live grep |
 | `notes` _(collection)_ | — | `files` | find files in collection root |
 | `wkdbooks` _(collection)_ | — | `grep` | pick subdir → live grep |
+| `builtin <name>` | — | — | native engine builtin, e.g. `:Pickers builtin marks` |
 
 Tab-completion is supported for all arguments, including collection names
 (once `setup()` — or the `VimEnter` fallback — has registered them; see
@@ -87,5 +89,21 @@ All commands from the original modules are preserved as aliases:
 | `:RepoGrep [repo]` | `:Pickers repos grep` (or jump straight to `[repo]`, tab-completed) |
 | `:WkdBookFiles` | `:Pickers wkdbooks files` |
 | `:WkdBookGrep` | `:Pickers wkdbooks grep` |
+
+---
+
+## `:Pickers builtin <name>`
+
+Dispatches straight to whichever engine is resolved (`pickers.engines.load()`)
+for one of ~46 native picker-engine builtins not otherwise reachable through
+`:Pickers <scope> <action>` — buffers, help/man, marks/jumps/registers,
+git (status/log/branches/stash/diff), LSP (references/definitions/symbols/
+calls), diagnostics, and a few engine-exclusive extras (snacks: `undo`,
+`icons`, `lazy_specs`, `gh_issue`, `gh_pr`, `projects`, `git_log_line`).
+
+Tab-completes the full registered name list. See
+[docs/BUILTINS.md](BUILTINS.md) for the full per-engine parity matrix —
+some names have no equivalent on a given engine and are skipped with a
+`notify.warn` instead of erroring.
 
 See also [docs/CHEATSHEET.md](CHEATSHEET.md) for a condensed, single-page version of this reference.

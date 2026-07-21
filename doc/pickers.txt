@@ -17,7 +17,8 @@ CONTENTS                                                      *pickers-contents*
   9. Configuration reference .......... |pickers-config|
  10. History .......................... |pickers-history|
  11. Selected index display .......... |pickers-selected-index|
- 12. Health check ..................... |pickers-health|
+ 12. Builtins ......................... |pickers-builtins|
+ 13. Health check ..................... |pickers-health|
 
 ==============================================================================
 1. INTRODUCTION                                                  *pickers-intro*
@@ -116,11 +117,13 @@ toggle keymaps/usercmds.
                                                                       *:Pickers*
 :Pickers [{scope} [{action}]]
 :Pickers dir [{nav} [{action}]]
+:Pickers builtin {name}
 
   scope    One of: cwd config folder repos wkdbooks system drives dir
            or any user-defined collection name (see |pickers-collections|)
   action   One of: files grep
   nav      (dir only) alias name, integer depth, or path=<dir>
+  name     (builtin only) a name from the |pickers-builtins| registry
 
 When an argument is omitted an interactive picker (hover_select or
 vim.ui.select) prompts the user.
@@ -139,6 +142,7 @@ Examples: >
   :Pickers system files       " systemwide fd search (prompts for query)
   :Pickers notes files        " find files in 'notes' collection
   :Pickers wkdbooks grep      " pick wkdbook subdir → live grep
+  :Pickers builtin marks      " native marks picker on the current engine
 <
 
 Tab-completion is supported for all arguments.
@@ -469,7 +473,29 @@ Live toggle~
   registers no extra keymap, so enabled = false alone stays fully inert.
 
 ==============================================================================
-12. HEALTH CHECK                                                *pickers-health*
+12. BUILTINS                                                  *pickers-builtins*
+
+:Pickers builtin {name}                                    dispatches one of
+~46 native picker-engine builtins (buffers, help/man, marks/jumps/registers,
+git status/log/branches/stash/diff, LSP references/definitions/symbols/
+calls, diagnostics, plus a few engine-exclusive extras) to whichever engine
+`pickers.engines.load()` resolves.  Complements |pickers-scopes|, which only
+covers plain files/grep.
+
+  require("pickers.builtins").names()   — sorted list of registered names
+  require("pickers.builtins").run(name, opts)
+
+If the current engine has no equivalent for {name}, run() reports a
+`notify.warn` and returns — it does not error.
+
+Full per-engine parity matrix, naming disagreements between engines (e.g.
+telescope/fzf-lua's "oldfiles" vs. snacks' "recent"), and genuine gaps: see
+docs/BUILTINS.md.  Source of truth: `lua/pickers/builtins/init.lua`'s
+`M.REGISTRY`, verified against the installed plugin sources (not guessed
+from docs).
+
+==============================================================================
+13. HEALTH CHECK                                                *pickers-health*
 
 Run: >
   :checkhealth pickers

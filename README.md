@@ -53,6 +53,7 @@ Then open the picker with:
 
 - [Installation](docs/INSTALLATION.md) — requirements, lazy.nvim (recommended + lazy-loading variant), packer.nvim, and health check.
 - [Commands](docs/COMMANDS.md) — the `:Pickers` command syntax, scopes, and compat command aliases.
+- [Builtins](docs/BUILTINS.md) — `:Pickers builtin <name>` registry and per-engine parity matrix.
 - [Collections](docs/COLLECTIONS.md) — defining user scopes over your own directories.
 - [Keymaps](docs/KEYMAPS.md) — default keymaps and how to change or disable them.
 - [Configuration](docs/CONFIGURATION.md) — full `setup()` reference, picker history, and the selected-index overlay.

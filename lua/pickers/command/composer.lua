@@ -53,6 +53,25 @@ local function action_arg()
   return { name = "action", type = "STRING", values = ACTION_VALUES, optional = true }
 end
 
+-- `:Pickers builtin <name>` dispatches straight to pickers.builtins.run,
+-- bypassing pickers.command.handle entirely -- a builtin isn't a scope with
+-- a dir/action shape, just a name -> native-picker-function lookup.
+composer.register_type("PICKERS_BUILTIN_NAME", {
+  validate = function(raw) return true, raw, nil end,
+  complete = function(arg_lead) return prefix(require("pickers.builtins").names(), arg_lead) end,
+})
+
+local function builtin_route()
+  return {
+    path = { "builtin" },
+    args = { { name = "name", type = "PICKERS_BUILTIN_NAME" } },
+    desc = "Native picker-engine builtins (buffers, LSP, git, marks, ...)",
+    run = function(ctx)
+      require("pickers.builtins").run(ctx.pos[1])
+    end,
+  }
+end
+
 ---@param scope string
 local function scope_route(scope)
   return {
@@ -103,6 +122,8 @@ function M.register(cfg)
   end
   routes[#routes + 1] = dir_route()
   used.dir = true
+  routes[#routes + 1] = builtin_route()
+  used.builtin = true
 
   for _, coll in ipairs(cfg.collections or {}) do
     local name = coll.name

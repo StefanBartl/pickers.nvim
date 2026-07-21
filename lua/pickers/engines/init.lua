@@ -23,19 +23,20 @@ end
 ---Load the best available engine, respecting the config default.
 ---@param requested Pickers.Engine|nil  Override; nil → use config default.
 ---@return table|nil  Engine module, or nil when nothing is available.
+---@return string|nil  Resolved engine name ("telescope"|"fzf"|"snacks"), or nil.
 function M.load(requested)
   local cfg = require("pickers.config").get()
   local want = (type(requested) == "string" and requested) or cfg.engine
 
   if want ~= "auto" then
     local mod = try_load(want)
-    if mod then return mod end
+    if mod then return mod, want end
     notify.warn("Engine '" .. want .. "' not available — falling back to auto-detect")
   end
 
   for _, name in ipairs({ "telescope", "fzf", "snacks" }) do
     local mod = try_load(name)
-    if mod then return mod end
+    if mod then return mod, name end
   end
 
   notify.error("No picker engine found. Install telescope.nvim, fzf-lua, or snacks.nvim.")
