@@ -55,12 +55,23 @@ M.REGISTRY = {
   lazy_specs       = { telescope = false,             fzf = false,            snacks = "lazy" },
   -- Search word/WORD under cursor: same idea, different names per engine.
   grep_word        = { telescope = "grep_string",     fzf = "grep_cword",      snacks = "grep_word" },
+  -- Fuzzy find within the current buffer's lines. fzf-lua's "lines" (plural,
+  -- no qualifier) actually means *all* open buffers -- the current-buffer-only
+  -- variant is "blines". Don't confuse the two.
+  lines            = { telescope = "current_buffer_fuzzy_find", fzf = "blines", snacks = "lines" },
+  -- Live grep restricted to open/listed buffers. snacks-only: telescope has
+  -- no dedicated function (only a grep_open_files opt on live_grep, not a
+  -- separate picker name); fzf-lua's closest is grep_curbuf (current buffer
+  -- only, not "all open buffers"), a different scope.
+  grep_buffers     = { telescope = false,             fzf = false,             snacks = "grep_buffers" },
+  -- snacks-only: browse snacks.nvim's own notification history.
+  notifications    = { telescope = false,             fzf = false,             snacks = "notifications" },
 
   -- ── Git ─────────────────────────────────────────────────────────────────
   git_files        = { telescope = "git_files",       fzf = "git_files",       snacks = "git_files" },
   git_status       = { telescope = "git_status",      fzf = "git_status",      snacks = "git_status" },
-  -- snacks has no per-file bcommits picker.
-  git_bcommits     = { telescope = "git_bcommits",    fzf = "git_bcommits",    snacks = false },
+  -- snacks calls the per-file commit log "git_log_file", not "git_bcommits".
+  git_bcommits     = { telescope = "git_bcommits",    fzf = "git_bcommits",    snacks = "git_log_file" },
   -- snacks calls its commit-log picker "git_log", not "git_commits".
   git_commits      = { telescope = "git_commits",     fzf = "git_commits",     snacks = "git_log" },
   git_branches     = { telescope = "git_branches",    fzf = "git_branches",    snacks = "git_branches" },

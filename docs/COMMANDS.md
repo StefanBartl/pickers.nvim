@@ -97,7 +97,7 @@ All commands from the original modules are preserved as aliases:
 ## `:Pickers builtin <name>`
 
 Dispatches straight to whichever engine is resolved (`pickers.engines.load()`)
-for one of ~46 native picker-engine builtins not otherwise reachable through
+for one of ~49 native picker-engine builtins not otherwise reachable through
 `:Pickers <scope> <action>` — buffers, help/man, marks/jumps/registers,
 git (status/log/branches/stash/diff), LSP (references/definitions/symbols/
 calls), diagnostics, and a few engine-exclusive extras (snacks: `undo`,

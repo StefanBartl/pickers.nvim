@@ -5,8 +5,9 @@ jumps, registers, git, LSP, diagnostics, and a handful of engine-exclusive
 extras — dispatched to whichever engine `pickers.engines.load()` resolves.
 
 Complements the `:Pickers <scope> <action>` layer, which only knows plain
-files/grep. `explorer`/`dashboard`/`notifications` are deliberately excluded:
-they aren't pickers, or have no cross-engine equivalent.
+files/grep. `explorer`/`dashboard` are deliberately excluded (not pickers).
+`notifications` (snacks' own notification history) *is* included even
+though it's snacks-only — see the registry entry.
 
 Source of truth: `lua/pickers/builtins/init.lua`'s `M.REGISTRY`. Every
 mapping below was verified against the actually installed plugin sources
@@ -45,7 +46,7 @@ If the current engine has no equivalent for a given name, `run()` reports
 | `filetypes` | `filetypes` | `filetypes` | — |
 | `gh_issue` | — | — | `gh_issue` |
 | `gh_pr` | — | — | `gh_pr` |
-| `git_bcommits` | `git_bcommits` | `git_bcommits` | — |
+| `git_bcommits` | `git_bcommits` | `git_bcommits` | `git_log_file` |
 | `git_branches` | `git_branches` | `git_branches` | `git_branches` |
 | `git_commits` | `git_commits` | `git_commits` | `git_log` |
 | `git_diff` | — | `git_diff` | `git_diff` |
@@ -53,6 +54,7 @@ If the current engine has no equivalent for a given name, `run()` reports
 | `git_log_line` | — | — | `git_log_line` |
 | `git_stash` | `git_stash` | `git_stash` | `git_stash` |
 | `git_status` | `git_status` | `git_status` | `git_status` |
+| `grep_buffers` | — | — | `grep_buffers` |
 | `grep_word` | `grep_string` | `grep_cword` | `grep_word` |
 | `help` | `help_tags` | `helptags` | `help` |
 | `highlights` | `highlights` | `highlights` | `highlights` |
@@ -60,6 +62,7 @@ If the current engine has no equivalent for a given name, `run()` reports
 | `jumps` | `jumplist` | `jumps` | `jumps` |
 | `keymaps` | `keymaps` | `keymaps` | `keymaps` |
 | `lazy_specs` | — | — | `lazy` |
+| `lines` | `current_buffer_fuzzy_find` | `blines` | `lines` |
 | `loclist` | `loclist` | `loclist` | `loclist` |
 | `lsp_declarations` | — | `lsp_declarations` | `lsp_declarations` |
 | `lsp_definitions` | `lsp_definitions` | `lsp_definitions` | `lsp_definitions` |
@@ -72,6 +75,7 @@ If the current engine has no equivalent for a given name, `run()` reports
 | `lsp_workspace_symbols` | `lsp_workspace_symbols` | `lsp_workspace_symbols` | `lsp_symbols` |
 | `man_pages` | `man_pages` | `manpages` | `man` |
 | `marks` | `marks` | `marks` | `marks` |
+| `notifications` | — | — | `notifications` |
 | `oldfiles` | `oldfiles` | `oldfiles` | `recent` |
 | `projects` | — | — | `projects` |
 | `quickfix` | `quickfix` | `quickfix` | `qflist` |
@@ -93,15 +97,26 @@ Notable naming disagreements between engines (same feature, different name):
   document/workspace (or buffer/global) names.
 - **Type definitions**: fzf-lua's name is `lsp_typedefs`, not
   `lsp_type_definitions` like the other two engines.
+- **Per-file commit log**: telescope/fzf-lua call it `git_bcommits`
+  ("buffer commits"); snacks calls it `git_log_file`.
+- **Current-buffer fuzzy lines**: telescope's `current_buffer_fuzzy_find`
+  and snacks' `lines` both mean "fuzzy search this buffer's lines" — but
+  fzf-lua's `lines` (no qualifier) means *all* open buffers; the
+  current-buffer-only equivalent there is `blines`. Don't confuse `lines`
+  and `blines` on fzf-lua — this registry's `lines` entry maps to `blines`.
 
 Genuine gaps (no equivalent on that engine, not a naming difference):
 
 - **telescope**: no `git_diff`, `lsp_declarations`, `undo`(-tree) picker.
-- **fzf-lua**: no `resume` (fzf-lua has no picker-session resume concept).
-- **snacks**: no `filetypes`, `spell_suggest`, `git_bcommits` picker.
+- **fzf-lua**: no `resume` (fzf-lua has no picker-session resume concept);
+  no dedicated "grep across open buffers" picker (its closest, `grep_curbuf`,
+  is current-buffer-only, a different scope than snacks' `grep_buffers`).
+- **snacks**: no `filetypes`, `spell_suggest` picker.
 - **snacks-only extras**: `icons`, `lazy_specs` (lazy.nvim plugin specs),
-  `gh_issue`, `gh_pr`, `projects`, `git_log_line` (per-line git blame/log) —
-  none of the other two engines ship an equivalent.
+  `gh_issue`, `gh_pr`, `projects`, `git_log_line` (per-line git blame/log),
+  `grep_buffers` (grep across open/listed buffers), `notifications`
+  (snacks' own notification history) — none of the other two engines ship
+  an equivalent.
 
 ## Adding an entry
 

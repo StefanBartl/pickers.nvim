@@ -519,7 +519,7 @@ TextChanged event to hang the update off of.
 13. BUILTINS                                                  *pickers-builtins*
 
 :Pickers builtin {name}                                    dispatches one of
-~46 native picker-engine builtins (buffers, help/man, marks/jumps/registers,
+~49 native picker-engine builtins (buffers, help/man, marks/jumps/registers,
 git status/log/branches/stash/diff, LSP references/definitions/symbols/
 calls, diagnostics, plus a few engine-exclusive extras) to whichever engine
 `pickers.engines.load()` resolves.  Complements |pickers-scopes|, which only
