@@ -25,10 +25,22 @@ local function find_fd()
   return nil
 end
 
+---Default search root(s) when the user gives no path token. On native
+---Windows (not WSL), "/" only means the current drive's root, not "search
+---everything" -- fd resolves it relative to cwd's drive. Fall back to every
+---drive letter instead, matching pickers.sources.drives.
+---@return string[]
+local function default_paths()
+  local drives = require("pickers.sources.drives")
+  if drives.is_windows() then return drives.get_roots() end
+  return { "/" }
+end
+
 ---Parse user input into an fd argv table.
 ---@param input  string
 ---@param fd     string   fd executable name
----@return string[]
+---@return string[] cmd
+---@return string[] paths  Resolved search root(s) (for the caller's `roots` field)
 local function build_fd_cmd(input, fd)
   local name = nil
   local ext = nil
@@ -44,7 +56,7 @@ local function build_fd_cmd(input, fd)
     end
   end
 
-  if #paths == 0 then paths = { "/" } end
+  if #paths == 0 then paths = default_paths() end
 
   -- fd argv is: fd [OPTIONS] <pattern> <path...>. The pattern must always be the
   -- first positional — an empty string matches everything. Without it fd would
@@ -61,7 +73,7 @@ local function build_fd_cmd(input, fd)
   cmd[#cmd + 1] = "--hidden"
   cmd[#cmd + 1] = "--follow"
 
-  return cmd
+  return cmd, paths
 end
 
 -- ── Public API ────────────────────────────────────────────────────────────────
@@ -83,9 +95,9 @@ function M.get(_cfg, callback)
       return
     end
 
-    local cmd = build_fd_cmd(input, fd)
+    local cmd, paths = build_fd_cmd(input, fd)
     callback({
-      roots = { "/" },
+      roots = paths,
       prompt = "System> ",
       find_command = cmd,
     })

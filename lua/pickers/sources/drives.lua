@@ -35,6 +35,14 @@ local function is_wsl()
   return ok2 and lines and lines[1] and lines[1]:lower():find("microsoft", 1, true) ~= nil
 end
 
+---Whether the current platform is native Windows (not WSL). Exported for
+---pickers.sources.system, which needs to know when "/" doesn't mean
+---"everything" (on native Windows it's just the current drive's root).
+---@return boolean
+function M.is_windows()
+  return is_windows()
+end
+
 -- ── Root discovery ────────────────────────────────────────────────────────────
 
 local function windows_roots()
@@ -86,7 +94,12 @@ local function posix_roots()
   return dirs
 end
 
-local function get_roots()
+---All mount points / drive letters for the current platform, session-cached.
+---Exported (not just module-local) so other sources needing a "search
+---everything" root list -- e.g. pickers.sources.system's fallback when no
+---path token is given -- don't have to duplicate platform detection.
+---@return string[]
+function M.get_roots()
   if _cache then return _cache end
 
   local raw
@@ -107,7 +120,7 @@ end
 ---@param _cfg    Pickers.Config
 ---@param callback fun(Pickers.Source|nil)
 function M.get(_cfg, callback)
-  local roots = get_roots()
+  local roots = M.get_roots()
   if #roots == 0 then
     notify.warn("No drive roots / mount points found")
     callback(nil)

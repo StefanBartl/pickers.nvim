@@ -29,6 +29,13 @@ local function safe_call(fn, opts)
   if not ok then notify.error("telescope error: " .. tostring(err)) end
 end
 
+---@return string  "fd" | "fdfind" (Debian/Ubuntu package name), fd assumed if neither is found.
+local function fd_exec()
+  if vim.fn.executable("fd") == 1 then return "fd" end
+  if vim.fn.executable("fdfind") == 1 then return "fdfind" end
+  return "fd"
+end
+
 ---History opts for `call_opts.history`, or nil when history is disabled.
 ---Always the same value regardless of `fzf_scope` — see `pickers.history`
 ---@brief for why telescope has no per-call/per-scope history isolation.
@@ -156,7 +163,7 @@ function M.pick_dir(opts)
     .new({}, {
       prompt_title = opts.prompt or "Folder",
       finder = finders.new_oneshot_job(
-        { "fd", "--type", "d", "--hidden", "--follow", "--exclude", ".git", ".", cwd },
+        { fd_exec(), "--type", "d", "--hidden", "--follow", "--exclude", ".git", ".", cwd },
         {
           entry_maker = function(entry)
             return {

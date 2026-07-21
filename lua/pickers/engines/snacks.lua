@@ -19,6 +19,13 @@ local notify = require("lib.nvim.notify").create("[pickers.engines.snacks]")
 
 local M = {}
 
+---@return string  "fd" | "fdfind" (Debian/Ubuntu package name), fd assumed if neither is found.
+local function fd_exec()
+  if vim.fn.executable("fd") == 1 then return "fd" end
+  if vim.fn.executable("fdfind") == 1 then return "fdfind" end
+  return "fd"
+end
+
 ---Safely call a function; report errors via notify.
 ---@param fn function
 ---@param opts table
@@ -141,7 +148,7 @@ function M.pick_dir(opts)
   local cwd = opts.cwd or vim.fn.getcwd()
 
   vim.system(
-    { "fd", "--type", "d", "--hidden", "--follow", "--exclude", ".git", ".", cwd },
+    { fd_exec(), "--type", "d", "--hidden", "--follow", "--exclude", ".git", ".", cwd },
     { text = true },
     function(res)
       vim.schedule(function()
