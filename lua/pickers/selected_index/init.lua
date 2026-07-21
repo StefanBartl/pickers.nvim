@@ -152,12 +152,17 @@ function M.attach_mappings(prompt_bufnr, map)
   end
 
   local augname = "PickersSelectedIndexAUG_" .. tostring(results_bufnr)
-  local aug = vim.api.nvim_create_augroup(augname, { clear = true })
+  local aug = require("lib.nvim.autocmd").group(augname, true)
   local debounce = require("pickers.selected_index.debounce")
   local debounced_update, cleanup_debounce = debounce.debounce(update_selected_index, 30)
 
   _cleanup_by_bufnr[results_bufnr] = cleanup_debounce
 
+  -- These three stay on the raw API deliberately -- lib.nvim.autocmd.create's
+  -- opts only forward group/pattern/desc/once/nested (no `buffer`), so routing
+  -- them through it would silently turn these picker-local hooks into global
+  -- (every-buffer) listeners. Same gap documented in github_stats.nvim,
+  -- color_my_ascii.nvim and markdown.nvim.
   vim.api.nvim_create_autocmd({ "CursorMoved" }, {
     group = aug,
     buffer = results_bufnr,
