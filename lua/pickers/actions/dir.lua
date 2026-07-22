@@ -80,11 +80,10 @@ local function dispatch(path, action, engine_mod)
     roots = { path },
     prompt = (tail ~= "" and tail or path) .. "> ",
   }
-  if action == "grep" then
-    require("pickers.actions.grep").run(source, engine_mod)
-  else
-    require("pickers.actions.files").run(source, engine_mod)
-  end
+  -- Delegates to pickers.command.dispatch (not actions.files/grep directly)
+  -- so :PickersRepeat also covers dir-scope dispatches -- pickers.last.set()
+  -- is that function's single choke point, shared with every other scope.
+  require("pickers.command").dispatch(action, source, engine_mod)
 end
 
 -- ── Public API ────────────────────────────────────────────────────────────────

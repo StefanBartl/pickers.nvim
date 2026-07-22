@@ -17,6 +17,12 @@
 --- M.handle is the dispatch engine called both by the composer-registered
 --- :Pickers command and every compat alias (usrcmds.lua, collections.lua,
 --- keymaps.lua) via `{ fargs = {...} }`.
+---
+--- Every fully-resolved dispatch (concrete action + source, the point where
+--- an engine picker actually opens) is recorded in `pickers.last`, so
+--- `:PickersRepeat` can reopen the exact same scope/root/action without
+--- re-resolving through any interactive sub-picker (folder/repo/collection
+--- subdir) in between.
 
 local notify = require("lib.nvim.notify").create("[pickers.command]")
 local perr = require("pickers.error")
@@ -54,11 +60,21 @@ end
 ---@param source     Pickers.Source
 ---@param engine_mod table
 local function dispatch_action(action, source, engine_mod)
+  require("pickers.last").set(action, source)
   if action == "grep" then
     require("pickers.actions.grep").run(source, engine_mod)
   else
     require("pickers.actions.files").run(source, engine_mod)
   end
+end
+
+---Public entry point for `pickers.last.run()` to replay a previously
+---recorded {action, source} pair without going through M.handle.
+---@param action     Pickers.Action
+---@param source     Pickers.Source
+---@param engine_mod table
+function M.dispatch(action, source, engine_mod)
+  dispatch_action(action, source, engine_mod)
 end
 
 ---@param source     Pickers.Source|nil
