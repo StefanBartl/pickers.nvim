@@ -15,8 +15,10 @@ local BASE_SCOPES = {
 }
 
 ---Build the complete scope list: built-in scopes + collection names from config.
+---Exported (not just module-local) so `:PickersScopes` can list the same set
+---without opening an interactive picker -- see pickers.bindings.usrcmds.
 ---@return string[]
-local function build_scope_list()
+function M.list()
   local scopes = vim.list_extend({}, BASE_SCOPES)
   local ok, cfg_mod = pcall(require, "pickers.config")
   if ok then
@@ -31,7 +33,7 @@ end
 ---Open the scope picker and call callback with the chosen scope (or nil on cancel).
 ---@param callback fun(string|nil)
 function M.open(callback)
-  local scopes = build_scope_list()
+  local scopes = M.list()
   local ok, kit = pcall(require, "lib.nvim.ui.kit")
   if ok and kit and type(kit.select) == "function" then
     kit.select({

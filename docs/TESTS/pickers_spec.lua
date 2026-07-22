@@ -154,6 +154,30 @@ do
   check("last.run: does not throw", ok)
 end
 
+-- ── pickers.ui.scope_picker.list() — :PickersScopes' data source ────────────
+do
+  local config = require("pickers.config")
+  local scope_picker = require("pickers.ui.scope_picker")
+
+  config.apply({ collections = { { name = "notes", dir = "/tmp/notes" } } })
+  local scopes = scope_picker.list()
+
+  check("scope_picker.list: includes built-in cwd", has(scopes, "cwd"))
+  check("scope_picker.list: includes built-in dir", has(scopes, "dir"))
+  check("scope_picker.list: includes collection name", has(scopes, "notes"))
+  check(
+    "scope_picker.list: built-ins come before collections",
+    (function()
+      local cwd_i, notes_i
+      for i, s in ipairs(scopes) do
+        if s == "cwd" then cwd_i = i end
+        if s == "notes" then notes_i = i end
+      end
+      return cwd_i and notes_i and cwd_i < notes_i
+    end)()
+  )
+end
+
 -- ── config.apply — selected_index normalisation ─────────────────────────────
 do
   local config = require("pickers.config")

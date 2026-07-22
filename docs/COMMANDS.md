@@ -113,4 +113,14 @@ interactive sub-picker (folder/repo/collection subdir) in between. Covers
 every scope, including `dir`. In-memory only, current session; warns if
 nothing has been dispatched yet. See `lua/pickers/last.lua`.
 
+---
+
+## `:PickersScopes`
+
+Lists every scope `:Pickers` can resolve — built-in scopes (with a one-line
+description) plus every user-defined collection (with its root directory) —
+via `notify.info`, without opening the interactive scope picker. Useful as a
+quick "what have I got configured" check, especially for collections defined
+across multiple `setup()` merges.
+
 See also [docs/CHEATSHEET.md](CHEATSHEET.md) for a condensed, single-page version of this reference.

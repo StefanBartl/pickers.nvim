@@ -104,7 +104,11 @@ a promise; it is a backlog of ideas ordered roughly by usefulness.
 - [x] `:PickersRepeat` — reopen the most recently dispatched action (same
   resolved scope/root/action). See "Remember last scope/action" above.
 - [ ] `:PickersResume` — reopen the last picker with the last query.
-- [ ] `:PickersScopes` — list all resolvable scopes (built-ins + collections).
+- [x] `:PickersScopes` — lists every scope :Pickers can resolve (built-in
+  scopes with a one-line description, plus every collection with its root
+  dir) via `notify.info`. See `pickers.ui.scope_picker.list()` (exported,
+  the same list the interactive scope picker uses) and
+  [docs/COMMANDS.md](COMMANDS.md#pickersscopes).
 
 ## Keymaps
 
