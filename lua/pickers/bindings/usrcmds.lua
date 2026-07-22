@@ -4,7 +4,7 @@
 ---   :DirPicker [nav]  :FindInFolder  :FindConfig  :GrepConfig
 ---   :LiveGrep  :AllDrives  :AllDrivesGrep  :FindOnSystem
 ---   :RepoFiles [repo]  :RepoGrep [repo]  :WkdBookFiles  :WkdBookGrep
----   :PickersRepeat  :PickersScopes
+---   :PickersRepeat  :PickersScopes  :PickersResume
 ---
 --- :RepoFiles/:RepoGrep accept an optional repo-name argument (tab-completed
 --- from REPOS_DIR) that jumps straight into files/grep for that repo, skipping
@@ -17,6 +17,13 @@
 --- :PickersScopes lists every scope :Pickers can resolve -- built-ins (with a
 --- one-line description) plus every user-defined collection (with its root
 --- dir) -- without opening the interactive scope picker.
+---
+--- :PickersResume reopens the last picker with its last query, i.e. the
+--- engine's own native resume/history-of-open-pickers feature -- a thin
+--- wrapper over pickers.builtins.run("resume"). Distinct from :PickersRepeat
+--- (which replays pickers.nvim's own last resolved scope/action, not the
+--- engine's session history). fzf-lua has no resume concept, so this is a
+--- documented no-op notify.warn there -- see docs/BUILTINS.md.
 
 local usercmd = require("pickers.bindings.util").usercmd
 local notify = require("lib.nvim.notify").create("[pickers]")
@@ -148,6 +155,10 @@ function M.register()
   usercmd("PickersScopes", function(_)
     list_scopes()
   end, "[pickers] :PickersScopes — list every resolvable scope (built-ins + collections)", "?")
+
+  usercmd("PickersResume", function(_)
+    require("pickers.builtins").run("resume")
+  end, "[pickers] :PickersResume — reopen the last picker with its last query", "?")
 end
 
 return M
