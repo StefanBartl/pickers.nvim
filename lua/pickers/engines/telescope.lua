@@ -79,7 +79,9 @@ function M.pick_files(opts)
     end
   end
 
-  call_opts.attach_mappings = require("pickers.selected_index").wrap_attach_mappings(nil)
+  call_opts.attach_mappings = require("pickers.result_count").wrap_attach_mappings(
+    require("pickers.selected_index").wrap_attach_mappings(nil)
+  )
   call_opts.history = history_opts()
 
   safe_call(builtin.find_files, call_opts)
@@ -101,7 +103,9 @@ function M.live_grep(opts)
     additional_args = function()
       return vim.list_extend({ "--hidden", "--no-ignore-vcs", "-S" }, extra)
     end,
-    attach_mappings = require("pickers.selected_index").wrap_attach_mappings(nil),
+    attach_mappings = require("pickers.result_count").wrap_attach_mappings(
+      require("pickers.selected_index").wrap_attach_mappings(nil)
+    ),
     history = history_opts(),
   })
 end
@@ -122,14 +126,16 @@ function M.pick_item(opts)
       finder = finders.new_table({ results = opts.items }),
       sorter = conf.values.generic_sorter({}),
       history = history_opts(),
-      attach_mappings = require("pickers.selected_index").wrap_attach_mappings(function(_, _map)
-        actions.select_default:replace(function(bufnr)
-          actions.close(bufnr)
-          local sel = action_state.get_selected_entry()
-          if sel then opts.on_select(sel[1]) end
+      attach_mappings = require("pickers.result_count").wrap_attach_mappings(
+        require("pickers.selected_index").wrap_attach_mappings(function(_, _map)
+          actions.select_default:replace(function(bufnr)
+            actions.close(bufnr)
+            local sel = action_state.get_selected_entry()
+            if sel then opts.on_select(sel[1]) end
+          end)
+          return true
         end)
-        return true
-      end),
+      ),
     })
     :find()
 end
@@ -165,14 +171,16 @@ function M.pick_dir(opts)
       sorter = conf.values.file_sorter({}),
       previewer = conf.values.file_previewer({}),
       history = history_opts(),
-      attach_mappings = require("pickers.selected_index").wrap_attach_mappings(function(_, _map)
-        actions.select_default:replace(function(bufnr)
-          actions.close(bufnr)
-          local sel = action_state.get_selected_entry()
-          if sel then opts.on_select(vim.fs.normalize(sel.path or sel.value or sel[1])) end
+      attach_mappings = require("pickers.result_count").wrap_attach_mappings(
+        require("pickers.selected_index").wrap_attach_mappings(function(_, _map)
+          actions.select_default:replace(function(bufnr)
+            actions.close(bufnr)
+            local sel = action_state.get_selected_entry()
+            if sel then opts.on_select(vim.fs.normalize(sel.path or sel.value or sel[1])) end
+          end)
+          return true
         end)
-        return true
-      end),
+      ),
     })
     :find()
 end

@@ -230,6 +230,12 @@ function M.apply(opts)
     cfg.selected_index = normalise_selected_index(opts.selected_index, cfg.selected_index)
     require("pickers.selected_index.highlight").apply(cfg.selected_index.highlight)
   end
+
+  if type(opts.result_count) == "table" then
+    if type(opts.result_count.enabled) == "boolean" then
+      cfg.result_count.enabled = opts.result_count.enabled
+    end
+  end
 end
 
 return M

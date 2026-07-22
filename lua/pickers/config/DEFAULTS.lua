@@ -114,6 +114,13 @@ local M = {
     -- keymap at all, keeping enabled=false fully inert.
     toggle_key = nil,
   },
+
+  -- Live result count shown in the prompt title (e.g. "Find Files (128)").
+  -- Telescope-only, disabled by default -- fzf-lua and snacks.nvim both
+  -- already show a position/total counter natively. See pickers.result_count.
+  result_count = {
+    enabled = false,
+  },
 }
 
 return M

@@ -48,9 +48,14 @@ a promise; it is a backlog of ideas ordered roughly by usefulness.
     `:Pickers builtin <name>` equivalent now.
 - [ ] **Per-scope overrides.** Currently `find` is global; allow per-collection /
   per-scope find overrides.
-- [ ] **Result-count** overlay surfaced through `setup()` (e.g. total match count
-  in the prompt title). Preview toggle is done — see `keys.preview_toggle`
-  above.
+- [x] **Result count.** `result_count = { enabled }` in `setup()` — live match
+  count in the prompt title (e.g. "Find Files (128)"). Telescope-only,
+  disabled by default; fzf-lua/snacks already show a position/total counter
+  natively. Polls the entry manager every 150ms (result counts can change
+  asynchronously as a live finder streams in matches, with no CursorMoved/
+  TextChanged to hang an update off of). See `lua/pickers/result_count/` and
+  [docs/CONFIGURATION.md](CONFIGURATION.md#result-count). Preview toggle is
+  also done — see `keys.preview_toggle` above.
 - [ ] **Remember last scope/action** for a `:Pickers` repeat command.
 - [x] **Selected-index overlay.** `selected_index = { enabled, position, highlight, toggle_key }`
   in `setup()` — shows the index of the selected entry in the results buffer.
