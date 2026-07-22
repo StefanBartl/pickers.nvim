@@ -155,6 +155,35 @@ do
   check("selected_index: toggle_key = false clears it", cfg6.selected_index.toggle_key == nil)
 end
 
+-- ── config.apply — result_count normalisation; wrap_attach_mappings contract ─
+do
+  local config = require("pickers.config")
+  local result_count = require("pickers.result_count")
+
+  local cfg0 = config.get()
+  check("result_count: default disabled", cfg0.result_count.enabled == false)
+
+  -- Fully inert contract (same as selected_index): disabled → wrap returns
+  -- `orig` completely unchanged, including nil.
+  check("result_count.wrap: disabled → nil stays nil", result_count.wrap_attach_mappings(nil) == nil)
+  local passthrough = function() end
+  check(
+    "result_count.wrap: disabled → orig fn unchanged",
+    result_count.wrap_attach_mappings(passthrough) == passthrough
+  )
+
+  config.apply({ result_count = { enabled = true } })
+  local cfg1 = config.get()
+  check("result_count: enabled overridden", cfg1.result_count.enabled == true)
+  check(
+    "result_count.wrap: enabled → wraps into a new function",
+    type(result_count.wrap_attach_mappings(nil)) == "function"
+  )
+
+  config.apply({ result_count = { enabled = false } })
+  check("result_count: restored to disabled", config.get().result_count.enabled == false)
+end
+
 -- ── config.apply — history normalisation ────────────────────────────────────
 do
   local config = require("pickers.config")

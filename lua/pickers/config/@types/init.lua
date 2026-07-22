@@ -42,5 +42,6 @@
 ---@field keys           Pickers.KeysConfig
 ---@field history        Pickers.HistoryConfig
 ---@field selected_index Pickers.SelectedIndexConfig
+---@field result_count   Pickers.ResultCountConfig
 
 return {}
