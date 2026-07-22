@@ -55,7 +55,7 @@ do
       { name = "notes", dir = "/tmp/notes" },
       { name = "", dir = "/x" }, -- invalid: empty name → dropped
       { dir = "/y" }, -- invalid: no name    → dropped
-      { name = "proj", dir = "/tmp/proj", prefix = "", only_git = true },
+      { name = "proj", dir = "/tmp/proj", prefix = "", only_git = true, find = { hidden = false } },
     },
     keymaps = { cwd_grep = "<leader>zz" },
   })
@@ -66,6 +66,8 @@ do
   check("apply: first collection name", cfg.collections[1] and cfg.collections[1].name == "notes")
   check("apply: only_git normalised", cfg.collections[2] and cfg.collections[2].only_git == true)
   check("apply: prefix empty-string kept", cfg.collections[2] and cfg.collections[2].prefix == "")
+  check("apply: collection find override kept", cfg.collections[2] and cfg.collections[2].find.hidden == false)
+  check("apply: collection with no find override → nil", cfg.collections[1] and cfg.collections[1].find == nil)
   check("apply: keymap overridden", cfg.keymaps.cwd_grep == "<leader>zz")
   check("apply: keymap default kept", cfg.keymaps.config_files == "<leader>fc")
 
@@ -79,6 +81,48 @@ do
   local cfg2 = config.get()
   check("find: no_ignore overridden", cfg2.find.no_ignore == true)
   check("find: hidden still default", cfg2.find.hidden == true)
+end
+
+-- ── pickers.actions.files — per-collection find override merges over cfg.find ─
+do
+  local config = require("pickers.config")
+  local files = require("pickers.actions.files")
+
+  config.apply({ find = { hidden = true, follow = true, no_ignore = false } })
+
+  local captured
+  local fake_engine = {
+    pick_files = function(opts) captured = opts end,
+  }
+
+  -- No override on the source: falls through to global cfg.find unchanged.
+  files.run({ roots = { "/tmp" }, prompt = "cwd> " }, fake_engine)
+  check("actions.files: no override → global find", vim.deep_equal(captured.find, config.get().find))
+
+  -- Partial override: only the given fields change, the rest stays global.
+  files.run(
+    { roots = { "/tmp" }, prompt = "notes> ", find = { hidden = false, exclude = { "*.md" } } },
+    fake_engine
+  )
+  check("actions.files: override hidden=false applied", captured.find.hidden == false)
+  check("actions.files: override exclude applied", has(captured.find.exclude, "*.md"))
+  check("actions.files: unmentioned field (follow) stays global", captured.find.follow == true)
+  check(
+    "actions.files: global cfg.find itself untouched by override",
+    config.get().find.hidden == true
+  )
+
+  -- sources.collection passes coll.find through to the resolved Source.
+  local collection_source = require("pickers.sources.collection")
+  config.apply({
+    collections = {
+      { name = "notes", dir = vim.fn.getcwd(), find = { hidden = false } },
+    },
+  })
+  local coll = config.get().collections[1]
+  local resolved
+  collection_source.get(coll, config.get(), function(src) resolved = src end, {})
+  check("sources.collection: find passed through to Source", resolved and resolved.find and resolved.find.hidden == false)
 end
 
 -- ── config.apply — selected_index normalisation ─────────────────────────────

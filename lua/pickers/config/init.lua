@@ -31,6 +31,9 @@ local function normalise_collection(raw)
     prefix = (type(raw.prefix) == "string") and raw.prefix or nil,
     keys = (type(raw.keys) == "table") and raw.keys or nil,
     only_git = raw.only_git == true,
+    -- Partial override, merged over cfg.find at use-time (pickers.actions.files)
+    -- -- not validated field-by-field here, same leniency as cfg.find itself.
+    find = (type(raw.find) == "table") and raw.find or nil,
   }
 end
 

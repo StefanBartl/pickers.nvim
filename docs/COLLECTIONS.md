@@ -22,6 +22,11 @@ collections = {
 
   -- Only subdirs that contain .git/
   { name = "myrepos",     dir = "/home/user/src", prefix = "", only_git = true },
+
+  -- Per-collection find override — merged over the global `find` defaults,
+  -- not replacing them; unset fields keep the global value.
+  { name = "vendored",    dir = "/home/user/vendor",
+    find = { no_ignore = true, exclude = { "*.lock" } } },
 }
 ```
 
@@ -32,6 +37,16 @@ collections = {
 | `nil` (not set) | `dir` is used directly as the search root |
 | `""` (empty string) | All immediate subdirs of `dir` are listed; pick one |
 | `"xyz-"` | Only subdirs whose name starts with `"xyz-"` are listed |
+
+## find override
+
+A collection's `find` field (`{ hidden?, no_ignore?, follow?, exclude? }`)
+overrides the global `find` config for that collection's **files** action
+only — grep is unaffected (it doesn't use `find` flags). It's a partial
+merge: only the fields you set change, everything else keeps the global
+default. Useful for e.g. a vendored-code collection where you want
+`.gitignore`d files included, without changing that behaviour everywhere
+else.
 
 ## Auto-generated compat commands
 
