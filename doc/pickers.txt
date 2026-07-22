@@ -244,6 +244,11 @@ Collection fields:
     When true, only subdirs that contain a `.git/` directory are shown.
     Effective only when `prefix` is set (non-nil).
 
+  find (Pickers.FindOpts|nil)~
+    Per-collection override for the `files` action, merged over the global
+    |pickers-config| `find` defaults (only the given fields change; grep is
+    unaffected — it doesn't use `find` flags).
+
 Auto-generated compat commands~
 
 For a collection `name = "notes_lua"` the following commands are created

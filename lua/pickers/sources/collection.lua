@@ -83,6 +83,7 @@ function M.get(coll, _cfg, callback, engine_mod)
     callback({
       roots = { vim.fs.normalize(dir) },
       prompt = coll.name .. "> ",
+      find = coll.find,
     })
     return
   end
@@ -117,6 +118,7 @@ function M.get(coll, _cfg, callback, engine_mod)
           callback({
             roots = { vim.fs.normalize(subdirs[i]) },
             prompt = label .. "> ",
+            find = coll.find,
           })
           return
         end

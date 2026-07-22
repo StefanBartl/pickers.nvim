@@ -46,8 +46,15 @@ a promise; it is a backlog of ideas ordered roughly by usefulness.
     layer itself (`config/snacks/usrcmds/` in the user's config) was deleted
     as a result — every command it exposed has an engine-agnostic
     `:Pickers builtin <name>` equivalent now.
-- [ ] **Per-scope overrides.** Currently `find` is global; allow per-collection /
-  per-scope find overrides.
+- [x] **Per-collection find overrides.** `collections[].find` (partial
+  `Pickers.FindOpts`) overrides the global `find` defaults for that
+  collection's `files` action — merged, not replaced, so unset fields keep
+  the global value. Grep is unaffected (no `find` flags there). Built-in
+  scopes (cwd/config/folder/repos/wkdbooks/system/drives) stay global-only —
+  they aren't user-configurable objects the way collections are, so there's
+  no natural per-scope config surface to attach an override to. See
+  `pickers.actions.files`, `pickers.sources.collection`, and
+  [docs/COLLECTIONS.md](COLLECTIONS.md#find-override).
 - [x] **Result count.** `result_count = { enabled }` in `setup()` — live match
   count in the prompt title (e.g. "Find Files (128)"). Telescope-only,
   disabled by default; fzf-lua/snacks already show a position/total counter

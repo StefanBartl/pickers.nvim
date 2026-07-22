@@ -22,6 +22,7 @@
 ---@field prompt         string        Prompt prefix shown in the picker
 ---@field find_command   string[]|nil  Custom fd/find command (system scope)
 ---@field additional_args string[]|nil Extra rg/fzf-lua args (drives scope)
+---@field find           Pickers.FindOpts|nil  Per-collection find override (files action only); merged over cfg.find, not replacing it
 
 -- ###########################################################################
 -- Collection (user-defined named scope)
@@ -32,5 +33,6 @@
 ---@field prefix   string|nil                           nil=direct root, ""=all subdirs, "xyz-"=filtered
 ---@field keys     { files?: string, grep?: string }|nil  Optional keymaps
 ---@field only_git boolean|nil                          Only show subdirs that contain .git
+---@field find     Pickers.FindOpts|nil                 Override cfg.find for this collection's files action (merged over the global defaults)
 
 return {}
