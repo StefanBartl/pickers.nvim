@@ -352,6 +352,15 @@ with configs that used the original individual modules:
   description) plus every user-defined collection (with its root directory)
   — via notify.info, without opening the interactive scope picker.
 
+                                                               *:PickersResume*
+:PickersResume~
+  Reopens the last picker with its last query — the engine's own native
+  resume/history-of-open-pickers feature, via `:Pickers builtin resume`.
+  Not the same as :PickersRepeat: this resumes the *engine's* last picker
+  session (including the prompt text); :PickersRepeat replays pickers.nvim's
+  own last resolved scope/action from scratch, with an empty prompt.
+  fzf-lua has no resume concept — documented no-op notify.warn there.
+
 ==============================================================================
 9. CONFIGURATION REFERENCE                                      *pickers-config*
 

@@ -103,7 +103,13 @@ a promise; it is a backlog of ideas ordered roughly by usefulness.
 
 - [x] `:PickersRepeat` — reopen the most recently dispatched action (same
   resolved scope/root/action). See "Remember last scope/action" above.
-- [ ] `:PickersResume` — reopen the last picker with the last query.
+- [x] `:PickersResume` — reopen the last picker with the last query, i.e. the
+  engine's own native resume/history-of-open-pickers feature. A thin wrapper
+  over `pickers.builtins.run("resume")` (the registry already had a `resume`
+  entry: telescope + snacks, fzf-lua has no resume concept). Distinct from
+  `:PickersRepeat`, which replays pickers.nvim's own last resolved
+  scope/action from scratch (empty prompt) rather than the engine's session
+  history (prompt text included).
 - [x] `:PickersScopes` — lists every scope :Pickers can resolve (built-in
   scopes with a one-line description, plus every collection with its root
   dir) via `notify.info`. See `pickers.ui.scope_picker.list()` (exported,

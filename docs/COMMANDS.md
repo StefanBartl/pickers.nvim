@@ -123,4 +123,16 @@ via `notify.info`, without opening the interactive scope picker. Useful as a
 quick "what have I got configured" check, especially for collections defined
 across multiple `setup()` merges.
 
+---
+
+## `:PickersResume`
+
+Reopens the last picker with its last query — the engine's own native
+resume/history-of-open-pickers feature, via `:Pickers builtin resume`. Not
+the same thing as `:PickersRepeat`: this resumes the *engine's* last picker
+session (including whatever you'd typed into the prompt); `:PickersRepeat`
+replays pickers.nvim's own last resolved scope/action from scratch, with an
+empty prompt. fzf-lua has no resume concept, so this is a documented no-op
+`notify.warn` there — see [docs/BUILTINS.md](BUILTINS.md).
+
 See also [docs/CHEATSHEET.md](CHEATSHEET.md) for a condensed, single-page version of this reference.
