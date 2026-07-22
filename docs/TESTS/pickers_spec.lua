@@ -125,6 +125,35 @@ do
   check("sources.collection: find passed through to Source", resolved and resolved.find and resolved.find.hidden == false)
 end
 
+-- ── pickers.last / pickers.command.dispatch — :PickersRepeat state ──────────
+do
+  local last = require("pickers.last")
+  local cmd = require("pickers.command")
+
+  local calls = {}
+  local fake_engine = {
+    pick_files = function(opts) calls[#calls + 1] = { kind = "files", opts = opts } end,
+    live_grep = function(opts) calls[#calls + 1] = { kind = "grep", opts = opts } end,
+  }
+
+  -- pickers.command.dispatch is the single choke point every scope (standard,
+  -- collection, dir) routes through -- it must record into pickers.last.
+  cmd.dispatch("files", { roots = { "/a" }, prompt = "A> " }, fake_engine)
+  check("last: records action", last.get().action == "files")
+  check("last: records source", last.get().source.roots[1] == "/a")
+  check("dispatch: reached the engine", #calls == 1 and calls[1].kind == "files")
+
+  -- A second dispatch overwrites, not accumulates -- only the most recent.
+  cmd.dispatch("grep", { roots = { "/b" }, prompt = "B> " }, fake_engine)
+  check("last: overwritten by second dispatch", last.get().action == "grep")
+  check("last: overwritten source", last.get().source.roots[1] == "/b")
+
+  -- last.run() replays the exact same {action, source} via a freshly
+  -- resolved engine, without needing to re-specify anything.
+  local ok = pcall(last.run)
+  check("last.run: does not throw", ok)
+end
+
 -- ── config.apply — selected_index normalisation ─────────────────────────────
 do
   local config = require("pickers.config")

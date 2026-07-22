@@ -4,10 +4,15 @@
 ---   :DirPicker [nav]  :FindInFolder  :FindConfig  :GrepConfig
 ---   :LiveGrep  :AllDrives  :AllDrivesGrep  :FindOnSystem
 ---   :RepoFiles [repo]  :RepoGrep [repo]  :WkdBookFiles  :WkdBookGrep
+---   :PickersRepeat
 ---
 --- :RepoFiles/:RepoGrep accept an optional repo-name argument (tab-completed
 --- from REPOS_DIR) that jumps straight into files/grep for that repo, skipping
 --- the interactive repo picker.
+---
+--- :PickersRepeat reopens the most recently dispatched :Pickers action (same
+--- resolved scope/root, same action) without re-resolving through any
+--- interactive sub-picker in between -- see pickers.last.
 
 local usercmd = require("pickers.bindings.util").usercmd
 local notify = require("lib.nvim.notify").create("[pickers]")
@@ -97,6 +102,10 @@ function M.register()
   usercmd("WkdBookGrep", function(_)
     require("pickers.command").handle({ fargs = { "wkdbooks", "grep" } })
   end, "[pickers] :WkdBookGrep — pick wkdbook, then live grep", "?")
+
+  usercmd("PickersRepeat", function(_)
+    require("pickers.last").run()
+  end, "[pickers] :PickersRepeat — reopen the last :Pickers action", "?")
 end
 
 return M

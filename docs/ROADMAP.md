@@ -63,7 +63,14 @@ a promise; it is a backlog of ideas ordered roughly by usefulness.
   TextChanged to hang an update off of). See `lua/pickers/result_count/` and
   [docs/CONFIGURATION.md](CONFIGURATION.md#result-count). Preview toggle is
   also done — see `keys.preview_toggle` above.
-- [ ] **Remember last scope/action** for a `:Pickers` repeat command.
+- [x] **Remember last scope/action.** `:PickersRepeat` reopens the most
+  recently dispatched {action, source} pair, in-memory only for the current
+  session. `pickers.command.dispatch` is the single choke point every scope
+  (standard, collection, `dir`) routes through, so `pickers.last.set()` is
+  called there once rather than duplicated per-scope — `pickers.actions.dir`
+  used to bypass it with its own inline files/grep branch, now delegates to
+  `pickers.command.dispatch` instead. See `lua/pickers/last.lua` and
+  [docs/COMMANDS.md](COMMANDS.md#pickersrepeat).
 - [x] **Selected-index overlay.** `selected_index = { enabled, position, highlight, toggle_key }`
   in `setup()` — shows the index of the selected entry in the results buffer.
   Telescope-only, disabled by default. Native port of the (now retired)
@@ -94,6 +101,8 @@ a promise; it is a backlog of ideas ordered roughly by usefulness.
 
 ## Commands
 
+- [x] `:PickersRepeat` — reopen the most recently dispatched action (same
+  resolved scope/root/action). See "Remember last scope/action" above.
 - [ ] `:PickersResume` — reopen the last picker with the last query.
 - [ ] `:PickersScopes` — list all resolvable scopes (built-ins + collections).
 

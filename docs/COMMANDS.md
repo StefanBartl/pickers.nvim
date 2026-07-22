@@ -103,4 +103,14 @@ All commands from the original modules are preserved as aliases:
 | `:WkdBookFiles` | `:Pickers wkdbooks files` |
 | `:WkdBookGrep` | `:Pickers wkdbooks grep` |
 
+---
+
+## `:PickersRepeat`
+
+Reopens the most recently dispatched `:Pickers` action — same resolved
+scope/root, same action (`files`/`grep`) — without re-resolving through any
+interactive sub-picker (folder/repo/collection subdir) in between. Covers
+every scope, including `dir`. In-memory only, current session; warns if
+nothing has been dispatched yet. See `lua/pickers/last.lua`.
+
 See also [docs/CHEATSHEET.md](CHEATSHEET.md) for a condensed, single-page version of this reference.

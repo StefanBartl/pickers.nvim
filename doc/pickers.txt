@@ -338,6 +338,14 @@ with configs that used the original individual modules:
   :WkdBookFiles       → :Pickers wkdbooks files
   :WkdBookGrep        → :Pickers wkdbooks grep
 
+                                                                *:PickersRepeat*
+:PickersRepeat~
+  Reopens the most recently dispatched :Pickers action — same resolved
+  scope/root, same action (files/grep) — without re-resolving through any
+  interactive sub-picker (folder/repo/collection subdir) in between.  Covers
+  every scope, including `dir`.  In-memory only, current session; warns if
+  nothing has been dispatched yet.  See lua/pickers/last.lua.
+
 ==============================================================================
 9. CONFIGURATION REFERENCE                                      *pickers-config*
 
