@@ -27,6 +27,7 @@ function M.register(km)
   end
 
   add(km.dir_pick, "Pickers: dir navigation")
+  add(km.explorer, "Pickers: file explorer")
   add(km.folder_files, "Pickers: find in folder")
   add(km.config_files, "Pickers: find in config")
   add(km.config_grep, "Pickers: grep in config")

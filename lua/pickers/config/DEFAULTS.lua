@@ -42,6 +42,9 @@ local M = {
     config_grep = "<leader>gc",
     folder_files = "<leader>fb",
     dir_pick = "<leader>dp",
+    -- File explorer / browser on the active engine (snacks' tree explorer,
+    -- telescope-file-browser, ...). See pickers.builtins "explorer".
+    explorer = "<leader>.",
     -- Opt-in, nil (disabled) by default -- same as cwd_files.
     repos_files = nil,
     repos_grep = nil,
@@ -82,6 +85,13 @@ local M = {
     history_forward = "<C-n>",
     create_file = "<C-a>",
     open_background = { "<S-CR>", "<C-o>" },
+    -- Opt-in, false by default: open_background only preloads the buffer
+    -- (bufadd+bufload, matching the old per-engine behaviour exactly). Flip
+    -- to true to also display -- not focus -- the selected entry in the
+    -- window behind the picker, so it's already showing there once you
+    -- close or switch away from the picker. Focus always stays in the
+    -- picker; see pickers.entry_actions.open_background.
+    open_background_show = false,
     -- Opt-in, false (unbound) by default -- fzf-lua ships this natively on
     -- <F4>, snacks on <A-p>; only telescope has no default key for its
     -- existing toggle_preview action.

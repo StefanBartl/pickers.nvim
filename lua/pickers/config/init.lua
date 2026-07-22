@@ -166,6 +166,9 @@ local function normalise_keys(raw, current)
   local result = vim.deepcopy(current)
 
   if type(raw.enable) == "boolean" then result.enable = raw.enable end
+  if type(raw.open_background_show) == "boolean" then
+    result.open_background_show = raw.open_background_show
+  end
 
   local actions = require("pickers.keys").ACTIONS
   for name in pairs(actions) do

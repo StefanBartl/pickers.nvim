@@ -135,6 +135,38 @@ M.REGISTRY = {
     telescope = { fn = "buffers" },
     fzf = { fn = "buffers" },
   },
+  explorer = {
+    desc = "File explorer / browser (fzf-lua has no explorer — falls back to "
+      .. "the file picker's parent-dir navigation; telescope uses the "
+      .. "telescope-file-browser.nvim extension, which must be installed)",
+    -- snacks ships a real tree explorer as a picker source.
+    snacks = { fn = "explorer" },
+    -- telescope's file browser is an *extension*, not a `telescope.builtin.*`
+    -- function, so it can't use the flat mod[fn] dispatch — a custom `run`
+    -- loads the extension on demand and calls it. Needs
+    -- telescope-file-browser.nvim installed.
+    telescope = {
+      run = function(opts)
+        local ok, telescope = pcall(require, "telescope")
+        if not ok then
+          notify.error("telescope unavailable")
+          return
+        end
+        local loaded = pcall(telescope.load_extension, "file_browser")
+        local ext = telescope.extensions and telescope.extensions.file_browser
+        if not loaded or not ext then
+          notify.error(
+            "telescope explorer needs telescope-file-browser.nvim "
+              .. "(https://github.com/nvim-telescope/telescope-file-browser.nvim)"
+          )
+          return
+        end
+        ext.file_browser(opts or {})
+      end,
+    },
+    -- fzf-lua has no file-manager/explorer picker.
+    fzf = false,
+  },
   git_files = {
     desc = "Git-tracked files (ls-files)",
     snacks = { fn = "git_files" },
@@ -358,13 +390,25 @@ M.REGISTRY = {
   },
 }
 
---- Module for the `require(module)[fn](opts)` call per engine.
+--- Module for the `require(module)[fn](opts)` call per engine. Snacks' picker
+--- functions live on `snacks.picker` (NOT the top-level `Snacks` table — that
+--- one's metatable turns `Snacks.command_history` into a failing
+--- `require("snacks.command_history")`), matching the `Snacks.picker.<fn>`
+--- shape documented on `Pickers.Builtins.Impl`.
 ---@type table<string, string>
 local ENGINE_MODULE = {
-  snacks = "snacks",
+  snacks = "snacks.picker",
   telescope = "telescope.builtin",
   fzf = "fzf-lua",
 }
+
+--- The module a builtin dispatches through for `engine_name` (exposed for
+--- tests; `snacks` must resolve to `snacks.picker`, see the bug note above).
+---@param engine_name string
+---@return string|nil
+function M.engine_module(engine_name)
+  return ENGINE_MODULE[engine_name]
+end
 
 --- Sorted list of every registered builtin name — used for `:Pickers builtin
 --- <Tab>` completion and for completeness tests.
@@ -423,6 +467,17 @@ function M.run(name, opts, engine_name)
         entry.desc
       )
     )
+    return
+  end
+
+  -- Custom-invoker impls (extension-based pickers that don't fit mod[fn], e.g.
+  -- telescope's file_browser) handle their own loading + dispatch.
+  if type(impl.run) == "function" then
+    local run_opts = vim.tbl_deep_extend("force", impl.opts or {}, opts or {})
+    local run_ok, run_err = pcall(impl.run, run_opts)
+    if not run_ok then
+      notify.error(("builtin '%s' (%s) error: %s"):format(name, engine_name, tostring(run_err)))
+    end
     return
   end
 

@@ -25,16 +25,18 @@ local function do_create_file(picker, item)
   create_file.run(path)
 end
 
----@param _picker any
+---@param picker any
 ---@param item any
----@diagnostic disable-next-line: unused-local
-local function do_open_background(_picker, item)
+local function do_open_background(picker, item)
   local path = extract(item)
   if not path then
     notify.warn("No valid path found")
     return
   end
-  open_background.run(path)
+  ---@diagnostic disable-next-line: undefined-field
+  local pos = item and item.pos
+  ---@diagnostic disable-next-line: undefined-field
+  open_background.run(path, { win = picker and picker.main, pos = pos })
   -- Do NOT close picker - that's the point of background open
 end
 
