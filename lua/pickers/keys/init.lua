@@ -10,6 +10,7 @@
 ---   preview_scroll_left   preview_scroll_right
 ---   history_back          history_forward
 ---   create_file           open_background
+---   preview_toggle
 ---
 --- Installation mirrors `pickers.history`: rather than injecting per-call into
 --- every engine adapter, preview-scroll/history are patched onto each engine's
@@ -36,6 +37,14 @@
 --- the *config* (`cfg.keys.create_file`/`cfg.keys.open_background`) moved into
 --- this unified namespace; see `pickers.entry_actions` for the adapters that
 --- read `pickers.keys.resolve()` to build their mapping tables.
+---
+--- `preview_toggle` is opt-in (`false`/unbound by default) and telescope-only:
+--- fzf-lua ships this natively on `<F4>`, snacks on `<A-p>` — neither needs
+--- pickers.nvim to provide it. Telescope ships the underlying action
+--- (`actions.layout.toggle_preview`) but binds no key to it by default, so
+--- this fills that one gap. It IS patched globally (unlike create_file/
+--- open_background) since it's a plain built-in telescope action, same as
+--- preview-scroll/history.
 
 local M = {}
 
@@ -43,7 +52,7 @@ local M = {}
 --- The concrete lhs come from `cfg.keys`; `modes` are fixed per action (preview
 --- scroll works in insert + normal, history only in insert, matching how the
 --- prompt is used).
----@type table<string, { default: string|string[], modes: string[] }>
+---@type table<string, { default: string|string[]|false, modes: string[] }>
 M.ACTIONS = {
   preview_scroll_down = { default = "<PageDown>", modes = { "i", "n" } },
   preview_scroll_up = { default = "<PageUp>", modes = { "i", "n" } },
@@ -53,6 +62,11 @@ M.ACTIONS = {
   history_forward = { default = "<C-n>", modes = { "i" } },
   create_file = { default = "<C-a>", modes = { "i", "n" } },
   open_background = { default = { "<S-CR>", "<C-o>" }, modes = { "i", "n" } },
+  -- Opt-in (false = unbound by default): fzf-lua ships this natively on
+  -- <F4>, snacks on <A-p> -- neither needs pickers.nvim to provide it, only
+  -- telescope has the action (actions.layout.toggle_preview) with no
+  -- default key bound to it.
+  preview_toggle = { default = false, modes = { "i", "n" } },
 }
 
 --- Stable iteration order (pairs() is unordered; adapters and tests want
@@ -67,6 +81,7 @@ M.ORDER = {
   "history_forward",
   "create_file",
   "open_background",
+  "preview_toggle",
 }
 
 --- Normalise one raw config value into a list of lhs strings.

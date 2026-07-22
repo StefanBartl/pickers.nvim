@@ -78,6 +78,10 @@ local M = {
     history_forward = "<C-n>",
     create_file = "<C-a>",
     open_background = { "<S-CR>", "<C-o>" },
+    -- Opt-in, false (unbound) by default -- fzf-lua ships this natively on
+    -- <F4>, snacks on <A-p>; only telescope has no default key for its
+    -- existing toggle_preview action.
+    preview_toggle = false,
   },
 
   -- Native picker-history file(s) under stdpath("data")/pickers.nvim/history.

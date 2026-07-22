@@ -79,6 +79,7 @@ require("pickers").setup({
     history_forward      = "<C-n>",
     create_file          = "<C-a>",
     open_background      = { "<S-CR>", "<C-o>" },
+    preview_toggle       = false, -- opt-in, telescope-only (fzf-lua/snacks ship this natively)
     -- fzf-lua only binds the vertical preview scroll and the fixed ctrl-a/
     -- ctrl-o/shift-enter entry actions -- everything else is fzf-native/fixed.
   },

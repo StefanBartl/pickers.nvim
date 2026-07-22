@@ -10,14 +10,19 @@ a promise; it is a backlog of ideas ordered roughly by usefulness.
 - [x] **Exclude globs.** `find.exclude` (list of glob patterns) is passed to the
   engine command.
 - [x] **Unified in-picker keys.** `keys = { enable, preview_scroll_*, history_*,
-  create_file, open_background }` in `setup()` — preview scrolling, native
-  history navigation, and the create_file/open_background entry actions all
-  share one config surface. Preview scroll/history are patched globally into
-  telescope/fzf-lua (snacks via the exported `keys.snacks_win()`); create_file/
-  open_background stay merge-it-yourself, like before, since they run
-  pickers.nvim logic rather than a built-in engine action. fzf-lua is a
-  documented capability gap for all four (no horizontal preview scroll, fixed
-  fzf-native history, fixed ctrl-a/ctrl-o/shift-enter entry actions). See
+  create_file, open_background, preview_toggle }` in `setup()` — preview
+  scrolling, native history navigation, the create_file/open_background entry
+  actions, and a preview-toggle keymap all share one config surface. Preview
+  scroll/history/preview_toggle are patched globally into telescope/fzf-lua
+  (snacks via the exported `keys.snacks_win()`); create_file/open_background
+  stay merge-it-yourself, like before, since they run pickers.nvim logic
+  rather than a built-in engine action. fzf-lua is a documented capability
+  gap for most of these (no horizontal preview scroll, fixed fzf-native
+  history, fixed ctrl-a/ctrl-o/shift-enter entry actions) — `preview_toggle`
+  is the one exception where fzf-lua/snacks are *already covered natively*
+  (`<F4>`/`<A-p>`) and don't need pickers.nvim at all; it's opt-in and
+  telescope-only, filling the one real gap (telescope ships the action,
+  `actions.layout.toggle_preview`, but binds no default key to it). See
   `lua/pickers/keys/`, `lua/pickers/entry_actions/`, and
   [docs/KEYMAPS.md](KEYMAPS.md#in-picker-keys-preview-scroll--history--entry-actions).
 - [x] **Native builtin pickers.** `:Pickers builtin <name>` — a registry of 51
@@ -43,7 +48,9 @@ a promise; it is a backlog of ideas ordered roughly by usefulness.
     `:Pickers builtin <name>` equivalent now.
 - [ ] **Per-scope overrides.** Currently `find` is global; allow per-collection /
   per-scope find overrides.
-- [ ] **Result-count / preview toggles** surfaced through `setup()`.
+- [ ] **Result-count** overlay surfaced through `setup()` (e.g. total match count
+  in the prompt title). Preview toggle is done — see `keys.preview_toggle`
+  above.
 - [ ] **Remember last scope/action** for a `:Pickers` repeat command.
 - [x] **Selected-index overlay.** `selected_index = { enabled, position, highlight, toggle_key }`
   in `setup()` — shows the index of the selected entry in the results buffer.
