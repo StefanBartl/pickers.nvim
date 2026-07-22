@@ -4,7 +4,7 @@
 ---   :DirPicker [nav]  :FindInFolder  :FindConfig  :GrepConfig
 ---   :LiveGrep  :AllDrives  :AllDrivesGrep  :FindOnSystem
 ---   :RepoFiles [repo]  :RepoGrep [repo]  :WkdBookFiles  :WkdBookGrep
----   :PickersRepeat
+---   :PickersRepeat  :PickersScopes
 ---
 --- :RepoFiles/:RepoGrep accept an optional repo-name argument (tab-completed
 --- from REPOS_DIR) that jumps straight into files/grep for that repo, skipping
@@ -13,6 +13,10 @@
 --- :PickersRepeat reopens the most recently dispatched :Pickers action (same
 --- resolved scope/root, same action) without re-resolving through any
 --- interactive sub-picker in between -- see pickers.last.
+---
+--- :PickersScopes lists every scope :Pickers can resolve -- built-ins (with a
+--- one-line description) plus every user-defined collection (with its root
+--- dir) -- without opening the interactive scope picker.
 
 local usercmd = require("pickers.bindings.util").usercmd
 local notify = require("lib.nvim.notify").create("[pickers]")
@@ -48,6 +52,40 @@ end
 ---@return string[]
 local function complete_repo(arglead)
   return require("pickers.sources.repos").complete(arglead)
+end
+
+local BASE_SCOPE_DESC = {
+  cwd = "vim.uv.cwd()",
+  config = "stdpath('config')",
+  folder = "interactively picked directory",
+  repos = "one repo picked from repos_dir",
+  wkdbooks = "one wkdbook picked from repos_dir/WKDBooks",
+  system = "systemwide fd search (prompts for query)",
+  drives = "all mount points / drive letters",
+  dir = "depth / alias / explicit-path navigation",
+}
+
+---Print every scope :Pickers can resolve: built-ins (with a one-line
+---description) plus every user-defined collection (with its root dir).
+local function list_scopes()
+  local cfg = require("pickers.config").get()
+  local lines = { "Built-in scopes:" }
+
+  local scope_picker = require("pickers.ui.scope_picker")
+  for _, name in ipairs(scope_picker.list()) do
+    if BASE_SCOPE_DESC[name] then
+      lines[#lines + 1] = string.format("  %-10s %s", name, BASE_SCOPE_DESC[name])
+    end
+  end
+
+  if #cfg.collections > 0 then
+    lines[#lines + 1] = "Collections:"
+    for _, coll in ipairs(cfg.collections) do
+      lines[#lines + 1] = string.format("  %-10s %s", coll.name, coll.dir)
+    end
+  end
+
+  notify.info(table.concat(lines, "\n"))
 end
 
 function M.register()
@@ -106,6 +144,10 @@ function M.register()
   usercmd("PickersRepeat", function(_)
     require("pickers.last").run()
   end, "[pickers] :PickersRepeat — reopen the last :Pickers action", "?")
+
+  usercmd("PickersScopes", function(_)
+    list_scopes()
+  end, "[pickers] :PickersScopes — list every resolvable scope (built-ins + collections)", "?")
 end
 
 return M

@@ -346,6 +346,12 @@ with configs that used the original individual modules:
   every scope, including `dir`.  In-memory only, current session; warns if
   nothing has been dispatched yet.  See lua/pickers/last.lua.
 
+                                                               *:PickersScopes*
+:PickersScopes~
+  Lists every scope :Pickers can resolve — built-in scopes (with a one-line
+  description) plus every user-defined collection (with its root directory)
+  — via notify.info, without opening the interactive scope picker.
+
 ==============================================================================
 9. CONFIGURATION REFERENCE                                      *pickers-config*
 
