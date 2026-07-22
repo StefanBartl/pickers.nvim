@@ -259,8 +259,46 @@ do
       history_back = "<C-p>",
       create_file = "<C-a>",
       open_background = { "<S-CR>", "<C-o>" },
+      preview_toggle = false,
     },
   })
+end
+
+-- ── pickers.keys — preview_toggle: opt-in, telescope-only ───────────────────
+do
+  local config = require("pickers.config")
+  local keys = require("pickers.keys")
+
+  local cfg0 = config.get()
+  check("keys: default preview_toggle is false", cfg0.keys.preview_toggle == false)
+  check("keys.resolve: default preview_toggle unbound", #keys.resolve(cfg0).preview_toggle.lhs == 0)
+
+  config.apply({ keys = { preview_toggle = "<M-p>" } })
+  local cfg1 = config.get()
+  local r = keys.resolve(cfg1)
+  check("keys.resolve: preview_toggle lhs", has(r.preview_toggle.lhs, "<M-p>"))
+
+  -- telescope adapter binds it (actions.layout.toggle_preview, not actions.*)
+  -- when telescope is on the runtimepath; degrades to empty otherwise, same
+  -- as every other keys.telescope_mappings() case in this suite.
+  local tm = keys.telescope_mappings(cfg1)
+  if pcall(require, "telescope.actions.layout") then
+    check("keys.telescope: preview_toggle bound (i)", tm.i["<M-p>"] ~= nil)
+    check("keys.telescope: preview_toggle bound (n)", tm.n["<M-p>"] ~= nil)
+  else
+    check("keys.telescope: preview_toggle unbound (telescope absent)", tm.i["<M-p>"] == nil)
+  end
+
+  -- fzf-lua and snacks already ship this natively -- must not appear in either.
+  local fk = keys.fzf_keymap(cfg1)
+  check("keys.fzf: excludes preview_toggle", fk["<M-p>"] == nil)
+  local win = keys.snacks_win(cfg1)
+  check("keys.snacks: excludes preview_toggle (input)", win.input.keys["<M-p>"] == nil)
+  check("keys.snacks: excludes preview_toggle (list)", win.list.keys["<M-p>"] == nil)
+  check("keys.snacks: excludes preview_toggle (preview)", win.preview.keys["<M-p>"] == nil)
+
+  -- Restore default (opt-in, off).
+  config.apply({ keys = { preview_toggle = false } })
 end
 
 -- ── pickers.entry_actions — absorbed into pickers.keys, adapters read resolve() ─

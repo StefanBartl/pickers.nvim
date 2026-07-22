@@ -8,6 +8,7 @@
 ---   preview_scroll_right → actions.preview_scrolling_right
 ---   history_back         → actions.cycle_history_prev
 ---   history_forward      → actions.cycle_history_next
+---   preview_toggle        → actions.layout.toggle_preview
 ---
 --- `mappings()` builds a `defaults.mappings` table (`{ i = {...}, n = {...} }`);
 --- `patch()` installs it via `telescope.setup()`. Telescope deep-merges
@@ -26,9 +27,15 @@ local ACTION_TO_TS = {
   history_forward = "cycle_history_next",
 }
 
+--- action name → telescope.actions.layout field name. A separate table
+--- because toggle_preview lives on a different sub-module than the rest.
+local ACTION_TO_TS_LAYOUT = {
+  preview_toggle = "toggle_preview",
+}
+
 --- Build telescope `defaults.mappings` (`{ i = {...}, n = {...} }`).
---- Values are the resolved `telescope.actions` functions; when telescope is not
---- installed the actions table is unavailable and this returns `{ i = {}, n = {} }`.
+--- Values are the resolved `telescope.actions`/`telescope.actions.layout`
+--- functions; when telescope is not installed this returns `{ i = {}, n = {} }`.
 ---@param resolved table<string, { lhs: string[], modes: string[] }>
 ---@return { i: table<string, function>, n: table<string, function> }
 function M.mappings(resolved)
@@ -36,16 +43,24 @@ function M.mappings(resolved)
 
   local ok, actions = pcall(require, "telescope.actions")
   if not ok then return out end
+  local ok_layout, layout = pcall(require, "telescope.actions.layout")
 
-  for action, spec in pairs(resolved) do
-    local ts_name = ACTION_TO_TS[action]
-    local ts_action = ts_name and actions[ts_name]
-    if ts_action then
-      for _, lhs in ipairs(spec.lhs) do
-        for _, mode in ipairs(spec.modes) do
-          if out[mode] then out[mode][lhs] = ts_action end
-        end
+  local function bind(action, ts_action)
+    local spec = resolved[action]
+    if not spec or not ts_action then return end
+    for _, lhs in ipairs(spec.lhs) do
+      for _, mode in ipairs(spec.modes) do
+        if out[mode] then out[mode][lhs] = ts_action end
       end
+    end
+  end
+
+  for action, ts_name in pairs(ACTION_TO_TS) do
+    bind(action, actions[ts_name])
+  end
+  if ok_layout then
+    for action, ts_name in pairs(ACTION_TO_TS_LAYOUT) do
+      bind(action, layout[ts_name])
     end
   end
 

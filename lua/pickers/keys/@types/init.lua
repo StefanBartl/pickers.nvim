@@ -17,5 +17,6 @@
 ---@field history_forward      Pickers.KeyBinding Default: "<C-n>"
 ---@field create_file          Pickers.KeyBinding Default: "<C-a>"
 ---@field open_background      Pickers.KeyBinding Default: { "<S-CR>", "<C-o>" }
+---@field preview_toggle       Pickers.KeyBinding Default: false (opt-in, telescope-only)
 
 return {}

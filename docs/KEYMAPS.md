@@ -44,6 +44,7 @@ snacks. See `lua/pickers/keys/`.
 | `history_forward` | `<C-n>` | ✓ | — | ✓ |
 | `create_file` | `<C-a>` | ✓ | fixed (`ctrl-a`) | ✓ |
 | `open_background` | `<S-CR>`, `<C-o>` | ✓ | fixed (`ctrl-o`/`shift-enter`) | ✓ |
+| `preview_toggle` | _(off, opt-in)_ | ✓ | native (`<F4>`) | native (`<A-p>`) |
 
 fzf-lua is the capability gap: its builtin previewer has no horizontal preview
 scroll, its history is fzf's own `--history` bound to `ctrl-p`/`ctrl-n`
@@ -54,11 +55,22 @@ skipped and reported once via `notify.debug` (or surfaced in `:checkhealth
 pickers` for the static, always-true gaps).
 
 **`create_file`/`open_background` are not patched globally** like the other
-four actions — they run pickers.nvim-specific logic
-(`lua/pickers/entry_actions/`), not a built-in engine action, so you still
-merge them into your own engine `setup()` manually. See
-`lua/pickers/entry_actions/README.md` for the adapters
+actions — they run pickers.nvim-specific logic (`lua/pickers/entry_actions/`),
+not a built-in engine action, so you still merge them into your own engine
+`setup()` manually. See `lua/pickers/entry_actions/README.md` for the adapters
 (`get_mappings()`/`get_actions()`/`get_keys()`).
+
+**`preview_toggle` is opt-in** (off/unbound by default, unlike the other six)
+and **telescope-only**: fzf-lua already binds toggle-preview on `<F4>`, snacks
+on `<A-p>`, both natively — neither needs pickers.nvim to provide one.
+Telescope ships the underlying action (`actions.layout.toggle_preview`) but
+binds no key to it by default, so this fills that one gap. It IS patched
+globally like preview-scroll/history (it's a plain built-in telescope action):
+```lua
+require("pickers").setup({
+  keys = { preview_toggle = "<M-p>" },
+})
+```
 
 Each action takes a single lhs, a list of lhs, or `false` to unbind it:
 ```lua

@@ -19,14 +19,21 @@
 --- fzf adapters, which simply don't have them in their lookup tables). See
 --- `pickers.entry_actions.adapters.snacks` for their own `get_actions()`/
 --- `get_keys()` (list-window only, matching Snacks.picker's own convention).
+---
+--- `preview_toggle` is also excluded — snacks' own native action for this is
+--- named "toggle_preview" (reversed word order from pickers.nvim's
+--- engine-neutral name), and snacks already binds it by default
+--- (`<A-p>`), so this action is telescope-only; see
+--- `pickers.keys.adapters.telescope`.
 
 local M = {}
 
 --- Snacks treats these as history navigation → input window, insert mode only.
 local HISTORY = { history_back = true, history_forward = true }
 
---- Handled by pickers.entry_actions.adapters.snacks instead -- see @description.
-local SKIP = { create_file = true, open_background = true }
+--- Handled elsewhere (pickers.entry_actions, or not applicable to snacks) --
+--- see @description.
+local SKIP = { create_file = true, open_background = true, preview_toggle = true }
 
 ---@param resolved table<string, { lhs: string[], modes: string[] }>
 ---@return { input: { keys: table }, list: { keys: table }, preview: { keys: table } }

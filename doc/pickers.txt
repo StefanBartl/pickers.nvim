@@ -301,6 +301,15 @@ In-picker keys (preview scroll + history + entry actions)~
   lua/pickers/entry_actions/'s adapters into your own setup() manually, as
   documented there.
 
+  `preview_toggle` is opt-in (false/unbound by default) and telescope-only:
+  fzf-lua already binds toggle-preview on <F4>, snacks on <A-p>, both
+  natively — neither needs pickers.nvim to provide one.  Telescope ships
+  the underlying action (actions.layout.toggle_preview) but binds no key to
+  it by default.  Unlike create_file/open_background, it IS patched
+  globally (a plain built-in telescope action): >lua
+    require("pickers").setup({ keys = { preview_toggle = "<M-p>" } })
+<
+
 ==============================================================================
 8. COMPAT COMMANDS                                               *pickers-compat*
 
@@ -392,6 +401,8 @@ All keys are optional.  Unset keys retain their default values.
       history_forward      (string|string[]|false, default "<C-n>")
       create_file          (string|string[]|false, default "<C-a>")
       open_background      (string|string[]|false, default { "<S-CR>", "<C-o>" })
+      preview_toggle       (string|string[]|false, default false) — opt-in,
+                             telescope-only (fzf-lua/snacks ship this natively)
     fzf-lua only binds the vertical preview scroll and the fixed ctrl-a/
     ctrl-o/shift-enter entry actions — horizontal scroll, history, and
     remapping the entry-action keys are all fzf-native/fixed there.
