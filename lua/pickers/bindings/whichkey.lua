@@ -32,6 +32,9 @@ function M.register(km)
   add(km.config_grep, "Pickers: grep in config")
   add(km.cwd_grep, "Pickers: live grep (cwd)")
   add(km.cwd_files, "Pickers: find files (cwd)")
+  add(km.repos_files, "Pickers: pick repo, find files")
+  add(km.repos_grep, "Pickers: pick repo, live grep")
+  add(km.system_files, "Pickers: systemwide fd search")
 
   if #spec > 0 then pcall(wk.add, spec) end
 end

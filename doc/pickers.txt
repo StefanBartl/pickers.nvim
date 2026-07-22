@@ -272,6 +272,13 @@ keymaps from the original individual modules exactly:
   <leader>gc   :Pickers config grep  (grep in nvim config)
   <leader>li   :Pickers cwd grep     (live grep in CWD)
 
+The following are opt-in (nil, disabled by default):
+
+  cwd_files     :Pickers cwd files    (find files in CWD)
+  repos_files   :Pickers repos files  (pick a repo, then find files)
+  repos_grep    :Pickers repos grep   (pick a repo, then live grep)
+  system_files  :Pickers system files (systemwide fd search, prompts)
+
 Disable all keymaps: >lua
   require("pickers").setup({ keymaps = { enable = false } })
 <
@@ -400,6 +407,9 @@ All keys are optional.  Unset keys retain their default values.
     config_grep  (string|nil)          — default "<leader>gc"
     cwd_grep     (string|nil)          — default "<leader>li"
     cwd_files    (string|nil)          — default nil (disabled)
+    repos_files  (string|nil)          — default nil (disabled)
+    repos_grep   (string|nil)          — default nil (disabled)
+    system_files (string|nil)          — default nil (disabled)
 
   usercmds (table)~
     enable (bool, default true)

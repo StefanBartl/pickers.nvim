@@ -42,6 +42,10 @@ local M = {
     config_grep = "<leader>gc",
     folder_files = "<leader>fb",
     dir_pick = "<leader>dp",
+    -- Opt-in, nil (disabled) by default -- same as cwd_files.
+    repos_files = nil,
+    repos_grep = nil,
+    system_files = nil,
   },
 
   -- File-listing behaviour for the built-in file pickers (config/cwd/folder/
