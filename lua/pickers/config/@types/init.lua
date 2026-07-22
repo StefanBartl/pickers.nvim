@@ -12,6 +12,9 @@
 ---@field config_grep  string|nil   Grep in nvim config       (default: "<leader>gc")
 ---@field folder_files string|nil   Find files in picked folder (default: "<leader>fb")
 ---@field dir_pick     string|nil   Dir navigation picker (default: "<leader>dp")
+---@field repos_files  string|nil   Pick a repo, then find files (default: nil)
+---@field repos_grep   string|nil   Pick a repo, then live grep  (default: nil)
+---@field system_files string|nil   Systemwide fd search (prompts for query) (default: nil)
 
 -- ###########################################################################
 -- User-commands

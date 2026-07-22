@@ -118,8 +118,11 @@ a promise; it is a backlog of ideas ordered roughly by usefulness.
 
 ## Keymaps
 
-- [ ] Optional default keymap for the `system` scope (currently command-only).
-- [ ] Optional default keymap for `repos` files/grep.
+- [x] Optional default keymap for the `system`/`repos` scopes. Three new
+  opt-in (`nil` by default, same convention as the existing `cwd_files`)
+  `keymaps.<name>` entries: `repos_files`, `repos_grep`, `system_files`. See
+  `bindings/keymaps.lua`/`bindings/whichkey.lua` and
+  [docs/KEYMAPS.md](KEYMAPS.md).
 
 ## Autocmds
 
@@ -128,7 +131,17 @@ a promise; it is a backlog of ideas ordered roughly by usefulness.
 ## Quality / infrastructure
 
 - [x] which-key labels for pickers keymaps (guarded, no hard dep) — see `bindings/whichkey.lua`.
-- [ ] Cross-platform audit of path handling / `shellescape` across sources and engines.
+- [x] Cross-platform audit of path handling / `shellescape` across sources and
+  engines. Two passes: (1) sources/engines as they stood before `pickers.keys`/
+  `builtins`/`last`/`result_count`/entry_actions find-overrides existed — found
+  `pickers.sources.system`'s "/" fallback breaking "systemwide search" on
+  native Windows (fixed via `pickers.sources.drives.get_roots()`/
+  `is_windows()`), and `engines/{telescope,snacks}.lua`'s `pick_dir` hardcoding
+  `fd` with no `fdfind` fallback (fixed). (2) A follow-up pass specifically
+  covering everything added since — found `entry_actions/extract/fzf.lua`
+  icon-stripping already-clean `.path`/`.filename` fields, truncating any path
+  with a space near the start (not Windows-exclusive, but far more common
+  there — `Program Files`, `Users\<Full Name>`); fixed.
 - [x] Fix `system` source passing the search path as fd's first positional
   (interpreted as a pattern instead of a path on Windows).
 - [x] `docs/TESTS/**` for command parsing, collection normalisation and PascalCase conversion.

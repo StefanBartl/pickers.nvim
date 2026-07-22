@@ -70,6 +70,9 @@ do
   check("apply: collection with no find override → nil", cfg.collections[1] and cfg.collections[1].find == nil)
   check("apply: keymap overridden", cfg.keymaps.cwd_grep == "<leader>zz")
   check("apply: keymap default kept", cfg.keymaps.config_files == "<leader>fc")
+  check("apply: repos_files default nil", cfg.keymaps.repos_files == nil)
+  check("apply: repos_grep default nil", cfg.keymaps.repos_grep == nil)
+  check("apply: system_files default nil", cfg.keymaps.system_files == nil)
 
   -- find defaults (hidden/follow on, no_ignore off so .gitignore is respected)
   check("find: hidden default true", cfg.find.hidden == true)
@@ -81,6 +84,27 @@ do
   local cfg2 = config.get()
   check("find: no_ignore overridden", cfg2.find.no_ignore == true)
   check("find: hidden still default", cfg2.find.hidden == true)
+end
+
+-- ── pickers.bindings.keymaps — repos_files/repos_grep/system_files opt-in ───
+do
+  local config = require("pickers.config")
+  config.apply({
+    keymaps = { repos_files = "<leader>zrf", repos_grep = "<leader>zrg", system_files = "<leader>zsf" },
+  })
+  require("pickers.bindings.keymaps").register(config.get().keymaps)
+
+  local rf = vim.fn.maparg("<leader>zrf", "n", false, true)
+  local rg = vim.fn.maparg("<leader>zrg", "n", false, true)
+  local sf = vim.fn.maparg("<leader>zsf", "n", false, true)
+  check("keymaps: repos_files registered", not vim.tbl_isempty(rf))
+  check("keymaps: repos_files desc", rf.desc == "[pickers] Pick a repo, then find files")
+  check("keymaps: repos_grep registered", not vim.tbl_isempty(rg))
+  check("keymaps: system_files registered", not vim.tbl_isempty(sf))
+
+  -- cwd_files stays nil (unset) → map() must no-op, not throw or register "".
+  local ok = pcall(require("pickers.bindings.keymaps").register, config.get().keymaps)
+  check("keymaps: re-register with unset cwd_files does not throw", ok)
 end
 
 -- ── pickers.actions.files — per-collection find override merges over cfg.find ─
