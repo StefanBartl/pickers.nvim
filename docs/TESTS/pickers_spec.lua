@@ -213,6 +213,12 @@ do
   check("keys.snacks: preview has PageDown", win.preview.keys["<PageDown>"] ~= nil)
   check("keys.snacks: input has history <C-p>", win.input.keys["<C-p>"] ~= nil)
   check("keys.snacks: list has NO history <C-p>", win.list.keys["<C-p>"] == nil)
+  -- create_file/open_background are entry_actions' own concern (list-window
+  -- only, via pickers.entry_actions.adapters.snacks) -- snacks_win() must not
+  -- also bind them, or a user merging both would get duplicate/conflicting
+  -- bindings in the input/preview windows.
+  check("keys.snacks: win() excludes create_file", win.input.keys["<C-a>"] == nil)
+  check("keys.snacks: win() excludes open_background", win.input.keys["<S-CR>"] == nil)
 
   -- fzf adapter: only vertical preview scroll translates
   local fk = keys.fzf_keymap(cfg0)
