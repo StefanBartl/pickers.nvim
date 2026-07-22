@@ -25,15 +25,17 @@ local function do_create_file(prompt_bufnr)
   create_file.run(path)
 end
 
----@diagnostic disable-next-line: unused-local
 local function do_open_background(prompt_bufnr)
   local action_state = require("telescope.actions.state")
-  local path = extract(action_state.get_selected_entry())
+  local entry = action_state.get_selected_entry()
+  local path = extract(entry)
   if not path then
     notify.warn("No valid path found")
     return
   end
-  open_background.run(path)
+  local picker = action_state.get_current_picker(prompt_bufnr)
+  local pos = entry and entry.lnum and { entry.lnum, math.max((entry.col or 1) - 1, 0) } or nil
+  open_background.run(path, { win = picker and picker.original_win_id, pos = pos })
 end
 
 ---Build the {i={...}, n={...}} mapping table for telescope.setup()'s

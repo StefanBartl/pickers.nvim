@@ -22,7 +22,13 @@ local function do_open_background(selected)
     notify.warn("No valid path found")
     return
   end
-  open_background.run(path)
+  -- fzf-lua's cached invocation context: the window it was opened from, same
+  -- role as telescope's original_win_id / snacks' picker.main. No line/col
+  -- here (would need to parse the raw grep-formatted entry) -- best-effort.
+  local ok_ctx, ctx = pcall(function()
+    return require("fzf-lua.utils").__CTX()
+  end)
+  open_background.run(path, { win = ok_ctx and ctx and ctx.winid or nil })
   vim.defer_fn(function()
     require("fzf-lua").resume()
   end, 50)

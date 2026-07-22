@@ -6,6 +6,7 @@
 ---   <leader>fc     Find files in nvim config
 ---   <leader>gc     Grep in nvim config
 ---   <leader>li     Live grep in CWD
+---   <leader>.      File explorer / browser (active engine)
 ---   (cwd_files)    Find files in CWD              (nil by default)
 ---   (repos_files)  Pick a repo, then find files    (nil by default)
 ---   (repos_grep)   Pick a repo, then live grep     (nil by default)
@@ -20,6 +21,10 @@ function M.register(km)
   map(km.dir_pick, function()
     require("pickers.command").handle({ fargs = { "dir" } })
   end, "[pickers] Dir: navigate (alias / depth / path)")
+
+  map(km.explorer, function()
+    require("pickers.builtins").run("explorer")
+  end, "[pickers] File explorer / browser (active engine)")
 
   map(km.folder_files, function()
     require("pickers.command").handle({ fargs = { "folder", "files" } })

@@ -33,6 +33,7 @@ support it when you hit one.
 | `projects` | `projects` | — | — |
 | `notifications` | `notifications` | — | — |
 | `buffers` | `buffers` | `buffers` | `buffers` |
+| `explorer` | `explorer` | `file_browser` (extension) | — |
 | `git_files` | `git_files` | `git_files` | `git_files` |
 | `marks` | `marks` | `marks` | `marks` |
 | `jumps` | `jumps` | `jumplist` | `jumps` |
@@ -85,6 +86,16 @@ as `:Pickers cwd files` / `:Pickers cwd grep` and don't need a builtin entry.
 
 ## Notes on specific gaps
 
+- **`explorer`**: file explorer / browser, bound to `<leader>.` by default (see
+  [docs/KEYMAPS.md](KEYMAPS.md)). snacks ships a real tree explorer as a picker
+  source (`Snacks.picker.explorer`). telescope's is the separate
+  [telescope-file-browser.nvim](https://github.com/nvim-telescope/telescope-file-browser.nvim)
+  extension — it must be installed; pickers.nvim loads it on demand and warns
+  if it's missing. fzf-lua has no file-manager/explorer picker at all, so
+  `explorer` is a gap there; if fzf-lua is your active engine, use its file
+  picker's own parent-directory navigation instead. Unlike the flat
+  `mod[fn]` builtins, telescope's explorer is dispatched via a custom `run`
+  invoker in the registry (extensions aren't `telescope.builtin.*` functions).
 - **`projects`**: snacks-only. If you need this across engines, a pickers.nvim
   [collection](COLLECTIONS.md) rooted at `repos_dir` covers most of the same
   need (browse repos, jump to files/grep) without depending on snacks.

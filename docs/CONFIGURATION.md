@@ -39,6 +39,7 @@ require("pickers").setup({
   keymaps = {
     enable       = true,
     dir_pick     = "<leader>dp",   -- Dir navigation picker
+    explorer     = "<leader>.",    -- File explorer/browser on the active engine
     folder_files = "<leader>fb",   -- Find in interactively picked folder
     config_files = "<leader>fc",   -- Find files in nvim config
     config_grep  = "<leader>gc",   -- Grep in nvim config
@@ -82,6 +83,7 @@ require("pickers").setup({
     history_forward      = "<C-n>",
     create_file          = "<C-a>",
     open_background      = { "<S-CR>", "<C-o>" },
+    open_background_show = false, -- opt-in: also display (not focus) the entry in the background window
     preview_toggle       = false, -- opt-in, telescope-only (fzf-lua/snacks ship this natively)
     -- fzf-lua only binds the vertical preview scroll and the fixed ctrl-a/
     -- ctrl-o/shift-enter entry actions -- everything else is fzf-native/fixed.

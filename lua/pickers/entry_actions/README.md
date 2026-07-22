@@ -78,3 +78,22 @@ fixed** — fzf-lua's action-table keys are fzf's own bind syntax ("ctrl-a"),
 not Neovim keymap syntax ("<C-a>"), and there is no general, safe way to
 translate one to the other — only `keys.enable` is honoured by the fzf
 adapter.
+
+### `open_background_show`
+
+`open_background` (`lua/pickers/entry_actions/open_background.lua`) always
+`bufadd`+`bufload`s the selected entry silently. Set
+`keys.open_background_show = true` (off by default) to additionally point
+the window *behind* the picker at that buffer — never focusing it, focus
+stays in the picker. Each adapter resolves "the window behind the picker"
+its own way and passes it as `opts.win` to `open_background.run(path, opts)`:
+
+- telescope: `action_state.get_current_picker(prompt_bufnr).original_win_id`
+- snacks: `picker.main`
+- fzf-lua: `require("fzf-lua.utils").__CTX().winid` (the cached invocation
+  context) — best-effort, no cursor positioning (would need to parse the raw
+  grep-formatted selected line for a line number)
+
+telescope also passes `opts.pos` (`{lnum, col}`) when the entry carries one
+(e.g. grep results), so the background window lands on the matched line, not
+just the top of the file.

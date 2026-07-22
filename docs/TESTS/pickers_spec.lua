@@ -595,7 +595,11 @@ do
       local impl = entry[engine]
       if impl then
         any_impl = true
-        if type(impl.fn) ~= "string" or impl.fn == "" then shape_ok = false end
+        -- Exactly one of `fn` (flat mod[fn] dispatch) or `run` (custom
+        -- invoker, e.g. telescope's file_browser extension) must be present.
+        local has_fn = type(impl.fn) == "string" and impl.fn ~= ""
+        local has_run = type(impl.run) == "function"
+        if has_fn == has_run then shape_ok = false end
       elseif impl ~= false then
         shape_ok = false -- must be exactly `false`, not nil, to mark a gap
       end
@@ -604,6 +608,32 @@ do
   end
   check("builtins.REGISTRY: every entry has desc + valid impl shape", shape_ok)
   check("builtins.REGISTRY: no entry is all-gap", zero_impl == nil, tostring(zero_impl))
+
+  -- Regression: snacks picker functions live on `snacks.picker`, not the
+  -- top-level `Snacks` table (whose metatable turns Snacks.command_history
+  -- into a failing require("snacks.command_history")). This guards the whole
+  -- snacks builtin path — the user's default engine.
+  check("builtins.engine_module: snacks → snacks.picker", builtins.engine_module("snacks") == "snacks.picker")
+  check("builtins.engine_module: telescope → telescope.builtin", builtins.engine_module("telescope") == "telescope.builtin")
+  check("builtins.engine_module: fzf → fzf-lua", builtins.engine_module("fzf") == "fzf-lua")
+
+  -- Dispatch actually calls the right function on the right module (stubbed,
+  -- so it works headless without a real snacks/telescope install).
+  do
+    local prev = package.loaded["snacks.picker"]
+    local called_with
+    package.loaded["snacks.picker"] = { command_history = function(o) called_with = o end }
+    builtins.run("command_history", { marker = 1 }, "snacks")
+    package.loaded["snacks.picker"] = prev
+    check("builtins.run: snacks dispatches to snacks.picker[fn]", type(called_with) == "table" and called_with.marker == 1)
+  end
+
+  -- explorer: snacks fn, telescope custom run-invoker, fzf documented gap.
+  local explorer = builtins.REGISTRY.explorer
+  check("builtins: explorer snacks uses fn=explorer", explorer.snacks and explorer.snacks.fn == "explorer")
+  check("builtins: explorer telescope uses a run-invoker", type(explorer.telescope.run) == "function")
+  check("builtins: explorer has no fzf impl", explorer.fzf == false)
+  check("builtins.run: explorer run-invoker path does not throw", pcall(builtins.run, "explorer", nil, "telescope"))
 
   -- Documented gaps match what was verified against the real plugin sources.
   local git_diff = builtins.REGISTRY.git_diff

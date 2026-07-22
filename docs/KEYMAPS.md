@@ -7,6 +7,7 @@ They mirror the keymaps from the original individual modules exactly:
 | Keymap | Action | Was |
 |---|---|---|
 | `<leader>dp` | `:Pickers dir` — navigation picker | `custom.dir_picker` |
+| `<leader>.` | `:Pickers builtin explorer` — file explorer/browser (active engine) | `telescope file_browser` / `Snacks.explorer` |
 | `<leader>fb` | `:Pickers folder files` — pick folder | `custom.find_in_folder` |
 | `<leader>fc` | `:Pickers config files` — find in config | `custom.find_config` |
 | `<leader>gc` | `:Pickers config grep` — grep in config | `custom.find_config` |
@@ -71,6 +72,24 @@ actions — they run pickers.nvim-specific logic (`lua/pickers/entry_actions/`),
 not a built-in engine action, so you still merge them into your own engine
 `setup()` manually. See `lua/pickers/entry_actions/README.md` for the adapters
 (`get_mappings()`/`get_actions()`/`get_keys()`).
+
+**`open_background` only preloads by default** — `bufadd`+`bufload`, no
+window, no focus change, matching the old per-engine behaviour exactly.
+Setting `keys.open_background_show = true` additionally points the window
+*behind* the picker at the selected entry (and its line, where the engine
+exposes one) — without ever moving keyboard focus there; focus always stays
+in the picker's prompt/results list. This is opt-in and off by default. All
+three engines support it: telescope via the picker's `original_win_id`,
+snacks via `picker.main`, fzf-lua via its cached invocation context
+(`fzf-lua.utils.__CTX().winid`) — fzf-lua is best-effort and doesn't position
+the cursor to a specific line (would require parsing the raw grep-formatted
+entry).
+
+```lua
+require("pickers").setup({
+  keys = { open_background_show = true },
+})
+```
 
 **`preview_toggle` is opt-in** (off/unbound by default, unlike the other six)
 and **telescope-only**: fzf-lua already binds toggle-preview on `<F4>`, snacks
