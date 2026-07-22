@@ -144,22 +144,23 @@ end
 --- Install the in-picker keys onto each available engine's global config, so
 --- they apply to every picker that engine opens. No-op when disabled.
 ---
---- Telescope is patched immediately (`defaults.mappings` deep-merges, so a later
---- user `telescope.setup()` keeps ours as long as they don't redefine the same
---- lhs). fzf-lua is patched deferred via `vim.schedule` — its `setup()` resets
---- config unless `do_not_reset_defaults=true` is passed, and deferring makes our
---- call land after the user's own `setup()` in the startup batch (same reasoning
---- as `pickers.history.patch`). Snacks is not patched here — pickers.nvim does
---- not own `Snacks.setup()`; use `keys.snacks_win()`.
+--- Both telescope and fzf-lua are patched deferred via `vim.schedule` — not just
+--- to land after the user's own `setup()` in the startup batch (same reasoning
+--- as `pickers.history.patch`), but because `require("telescope")` alone pulls
+--- in its full module tree; doing that eagerly during `pickers.nvim`'s own
+--- (non-lazy) `setup()` forced telescope to fully load on every startup even
+--- when the user never opens a picker. `defaults.mappings` deep-merges
+--- regardless of call order, so deferring doesn't change the end result — see
+--- `pickers.keys.adapters.telescope`. Snacks is not patched here — pickers.nvim
+--- does not own `Snacks.setup()`; use `keys.snacks_win()`.
 ---@param cfg Pickers.Config|nil
 function M.patch(cfg)
   cfg = cfg or require("pickers.config").get()
   local resolved = M.resolve(cfg)
   if vim.tbl_isempty(resolved) then return end
 
-  require("pickers.keys.adapters.telescope").patch(resolved)
-
   vim.schedule(function()
+    require("pickers.keys.adapters.telescope").patch(resolved)
     require("pickers.keys.adapters.fzf").patch(resolved)
   end)
 end

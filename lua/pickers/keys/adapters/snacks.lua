@@ -12,11 +12,21 @@
 ---
 --- Snacks list/preview windows are normal mode only, so those entries use the
 --- bare-string binding form; the input window carries the mode-qualified form.
+---
+--- `create_file`/`open_background` are deliberately excluded here — unlike
+--- the built-in preview-scroll/history actions, they run pickers.nvim-
+--- specific logic and are not auto-patched anywhere (same as the telescope/
+--- fzf adapters, which simply don't have them in their lookup tables). See
+--- `pickers.entry_actions.adapters.snacks` for their own `get_actions()`/
+--- `get_keys()` (list-window only, matching Snacks.picker's own convention).
 
 local M = {}
 
 --- Snacks treats these as history navigation → input window, insert mode only.
 local HISTORY = { history_back = true, history_forward = true }
+
+--- Handled by pickers.entry_actions.adapters.snacks instead -- see @description.
+local SKIP = { create_file = true, open_background = true }
 
 ---@param resolved table<string, { lhs: string[], modes: string[] }>
 ---@return { input: { keys: table }, list: { keys: table }, preview: { keys: table } }
@@ -24,14 +34,16 @@ function M.win(resolved)
   local input, list, preview = {}, {}, {}
 
   for action, spec in pairs(resolved) do
-    for _, lhs in ipairs(spec.lhs) do
-      if HISTORY[action] then
-        input[lhs] = { action, mode = { "i" } }
-      else
-        -- Preview scroll: reachable from every window.
-        input[lhs] = { action, mode = { "i", "n" } }
-        list[lhs] = action
-        preview[lhs] = action
+    if not SKIP[action] then
+      for _, lhs in ipairs(spec.lhs) do
+        if HISTORY[action] then
+          input[lhs] = { action, mode = { "i" } }
+        else
+          -- Preview scroll: reachable from every window.
+          input[lhs] = { action, mode = { "i", "n" } }
+          list[lhs] = action
+          preview[lhs] = action
+        end
       end
     end
   end

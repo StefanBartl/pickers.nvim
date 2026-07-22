@@ -63,23 +63,26 @@ end
 ---Install pickers.nvim's history as the engines' own default, without the
 ---user touching their own `telescope.setup()`/`fzf-lua.setup()` calls.
 ---
---- Telescope: a plain, immediate `telescope.setup({defaults={history=...}}})`
---- call. Safe regardless of call order relative to the user's own
---- `telescope.setup()`, because telescope merges `defaults.history` with
---- "keep" semantics (see `telescope/config.lua:set_defaults`) — as long as
---- the user's own config doesn't also set `history`, ours always survives.
+--- Both engines are patched deferred via `vim.schedule()`, so this call runs
+--- after the current synchronous startup batch (i.e. after all lazy.nvim
+--- `config()` functions) instead of forcing a `require("telescope")` (or
+--- fzf-lua) load on every startup even when the user never opens a picker.
+---
+--- Telescope: call order never mattered for correctness anyway — it merges
+--- `defaults.history` with "keep" semantics (see
+--- `telescope/config.lua:set_defaults`), so deferring is free.
 ---
 --- fzf-lua (only when `fzf_scope == "patch"`): `fzf-lua.setup()` resets the
 --- whole config from scratch unless `do_not_reset_defaults=true` is passed,
 --- so a plain immediate call here could be wiped out by a later user
---- `setup()` call. Deferring via `vim.schedule()` makes this call run after
---- the current synchronous startup batch (i.e. after all lazy.nvim `config()`
---- functions), so it always merges onto whatever the user's own config
---- already produced, regardless of plugin declaration order.
+--- `setup()` call — deferring makes it land after the user's own config
+--- regardless of plugin declaration order.
 ---@param cfg Pickers.Config
 function M.patch(cfg)
-  pcall(function()
-    require("telescope").setup({ defaults = { history = M.telescope_opts(cfg) } })
+  vim.schedule(function()
+    pcall(function()
+      require("telescope").setup({ defaults = { history = M.telescope_opts(cfg) } })
+    end)
   end)
 
   if cfg.history.fzf_scope == "patch" then
