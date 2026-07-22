@@ -483,6 +483,33 @@ do
   config.apply({ keys = { history_back = "<C-p>" } })
 end
 
+-- ── pickers.entry_actions.extract.fzf — clean fields vs raw display line ────
+do
+  local extract = require("pickers.entry_actions.extract.fzf")
+
+  -- Clean .path/.filename fields (fzf-lua-populated metadata, never carry an
+  -- icon prefix) must survive untouched even when they contain a space --
+  -- the icon-strip regex must not fire on them. Regression test: it used to
+  -- unconditionally strip "first token + space" off *any* string reaching
+  -- this point, corrupting e.g. Windows' "C:\Program Files\..." into
+  -- "Files\...".
+  check(
+    "extract.fzf: clean .path with space survives",
+    extract({ path = "C:/Program Files/foo.txt" }):find("Program Files", 1, true) ~= nil
+  )
+  check(
+    "extract.fzf: clean .filename with space survives",
+    extract({ filename = "/home/user/John Doe/notes.md" }):find("John Doe", 1, true) ~= nil
+  )
+
+  -- The raw display-line fallback (selected[1], no .path/.filename) DOES
+  -- carry fzf's own icon/ANSI formatting and must still be stripped.
+  local icon_line = "\239\130\156 /home/user/project/main.lua"
+  local stripped = extract({ icon_line })
+  check("extract.fzf: icon-prefixed [1] fallback still stripped", stripped:find("main.lua", 1, true) ~= nil)
+  check("extract.fzf: icon glyph removed", not stripped:find("239", 1, true))
+end
+
 -- ── :Pickers completion (composer) — needs lib.nvim; skip cleanly if absent ─
 -- Registers the real :Pickers command (as plugin/pickers.lua would) and drives
 -- its actual completion via getcompletion(), exercising the composer route
