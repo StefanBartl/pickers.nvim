@@ -7,14 +7,15 @@
 :Pickers dir [nav] [action]
 ```
 
-When an argument is omitted an interactive picker appears (`hover_select` or
-`vim.ui.select`).
+`action` is one of `files`, `grep`, or `smart`. When an argument is omitted an
+interactive picker appears (`hover_select` or `vim.ui.select`).
 
 | Scope | Nav (dir only) | Action | Result |
 |---|---|---|---|
 | _(none)_ | — | — | scope picker (built-ins + collections) |
 | `cwd` | — | _(none)_ | action picker for CWD |
 | `cwd` | — | `files` | find files in CWD |
+| `cwd` | — | `smart` | combined grep + find in CWD (merged & ranked) |
 | `config` | — | `grep` | live grep in nvim config |
 | `folder` | — | `files` | pick a folder → find files |
 | `repos` | — | `files` | pick a repo → find files |
@@ -52,6 +53,35 @@ equivalent — documented gaps, not bugs).
 :Pickers builtin git_branches
 :Pickers builtin lsp_definitions
 ```
+
+---
+
+## The `smart` action
+
+`:Pickers <scope> smart` opens ONE live picker that runs `rg` (content) **and**
+`fd` (filenames) for the same query and merges both result sets into a single
+list **ranked by relevance** — a filename hit and a content hit interleave by
+score instead of appearing as two separate blocks. A file matched by name that
+*also* contains matches floats to the top (see `smart.weights.both`).
+
+Works with every scope and collection, exactly like `files`/`grep`:
+
+```
+:Pickers cwd smart
+:Pickers config smart
+:Pickers dir git smart
+:Pickers notes smart          " collection
+```
+
+An empty prompt behaves like a file picker (files only, no grep); results fill
+in once you type. Selecting a grep row opens the file at the matched line;
+selecting a file row opens it at the top. Ranking is identical across
+telescope/fzf-lua/snacks because all three drive the same core
+(`lua/pickers/smart/`). Tune the weighting via `smart.weights` — see
+[docs/CONFIGURATION.md](CONFIGURATION.md#smart-combined-grep--find).
+
+> fzf-lua note: the smart action uses fzf-lua's Lua-function live mode, which
+> needs fzf ≥ 0.45. On older fzf, use the telescope or snacks engine for it.
 
 ---
 
@@ -103,12 +133,15 @@ All commands from the original modules are preserved as aliases:
 | `:WkdBookFiles` | `:Pickers wkdbooks files` |
 | `:WkdBookGrep` | `:Pickers wkdbooks grep` |
 
+Each user-defined collection also gets a `:{PascalName}Smart` command
+(alongside `:{PascalName}Files` / `:{PascalName}Grep`) → `:Pickers {name} smart`.
+
 ---
 
 ## `:PickersRepeat`
 
 Reopens the most recently dispatched `:Pickers` action — same resolved
-scope/root, same action (`files`/`grep`) — without re-resolving through any
+scope/root, same action (`files`/`grep`/`smart`) — without re-resolving through any
 interactive sub-picker (folder/repo/collection subdir) in between. Covers
 every scope, including `dir`. In-memory only, current session; warns if
 nothing has been dispatched yet. See `lua/pickers/last.lua`.

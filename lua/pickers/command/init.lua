@@ -37,7 +37,7 @@ local BASE_SCOPES_SET = {}
 for _, s in ipairs(BASE_SCOPES) do
   BASE_SCOPES_SET[s] = true
 end
-local ACTIONS_SET = { files = true, grep = true }
+local ACTIONS_SET = { files = true, grep = true, smart = true }
 
 -- ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -63,6 +63,8 @@ local function dispatch_action(action, source, engine_mod)
   require("pickers.last").set(action, source)
   if action == "grep" then
     require("pickers.actions.grep").run(source, engine_mod)
+  elseif action == "smart" then
+    require("pickers.actions.smart").run(source, engine_mod)
   else
     require("pickers.actions.files").run(source, engine_mod)
   end
@@ -178,7 +180,9 @@ function M.handle(opts)
   if BASE_SCOPES_SET[scope] then
     local action = arg2
     if action and not ACTIONS_SET[action] then
-      notify.warn("Unknown action '" .. action .. "'. Valid: files, grep. Showing action picker.")
+      notify.warn(
+        "Unknown action '" .. action .. "'. Valid: files, grep, smart. Showing action picker."
+      )
       action = nil
     end
     run_standard_scope(scope, action, engine_mod)
@@ -190,7 +194,9 @@ function M.handle(opts)
   if coll then
     local action = arg2
     if action and not ACTIONS_SET[action] then
-      notify.warn("Unknown action '" .. action .. "'. Valid: files, grep. Showing action picker.")
+      notify.warn(
+        "Unknown action '" .. action .. "'. Valid: files, grep, smart. Showing action picker."
+      )
       action = nil
     end
     run_collection_scope(coll, action, engine_mod)

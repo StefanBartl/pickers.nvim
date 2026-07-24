@@ -54,7 +54,10 @@ function M.check()
   -- ── CLI tools ─────────────────────────────────────────────────────────────
   vim.health.start("pickers.nvim — CLI tools")
 
-  if vim.fn.executable("rg") == 1 then
+  local has_rg = vim.fn.executable("rg") == 1
+  local has_fd = vim.fn.executable("fd") == 1 or vim.fn.executable("fdfind") == 1
+
+  if has_rg then
     vim.health.ok("ripgrep (rg) found")
   else
     vim.health.warn("ripgrep (rg) not found — live_grep will not work")
@@ -66,6 +69,15 @@ function M.check()
     vim.health.ok("fdfind found")
   else
     vim.health.warn("fd / fdfind not found — system source and dir-picker will not work")
+  end
+
+  -- The smart action (see :help pickers-smart) needs BOTH rg and fd.
+  if has_rg and has_fd then
+    vim.health.ok("smart action ready (rg + fd both present)")
+  else
+    vim.health.warn(
+      "smart action degraded — it needs BOTH rg and fd; the missing half is skipped"
+    )
   end
 
   -- ── Configuration ─────────────────────────────────────────────────────────

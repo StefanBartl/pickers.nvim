@@ -49,6 +49,11 @@ local M = {
     repos_files = nil,
     repos_grep = nil,
     system_files = nil,
+    -- Smart action (combined grep + find files). Opt-in, nil by default -- the
+    -- key is unopinionated like cwd_files; pick one in your own setup().
+    cwd_smart = nil,
+    config_smart = nil,
+    folder_smart = nil,
   },
 
   -- File-listing behaviour for the built-in file pickers (config/cwd/folder/
@@ -134,6 +139,24 @@ local M = {
   -- already show a position/total counter natively. See pickers.result_count.
   result_count = {
     enabled = false,
+  },
+
+  -- Smart action: runs rg (content) and fd (filenames) for the same live query
+  -- and merges both into ONE list ranked by a shared scorer, so hits interleave
+  -- by relevance regardless of source. See pickers.smart.
+  --   weights.filename - multiplier for the filename-match component
+  --   weights.content  - multiplier for the grep content-match component
+  --   weights.both     - flat bonus for a file that ALSO has grep hits
+  --   limit            - max merged results kept after ranking
+  --   timeout          - per-command (rg/fd) wait timeout in ms
+  smart = {
+    weights = {
+      filename = 1.0,
+      content = 1.0,
+      both = 25,
+    },
+    limit = 2000,
+    timeout = 3000,
   },
 }
 

@@ -36,6 +36,9 @@ function M.register(km)
   add(km.repos_files, "Pickers: pick repo, find files")
   add(km.repos_grep, "Pickers: pick repo, live grep")
   add(km.system_files, "Pickers: systemwide fd search")
+  add(km.cwd_smart, "Pickers: smart grep+find (cwd)")
+  add(km.config_smart, "Pickers: smart grep+find (config)")
+  add(km.folder_smart, "Pickers: smart grep+find (folder)")
 
   if #spec > 0 then pcall(wk.add, spec) end
 end
@@ -52,6 +55,9 @@ function M.register_collection(coll)
   end
   if coll.keys.grep then
     spec[#spec + 1] = { coll.keys.grep, desc = "Pickers[" .. coll.name .. "]: grep" }
+  end
+  if coll.keys.smart then
+    spec[#spec + 1] = { coll.keys.smart, desc = "Pickers[" .. coll.name .. "]: smart" }
   end
 
   if #spec > 0 then pcall(wk.add, spec) end

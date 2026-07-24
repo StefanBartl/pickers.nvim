@@ -2,15 +2,16 @@
 
 Collections are user-defined named scopes. Each collection becomes a first-class
 `:Pickers` scope, gets auto-generated compat commands (`{PascalName}Files` /
-`{PascalName}Grep`), and optional keymaps.
+`{PascalName}Grep` / `{PascalName}Smart`), and optional keymaps.
 
 ## Collection config
 
 ```lua
 collections = {
-  -- Direct root — dir is used as-is
+  -- Direct root — dir is used as-is. `keys.smart` (optional) binds the
+  -- combined grep + find action for this collection (see docs/COMMANDS.md).
   { name = "notes",       dir = vim.env.REPOS_DIR .. "/Notes",
-    keys = { files = "<leader>mnf", grep = "<leader>mng" } },
+    keys = { files = "<leader>mnf", grep = "<leader>mng", smart = "<leader>mns" } },
 
   -- Prefix-filtered subdirs — pick one, then search inside it
   { name = "wkdbooks",    dir = vim.env.REPOS_DIR .. "/WKDBooks",
@@ -56,3 +57,4 @@ For a collection named `"notes_lua"`:
 |---|---|
 | `:NotesLuaFiles` | `:Pickers notes_lua files` |
 | `:NotesLuaGrep` | `:Pickers notes_lua grep` |
+| `:NotesLuaSmart` | `:Pickers notes_lua smart` |

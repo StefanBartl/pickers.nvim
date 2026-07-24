@@ -5,6 +5,25 @@ a promise; it is a backlog of ideas ordered roughly by usefulness.
 
 ## Features
 
+- [x] **Smart action (combined grep + find files).** A third action alongside
+  `files`/`grep`: `:Pickers <scope> smart` runs `rg` (content) and `fd`
+  (filenames) for the same live query and merges both into ONE list ranked by a
+  shared, engine-agnostic scorer (`lua/pickers/smart/`), so a filename hit and a
+  content hit interleave by relevance instead of appearing as two blocks; a file
+  matched by name that also contains matches floats to the top
+  (`smart.weights.both`). Works with every scope and collection (per-collection
+  `keys.smart`, `:{PascalName}Smart`), plus opt-in `cwd_smart`/`config_smart`/
+  `folder_smart` keymaps. All three engines drive the same core: snacks via a
+  sync live finder (order preserved under `sort_empty=false`), telescope via
+  `new_dynamic` + `sorters.empty()`, fzf-lua via Lua-function live mode
+  (`fzf ≥ 0.45`). Tunable via `smart = { weights, limit, timeout }`. See
+  [docs/COMMANDS.md](COMMANDS.md#the-smart-action) and
+  [docs/CONFIGURATION.md](CONFIGURATION.md#smart-combined-grep--find).
+  - [ ] _(future)_ Frecency / recently-opened boost as an optional score
+    component, so a file you edit often outranks an equal-scoring stranger.
+  - [ ] _(future)_ Dedup grep rows down to one-per-file (best line) behind a
+    config flag, for users who want the file list denser.
+
 - [ ] _(low priority, needs a design decision)_ **Optional engine ownership +
   auto-install.** `require("pickers").setup({ engine = "snacks", own_engine =
   true })` (opt-in, default `false` — today's behaviour, unchanged) would make

@@ -26,6 +26,12 @@ A single, machine-readable reference of every keymap, user-command and autocomma
 | `<leader>gc` | `"config_grep"` | `:Pickers config grep` | Live grep in the Neovim config dir |
 | `<leader>li` | `"cwd_grep"` | `:Pickers cwd grep` | Live grep in the current working directory |
 | *None* (`nil`) | `"cwd_files"` | `:Pickers cwd files` | Find files in the current working directory *(disabled by default)* |
+| *None* (`nil`) | `"repos_files"` | `:Pickers repos files` | Pick a repo, then find files *(disabled by default)* |
+| *None* (`nil`) | `"repos_grep"` | `:Pickers repos grep` | Pick a repo, then live grep *(disabled by default)* |
+| *None* (`nil`) | `"system_files"` | `:Pickers system files` | Systemwide fd search, prompts for query *(disabled by default)* |
+| *None* (`nil`) | `"cwd_smart"` | `:Pickers cwd smart` | Combined grep + find in CWD, merged & ranked *(disabled by default)* |
+| *None* (`nil`) | `"config_smart"` | `:Pickers config smart` | Combined grep + find in nvim config *(disabled by default)* |
+| *None* (`nil`) | `"folder_smart"` | `:Pickers folder smart` | Pick a folder, then combined grep + find *(disabled by default)* |
 
 ---
 
@@ -35,7 +41,7 @@ A single, machine-readable reference of every keymap, user-command and autocomma
 
 | Command Name (`name`) | Equivalent Invocation (`maps_to`) | Arguments (`nargs`) | Description |
 | --- | --- | --- | --- |
-| `:Pickers` | `:Pickers [scope] [nav|action] [action]` | `*` | Unified entry point *(always registered)* |
+| `:Pickers` | `:Pickers [scope] [nav|action] [action]` | `*` | Unified entry point *(always registered; `action` ∈ `files`/`grep`/`smart`)* |
 | `:DirPicker` | `:Pickers dir [nav]` | `*` | Dir navigation picker |
 | `:FindConfig` | `:Pickers config files` | `?` | Find files in nvim config |
 | `:GrepConfig` | `:Pickers config grep` | `?` | Live grep in nvim config |
@@ -53,14 +59,15 @@ A single, machine-readable reference of every keymap, user-command and autocomma
 
 ## 3. Collection-Generated Commands (`collection_commands`)
 
-For every user-configured entry in the `collections` table, two compatibility commands are dynamically generated from the **PascalCase** version of the collection's name (e.g., `notes_lua` generates the commands below).
+For every user-configured entry in the `collections` table, three compatibility commands are dynamically generated from the **PascalCase** version of the collection's name (e.g., `notes_lua` generates the commands below).
 
-Additionally, optional `keys.files` / `keys.grep` keymaps are bound if they are explicitly configured.
+Additionally, optional `keys.files` / `keys.grep` / `keys.smart` keymaps are bound if they are explicitly configured.
 
 | Type | Dynamic Pattern (`pattern`) | Maps To (`maps_to`) | Example (`notes_lua`) |
 | --- | --- | --- | --- |
 | **Files** | `:{PascalName}Files` | `:Pickers {name} files` | `:NotesLuaFiles` $\rightarrow$ `:Pickers notes_lua files` |
 | **Grep** | `:{PascalName}Grep` | `:Pickers {name} grep` | `:NotesLuaGrep` $\rightarrow$ `:Pickers notes_lua grep` |
+| **Smart** | `:{PascalName}Smart` | `:Pickers {name} smart` | `:NotesLuaSmart` $\rightarrow$ `:Pickers notes_lua smart` |
 
 ---
 

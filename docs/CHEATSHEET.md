@@ -7,6 +7,7 @@
 :Pickers <scope>                  action picker for scope
 :Pickers <scope> files            find files in scope
 :Pickers <scope> grep             live grep in scope
+:Pickers <scope> smart            grep + find merged, ranked by relevance
 :Pickers dir                      dir-nav picker → action picker
 :Pickers dir <nav>                resolve nav → action picker
 :Pickers dir <nav> <action>       fully specified
@@ -64,6 +65,18 @@
 | `:WkdBookFiles` | `:Pickers wkdbooks files` |
 | `:WkdBookGrep` | `:Pickers wkdbooks grep` |
 
+## Smart action (grep + find, merged & ranked)
+
+```
+:Pickers <scope> smart            one live picker: rg (content) + fd (names)
+```
+
+Both result sets merge into one list ranked by relevance (not two blocks). A
+file matched by name that also has content hits floats to the top. Empty prompt
+= files only. Tune `smart.weights = { filename, content, both }`. Opt-in
+keymaps: `cwd_smart` / `config_smart` / `folder_smart`; per-collection
+`keys.smart`. fzf-lua engine needs fzf ≥ 0.45.
+
 ## Collections
 
 Each collection in `setup({ collections = { ... } })` gets:
@@ -72,10 +85,13 @@ Each collection in `setup({ collections = { ... } })` gets:
 |---|---|
 | `:Pickers notes_lua files` | scope via command |
 | `:Pickers notes_lua grep` | scope via command |
+| `:Pickers notes_lua smart` | scope via command |
 | `:NotesLuaFiles` | compat command |
 | `:NotesLuaGrep` | compat command |
+| `:NotesLuaSmart` | compat command |
 | `keys.files` keymap | if configured |
 | `keys.grep` keymap | if configured |
+| `keys.smart` keymap | if configured |
 
 ### prefix field
 

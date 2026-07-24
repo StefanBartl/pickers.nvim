@@ -11,6 +11,9 @@
 ---   (repos_files)  Pick a repo, then find files    (nil by default)
 ---   (repos_grep)   Pick a repo, then live grep     (nil by default)
 ---   (system_files) Systemwide fd search (prompts)  (nil by default)
+---   (cwd_smart)    Smart grep+find in CWD          (nil by default)
+---   (config_smart) Smart grep+find in nvim config  (nil by default)
+---   (folder_smart) Smart grep+find in picked folder (nil by default)
 
 local map = require("pickers.bindings.util").map
 
@@ -57,6 +60,18 @@ function M.register(km)
   map(km.system_files, function()
     require("pickers.command").handle({ fargs = { "system", "files" } })
   end, "[pickers] Systemwide fd search (prompts for query)")
+
+  map(km.cwd_smart, function()
+    require("pickers.command").handle({ fargs = { "cwd", "smart" } })
+  end, "[pickers] Smart (grep + find) in CWD")
+
+  map(km.config_smart, function()
+    require("pickers.command").handle({ fargs = { "config", "smart" } })
+  end, "[pickers] Smart (grep + find) in nvim config")
+
+  map(km.folder_smart, function()
+    require("pickers.command").handle({ fargs = { "folder", "smart" } })
+  end, "[pickers] Smart (grep + find) in interactively picked folder")
 end
 
 return M

@@ -18,7 +18,8 @@ CONTENTS                                                      *pickers-contents*
  10. History .......................... |pickers-history|
  11. Selected index display .......... |pickers-selected-index|
  12. Result count ..................... |pickers-result-count|
- 13. Health check ..................... |pickers-health|
+ 13. Smart action ..................... |pickers-smart|
+ 14. Health check ..................... |pickers-health|
 
 ==============================================================================
 1. INTRODUCTION                                                  *pickers-intro*
@@ -49,8 +50,12 @@ One of (auto-detected, telescope preferred, then fzf-lua, then snacks.nvim):
   • snacks.nvim     https://github.com/folke/snacks.nvim  (picker module)
 
 Recommended CLI tools:
-  • ripgrep (rg)   — live_grep support
-  • fd / fdfind    — system source, dir-picker (telescope, snacks)
+  • ripgrep (rg)   — live_grep and the smart action (content half)
+  • fd / fdfind    — system source, dir-picker, and the smart action (files half)
+
+The smart action (see |pickers-smart|) needs BOTH rg and fd. On the fzf-lua
+engine it additionally needs fzf >= 0.45 (Lua-function live mode); use
+telescope or snacks on older fzf.
 
 ==============================================================================
 3. SETUP                                                         *pickers-setup*
@@ -87,8 +92,16 @@ Full options: >lua
       config_grep  = "<leader>gc",
       cwd_grep     = "<leader>li",
       cwd_files    = nil,
+      cwd_smart    = nil,             -- smart (grep + find) in CWD
+      config_smart = nil,             -- smart (grep + find) in nvim config
+      folder_smart = nil,             -- smart (grep + find) in picked folder
     },
     usercmds = { enable = true },
+    smart = {                         -- combined grep + find (see |pickers-smart|)
+      weights = { filename = 1.0, content = 1.0, both = 25 },
+      limit   = 2000,
+      timeout = 3000,
+    },
     history = {
       enabled   = false,             -- off by default
       fzf_scope = "plugin",          -- "plugin"|"global"|"patch" (fzf-lua only)
@@ -120,7 +133,7 @@ toggle keymaps/usercmds.
 
   scope    One of: cwd config folder repos wkdbooks system drives dir
            or any user-defined collection name (see |pickers-collections|)
-  action   One of: files grep
+  action   One of: files grep smart      (smart: see |pickers-smart|)
   nav      (dir only) alias name, integer depth, or path=<dir>
 
 When an argument is omitted an interactive picker (hover_select or
@@ -130,6 +143,7 @@ Examples: >
   :Pickers                    " scope picker → action picker
   :Pickers cwd                " action picker for CWD
   :Pickers cwd files          " find files in CWD
+  :Pickers cwd smart          " grep + find in CWD, merged and ranked
   :Pickers config grep        " live grep in nvim config
   :Pickers dir                " dir-nav picker → action picker
   :Pickers dir 2              " go 2 dirs up → action picker
@@ -200,8 +214,9 @@ dir~
 Collections are user-defined named scopes configured in `setup()`.  Each
 collection automatically becomes:
   • A `:Pickers <name>` scope (tab-completed alongside built-ins)
-  • Compat commands  `:{PascalName}Files` / `:{PascalName}Grep`
-  • Optional keymaps (if `keys.files` / `keys.grep` are set)
+  • Compat commands  `:{PascalName}Files` / `:{PascalName}Grep` /
+    `:{PascalName}Smart`
+  • Optional keymaps (if `keys.files` / `keys.grep` / `keys.smart` are set)
 
 Configuration: >lua
   collections = {
@@ -237,7 +252,7 @@ Collection fields:
     ""     — list all immediate subdirs; user picks one interactively
     "xyz-" — list only subdirs whose name starts with "xyz-"
 
-  keys ({ files?: string, grep?: string }|nil)~
+  keys ({ files?: string, grep?: string, smart?: string }|nil)~
     Optional normal-mode keymaps registered at startup.
 
   only_git (boolean|nil)~
@@ -256,6 +271,7 @@ automatically:
 
   :NotesLuaFiles    →  :Pickers notes_lua files
   :NotesLuaGrep     →  :Pickers notes_lua grep
+  :NotesLuaSmart    →  :Pickers notes_lua smart
 
 The name is converted to PascalCase: underscores are removed and the
 following letter is uppercased.
@@ -278,6 +294,9 @@ The following are opt-in (nil, disabled by default):
   repos_files   :Pickers repos files  (pick a repo, then find files)
   repos_grep    :Pickers repos grep   (pick a repo, then live grep)
   system_files  :Pickers system files (systemwide fd search, prompts)
+  cwd_smart     :Pickers cwd smart    (grep + find in CWD; see |pickers-smart|)
+  config_smart  :Pickers config smart (grep + find in nvim config)
+  folder_smart  :Pickers folder smart (pick folder, then grep + find)
 
 Disable all keymaps: >lua
   require("pickers").setup({ keymaps = { enable = false } })
@@ -565,7 +584,62 @@ live finder (e.g. live_grep) streams in matches, with no CursorMoved or
 TextChanged event to hang the update off of.
 
 ==============================================================================
-13. HEALTH CHECK                                                *pickers-health*
+13. SMART ACTION                                                 *pickers-smart*
+
+The smart action runs rg (content) AND fd (filenames) for the same live query
+and merges both result sets into ONE list ranked by relevance — a filename hit
+and a content hit interleave by score instead of appearing as two separate
+blocks. A file matched by name that also contains matches floats to the top.
+
+Open it like any other action, for every scope and collection: >
+  :Pickers cwd smart
+  :Pickers config smart
+  :Pickers dir git smart
+  :Pickers notes smart          " collection
+  :NotesSmart                   " collection compat command
+<
+
+An empty prompt behaves like a file picker (files only, no grep); results fill
+in as you type. Selecting a grep row opens the file at the matched line;
+selecting a file row opens it at the top.
+
+All three engines drive the same core (`lua/pickers/smart/`), so the ranking is
+identical regardless of engine: snacks via a synchronous live finder (order
+preserved with sort_empty=false), telescope via new_dynamic + sorters.empty(),
+fzf-lua via Lua-function live mode (needs fzf >= 0.45).
+
+The files half honours |pickers-config| `find` (hidden/no_ignore/follow/
+exclude); the grep half always searches --hidden --no-ignore-vcs --smart-case,
+exactly like live_grep.
+
+Configuration (all optional): >lua
+  require("pickers").setup({
+    smart = {
+      weights = {
+        filename = 1.0,   -- multiplier for filename-match component (fd hits)
+        content  = 1.0,   -- multiplier for content-match component (rg hits)
+        both     = 25,    -- flat bonus for a file that ALSO has grep hits
+      },
+      limit   = 2000,     -- max merged results kept after ranking
+      timeout = 3000,     -- per-command (rg/fd) wait timeout in ms
+    },
+  })
+<
+
+Tuning:
+  • Favour filenames — raise weights.filename or lower weights.content.
+  • Favour content — raise weights.content.
+  • weights.both floats a name+content match above lone hits of either kind;
+    set 0 to disable that boost.
+  • limit caps the merged list after ranking (lower it on huge trees).
+  • timeout bounds each per-keystroke rg/fd call.
+
+Opt-in keymaps: cwd_smart, config_smart, folder_smart (nil by default; see
+|pickers-keymaps|). Per-collection: keys.smart, plus a :{PascalName}Smart
+compat command (see |pickers-collections|).
+
+==============================================================================
+14. HEALTH CHECK                                                *pickers-health*
 
 Run: >
   :checkhealth pickers

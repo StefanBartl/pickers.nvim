@@ -51,11 +51,13 @@ local function normalise_history(raw, current)
     if type(raw.fzf_scope) == "string" and allowed[raw.fzf_scope] then
       result.fzf_scope = raw.fzf_scope
     else
-      notify.warn(string.format(
-        "Invalid history.fzf_scope %q, keeping %q",
-        tostring(raw.fzf_scope),
-        result.fzf_scope
-      ))
+      notify.warn(
+        string.format(
+          "Invalid history.fzf_scope %q, keeping %q",
+          tostring(raw.fzf_scope),
+          result.fzf_scope
+        )
+      )
     end
   end
 
@@ -65,9 +67,9 @@ local function normalise_history(raw, current)
     if type(raw.limit) == "number" and raw.limit > 0 then
       result.limit = raw.limit
     else
-      notify.warn(string.format(
-        "Invalid history.limit %s, keeping %s", vim.inspect(raw.limit), result.limit
-      ))
+      notify.warn(
+        string.format("Invalid history.limit %s, keeping %s", vim.inspect(raw.limit), result.limit)
+      )
     end
   end
 
@@ -95,11 +97,13 @@ local function normalise_selected_index(raw, current)
     if allowed[pos] then
       result.position = pos
     else
-      notify.warn(string.format(
-        "Invalid selected_index.position %q, keeping %q",
-        raw.position,
-        result.position
-      ))
+      notify.warn(
+        string.format(
+          "Invalid selected_index.position %q, keeping %q",
+          raw.position,
+          result.position
+        )
+      )
     end
   end
 
@@ -120,10 +124,12 @@ local function normalise_selected_index(raw, current)
       if valid_presets[raw.highlight.preset] then
         hl.preset = raw.highlight.preset
       else
-        notify.warn(string.format(
-          'Invalid selected_index.highlight.preset %q, using "default"',
-          tostring(raw.highlight.preset)
-        ))
+        notify.warn(
+          string.format(
+            'Invalid selected_index.highlight.preset %q, using "default"',
+            tostring(raw.highlight.preset)
+          )
+        )
         hl.preset = "default"
       end
     end
@@ -146,10 +152,12 @@ local function normalise_selected_index(raw, current)
     elseif raw.toggle_key == false then
       result.toggle_key = nil
     else
-      notify.warn(string.format(
-        "Invalid selected_index.toggle_key %s, keeping previous",
-        vim.inspect(raw.toggle_key)
-      ))
+      notify.warn(
+        string.format(
+          "Invalid selected_index.toggle_key %s, keeping previous",
+          vim.inspect(raw.toggle_key)
+        )
+      )
     end
   end
 
@@ -201,10 +209,9 @@ function M.apply(opts)
       if coll then
         cfg.collections[#cfg.collections + 1] = coll
       else
-        notify.warn(string.format(
-          "Invalid collection entry (name+dir required): %s",
-          vim.inspect(raw)
-        ))
+        notify.warn(
+          string.format("Invalid collection entry (name+dir required): %s", vim.inspect(raw))
+        )
       end
     end
   end
@@ -241,6 +248,12 @@ function M.apply(opts)
     if type(opts.result_count.enabled) == "boolean" then
       cfg.result_count.enabled = opts.result_count.enabled
     end
+  end
+
+  -- Deep-merge smart over defaults (weights/limit/timeout); same leniency as
+  -- cfg.find -- not validated field-by-field.
+  if type(opts.smart) == "table" then
+    cfg.smart = vim.tbl_deep_extend("force", cfg.smart, opts.smart)
   end
 end
 
