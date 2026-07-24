@@ -16,12 +16,30 @@ They mirror the keymaps from the original individual modules exactly:
 | _(disabled)_ `repos_files` | `:Pickers repos files` — pick a repo, then find files | — |
 | _(disabled)_ `repos_grep` | `:Pickers repos grep` — pick a repo, then live grep | — |
 | _(disabled)_ `system_files` | `:Pickers system files` — systemwide fd search (prompts) | — |
+| _(disabled)_ `cwd_smart` | `:Pickers cwd smart` — combined grep + find in CWD | — |
+| _(disabled)_ `config_smart` | `:Pickers config smart` — combined grep + find in nvim config | — |
+| _(disabled)_ `folder_smart` | `:Pickers folder smart` — pick folder, then combined grep + find | — |
 
-`cwd_files`, `repos_files`, `repos_grep`, and `system_files` are opt-in
-(`nil` by default) — set a `keymaps.<name>` value to enable one:
+`cwd_files`, `repos_files`, `repos_grep`, `system_files`, `cwd_smart`,
+`config_smart`, and `folder_smart` are opt-in (`nil` by default) — set a
+`keymaps.<name>` value to enable one:
 ```lua
 require("pickers").setup({
-  keymaps = { repos_files = "<leader>rf", repos_grep = "<leader>rg" },
+  keymaps = {
+    repos_files = "<leader>rf",
+    repos_grep  = "<leader>rg",
+    cwd_smart   = "<leader>ss", -- combined grep + find in CWD
+  },
+})
+```
+
+Collections can carry a `smart` key too, alongside `files`/`grep`:
+```lua
+require("pickers").setup({
+  collections = {
+    { name = "notes", dir = vim.env.REPOS_DIR .. "/Notes",
+      keys = { files = "<leader>mnf", grep = "<leader>mng", smart = "<leader>mns" } },
+  },
 })
 ```
 

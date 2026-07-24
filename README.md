@@ -17,6 +17,11 @@
 **Unified fuzzy-picker plugin for Neovim.**
 Consolidates seven separate picker modules into one plugin with a single `:Pickers` command, backed by telescope.nvim, fzf-lua, or snacks.nvim.
 
+Includes a **`smart`** action — `:Pickers <scope> smart` runs grep (content) and
+find-files (filenames) for the same live query and merges both into one list
+**ranked by relevance**, so hits interleave by score regardless of source
+instead of showing as two separate blocks. See [docs/COMMANDS.md](docs/COMMANDS.md#the-smart-action).
+
 > 💡 Pairs well with [insights.nvim](https://github.com/StefanBartl/insights.nvim):
 > use `pickers.nvim` to jump into any repo, then get an instant structural
 > overview of it with `insights.nvim`.

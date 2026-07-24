@@ -31,7 +31,7 @@
 ---@field name     string                               Unique scope name (e.g. "notes")
 ---@field dir      string                               Root directory
 ---@field prefix   string|nil                           nil=direct root, ""=all subdirs, "xyz-"=filtered
----@field keys     { files?: string, grep?: string }|nil  Optional keymaps
+---@field keys     { files?: string, grep?: string, smart?: string }|nil  Optional keymaps
 ---@field only_git boolean|nil                          Only show subdirs that contain .git
 ---@field find     Pickers.FindOpts|nil                 Override cfg.find for this collection's files action (merged over the global defaults)
 

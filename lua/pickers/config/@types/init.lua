@@ -16,6 +16,9 @@
 ---@field repos_files  string|nil   Pick a repo, then find files (default: nil)
 ---@field repos_grep   string|nil   Pick a repo, then live grep  (default: nil)
 ---@field system_files string|nil   Systemwide fd search (prompts for query) (default: nil)
+---@field cwd_smart    string|nil   Smart (grep + find) in cwd    (default: nil)
+---@field config_smart string|nil   Smart (grep + find) in nvim config (default: nil)
+---@field folder_smart string|nil   Smart (grep + find) in picked folder (default: nil)
 
 -- ###########################################################################
 -- User-commands
@@ -47,5 +50,6 @@
 ---@field history        Pickers.HistoryConfig
 ---@field selected_index Pickers.SelectedIndexConfig
 ---@field result_count   Pickers.ResultCountConfig
+---@field smart          Pickers.SmartConfig
 
 return {}

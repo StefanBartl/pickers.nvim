@@ -48,9 +48,20 @@ require("pickers").setup({
     repos_files  = nil,            -- Pick a repo, then find files (disabled by default)
     repos_grep   = nil,            -- Pick a repo, then live grep  (disabled by default)
     system_files = nil,            -- Systemwide fd search, prompts for query (disabled by default)
+    cwd_smart    = nil,            -- Smart (grep + find) in CWD           (disabled by default)
+    config_smart = nil,            -- Smart (grep + find) in nvim config    (disabled by default)
+    folder_smart = nil,            -- Smart (grep + find) in picked folder  (disabled by default)
   },
 
   usercmds = { enable = true },
+
+  -- Smart action: combined grep + find files, merged and ranked. See
+  -- "Smart (combined grep + find)" below.
+  smart = {
+    weights = { filename = 1.0, content = 1.0, both = 25 },
+    limit   = 2000,   -- max merged results kept after ranking
+    timeout = 3000,   -- per-command (rg/fd) wait timeout in ms
+  },
 
   -- Native picker history, disabled by default. See "History" below.
   history = {
@@ -225,3 +236,52 @@ Updates by polling the entry manager every 150ms while the results buffer
 is open (not event-driven) — result counts can change asynchronously as a
 live finder (e.g. `live_grep`) streams in matches, with no `CursorMoved` or
 `TextChanged` event to hang the update off of.
+
+---
+
+## Smart (combined grep + find)
+
+The `smart` action runs `rg` (content) **and** `fd` (filenames) for the same
+live query and merges both result sets into **one list ranked by relevance** —
+see [docs/COMMANDS.md](COMMANDS.md#the-smart-action) for what it does and how to
+open it (`:Pickers <scope> smart`, per-scope/collection `*_smart` keymaps, or
+`:{PascalName}Smart`). This section covers only the tuning knobs.
+
+All three engines drive the same core (`lua/pickers/smart/`), so the ranking is
+identical regardless of engine. The scorer is deliberately simple and
+transparent (a substring/subsequence matcher with prefix/word-boundary/exact
+bonuses); these weights only decide the *relative* order between a filename hit
+and a content hit.
+
+```lua
+require("pickers").setup({
+  smart = {
+    weights = {
+      filename = 1.0,  -- multiplier for the filename-match component (fd hits)
+      content  = 1.0,  -- multiplier for the grep content-match component (rg hits)
+      both     = 25,   -- flat bonus added to a file that ALSO has grep hits
+    },
+    limit   = 2000,    -- max merged results kept after ranking
+    timeout = 3000,    -- per-command (rg/fd) wait timeout in ms
+  },
+})
+```
+
+Tuning guide:
+
+- **Favour filenames** (typing a name should surface the file itself first):
+  raise `weights.filename` or lower `weights.content`.
+- **Favour content** (you mostly search inside files): raise `weights.content`.
+- **`weights.both`** floats a file that is matched by name *and* contains
+  matches above lone hits of either kind — its grep rows still appear on their
+  own merits. Set it to `0` to disable that boost.
+- **`limit`** caps the merged list after ranking; lower it on huge trees if the
+  picker feels heavy.
+- **`timeout`** bounds each per-keystroke `rg`/`fd` call. The engines debounce
+  input, and the call is synchronous, so keep this modest.
+
+Requirements: `fd` (or `fdfind`) and `rg` on `PATH`. The files half honours
+`find` (hidden/no_ignore/follow/exclude); the grep half always searches
+`--hidden --no-ignore-vcs --smart-case`, exactly like `live_grep`. On the
+fzf-lua engine the smart action needs fzf ≥ 0.45 (Lua-function live mode); use
+telescope or snacks on older fzf.

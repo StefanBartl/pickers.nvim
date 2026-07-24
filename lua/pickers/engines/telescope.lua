@@ -110,6 +110,59 @@ function M.live_grep(opts)
   })
 end
 
+---Combined grep + find-files picker (the `smart` action).
+---
+--- A dynamic finder re-runs the shared core (pickers.smart.query) on every
+--- prompt change and returns an already-merged, already-ranked list. The picker
+--- is wired with `sorters.empty()` (constant score) so telescope preserves OUR
+--- relevance order instead of re-sorting — the whole point of the smart action
+--- is that a filename hit and a content hit interleave by relevance, which the
+--- shared scorer, not telescope's fuzzy sorter, decides. grep_previewer jumps to
+--- the matched line for grep rows and previews from the top for file rows.
+---@param opts Pickers.EngineOpts
+function M.smart(opts)
+  local ok, finders = pcall(require, "telescope.finders")
+  local ok2, pickers = pcall(require, "telescope.pickers")
+  local ok3, sorters = pcall(require, "telescope.sorters")
+  local ok4, conf = pcall(require, "telescope.config")
+  if not (ok and ok2 and ok3 and ok4) then
+    notify.error("telescope modules unavailable")
+    return
+  end
+
+  pickers
+    .new({}, {
+      prompt_title = opts.prompt or "Smart",
+      finder = finders.new_dynamic({
+        fn = function(prompt)
+          return require("pickers.smart").query(prompt or "", {
+            roots = opts.roots,
+            find = opts.find,
+            additional_args = opts.additional_args,
+          })
+        end,
+        ---@param it Pickers.Smart.Item
+        entry_maker = function(it)
+          return {
+            value = it,
+            display = it.display,
+            ordinal = it.display,
+            filename = it.abspath,
+            lnum = it.lnum,
+            col = it.col,
+          }
+        end,
+      }),
+      sorter = sorters.empty(),
+      previewer = conf.values.grep_previewer({}),
+      attach_mappings = require("pickers.result_count").wrap_attach_mappings(
+        require("pickers.selected_index").wrap_attach_mappings(nil)
+      ),
+      history = history_opts(),
+    })
+    :find()
+end
+
 ---Pick one item from a string list.
 ---@param opts { items: string[], prompt: string, on_select: fun(string) }
 function M.pick_item(opts)

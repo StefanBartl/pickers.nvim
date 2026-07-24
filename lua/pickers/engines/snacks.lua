@@ -24,9 +24,7 @@ local M = {}
 ---@param opts table
 local function safe_call(fn, opts)
   local ok, err = pcall(fn, opts)
-  if not ok then
-    notify.error("snacks error: " .. tostring(err))
-  end
+  if not ok then notify.error("snacks error: " .. tostring(err)) end
 end
 
 -- ── Public engine interface ───────────────────────────────────────────────────
@@ -111,6 +109,52 @@ function M.live_grep(opts)
   safe_call(Picker.grep, call_opts)
 end
 
+---Combined grep + find-files picker (the `smart` action).
+---
+--- Implemented as a live picker with a custom *synchronous* finder: on every
+--- prompt change snacks calls the finder with the raw search text
+--- (`ctx.filter.search`), we run the shared core (pickers.smart.query) which
+--- returns an already-merged, already-ranked list, and we hand that back as a
+--- plain table. Returning a table takes snacks' sync finder path (no streaming),
+--- and under `live = true` the secondary matcher pattern is empty, so snacks
+--- preserves our order instead of re-fuzzy-sorting — i.e. OUR relevance ranking
+--- is what the user sees. `format = "file"` renders file rows and grep rows
+--- (file + line) natively; the default `jump` confirm opens item.file at pos.
+---@param opts Pickers.EngineOpts
+function M.smart(opts)
+  local ok, Picker = pcall(require, "snacks.picker")
+  if not ok then
+    notify.error("snacks.picker unavailable")
+    return
+  end
+
+  safe_call(Picker.pick, {
+    source = "smart",
+    title = opts.prompt or "Smart> ",
+    live = true,
+    format = "file",
+    matcher = { sort_empty = false },
+    finder = function(_, ctx)
+      local items = require("pickers.smart").query(ctx.filter.search or "", {
+        roots = opts.roots,
+        find = opts.find,
+        additional_args = opts.additional_args,
+      })
+      local out = {}
+      for i, it in ipairs(items) do
+        out[i] = {
+          text = it.display,
+          file = it.abspath,
+          pos = it.lnum and { it.lnum, (it.col or 1) - 1 } or nil,
+          line = it.text,
+          score = it.score,
+        }
+      end
+      return out
+    end,
+  })
+end
+
 ---Pick one item from a string list.
 ---@param opts { items: string[], prompt: string, on_select: fun(string) }
 function M.pick_item(opts)
@@ -121,9 +165,7 @@ function M.pick_item(opts)
   end
 
   Picker.select(opts.items, { prompt = opts.prompt }, function(item)
-    if item then
-      opts.on_select(item)
-    end
+    if item then opts.on_select(item) end
   end)
 end
 
@@ -161,9 +203,7 @@ function M.pick_dir(opts)
         end
 
         Picker.select(dirs, { prompt = opts.prompt or "Folder> " }, function(dir)
-          if dir then
-            opts.on_select(dir)
-          end
+          if dir then opts.on_select(dir) end
         end)
       end)
     end

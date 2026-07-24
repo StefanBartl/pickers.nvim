@@ -171,6 +171,71 @@ function M.live_grep(opts)
   })
 end
 
+---Combined grep + find-files picker (the `smart` action).
+---
+--- Uses fzf-lua's "live" mode (fuzzy matching disabled, contents reloaded per
+--- keystroke) with a Lua contents function: on every query the shared core
+--- (pickers.smart.query) returns an already-merged, already-ranked list and we
+--- emit it as grep-style (`path:line:col:text`) / plain-path lines. `--no-sort`
+--- keeps fzf from reordering, so OUR relevance ranking is preserved. The native
+--- `file_edit_or_qf` action + builtin previewer parse the grep lines and jump to
+--- the matched line (file rows open at the top).
+---
+--- NOTE: the Lua-function live path needs fzf-lua's transform mode, i.e. fzf
+--- >= 0.45 with `multiprocess = false` and `rg_glob = true` (set below). On
+--- older fzf, prefer telescope/snacks for the smart action.
+---@param opts Pickers.EngineOpts
+function M.smart(opts)
+  local ok, fzf = pcall(require, "fzf-lua")
+  if not ok then
+    notify.error("fzf-lua unavailable")
+    return
+  end
+  local actions = require("fzf-lua.actions")
+
+  local root = opts.roots and opts.roots[1] or vim.uv.cwd()
+
+  ---@param query string
+  ---@return string[]
+  local function contents(query)
+    local items = require("pickers.smart").query(query or "", {
+      roots = opts.roots,
+      find = opts.find,
+      additional_args = opts.additional_args,
+    })
+    local lines = {}
+    for i, it in ipairs(items) do
+      -- Prefer a cwd-relative path (keeps "file:line:col" parseable — an
+      -- absolute Windows path's drive colon would confuse it); fall back to the
+      -- absolute path for hits from a secondary root.
+      local p = (it.root == root) and it.path or it.abspath
+      if it.kind == "grep" then
+        lines[i] = string.format("%s:%d:%d:%s", p, it.lnum, it.col or 1, it.text or "")
+      else
+        lines[i] = p
+      end
+    end
+    return lines
+  end
+
+  fzf.fzf_live(contents, {
+    prompt = opts.prompt or "Smart> ",
+    cwd = root,
+    is_live = true,
+    multiprocess = false,
+    rg_glob = true,
+    previewer = "builtin",
+    file_icons = false,
+    git_icons = false,
+    color_icons = false,
+    fzf_opts = vim.tbl_extend("force", { ["--no-sort"] = true }, history_fzf_opts("grep") or {}),
+    winopts = { on_create = setup_double_esc },
+    actions = {
+      ["default"] = actions.file_edit_or_qf,
+    },
+  })
+end
+
 ---Pick one item from a string list (used by repos / wkdbooks sources).
 ---@param opts { items: string[], prompt: string, on_select: fun(string) }
 function M.pick_item(opts)

@@ -66,8 +66,14 @@ do
   check("apply: first collection name", cfg.collections[1] and cfg.collections[1].name == "notes")
   check("apply: only_git normalised", cfg.collections[2] and cfg.collections[2].only_git == true)
   check("apply: prefix empty-string kept", cfg.collections[2] and cfg.collections[2].prefix == "")
-  check("apply: collection find override kept", cfg.collections[2] and cfg.collections[2].find.hidden == false)
-  check("apply: collection with no find override → nil", cfg.collections[1] and cfg.collections[1].find == nil)
+  check(
+    "apply: collection find override kept",
+    cfg.collections[2] and cfg.collections[2].find.hidden == false
+  )
+  check(
+    "apply: collection with no find override → nil",
+    cfg.collections[1] and cfg.collections[1].find == nil
+  )
   check("apply: keymap overridden", cfg.keymaps.cwd_grep == "<leader>zz")
   check("apply: keymap default kept", cfg.keymaps.config_files == "<leader>fc")
   check("apply: repos_files default nil", cfg.keymaps.repos_files == nil)
@@ -84,13 +90,28 @@ do
   local cfg2 = config.get()
   check("find: no_ignore overridden", cfg2.find.no_ignore == true)
   check("find: hidden still default", cfg2.find.hidden == true)
+
+  -- smart config defaults + deep-merge
+  check(
+    "smart: weights default",
+    cfg.smart.weights.filename == 1.0 and cfg.smart.weights.both == 25
+  )
+  check("smart: limit default", cfg.smart.limit == 2000)
+  config.apply({ smart = { weights = { content = 2.0 } } })
+  local cfg3 = config.get()
+  check("smart: weight overridden", cfg3.smart.weights.content == 2.0)
+  check("smart: sibling weight kept", cfg3.smart.weights.filename == 1.0)
 end
 
 -- ── pickers.bindings.keymaps — repos_files/repos_grep/system_files opt-in ───
 do
   local config = require("pickers.config")
   config.apply({
-    keymaps = { repos_files = "<leader>zrf", repos_grep = "<leader>zrg", system_files = "<leader>zsf" },
+    keymaps = {
+      repos_files = "<leader>zrf",
+      repos_grep = "<leader>zrg",
+      system_files = "<leader>zsf",
+    },
   })
   require("pickers.bindings.keymaps").register(config.get().keymaps)
 
@@ -116,12 +137,17 @@ do
 
   local captured
   local fake_engine = {
-    pick_files = function(opts) captured = opts end,
+    pick_files = function(opts)
+      captured = opts
+    end,
   }
 
   -- No override on the source: falls through to global cfg.find unchanged.
   files.run({ roots = { "/tmp" }, prompt = "cwd> " }, fake_engine)
-  check("actions.files: no override → global find", vim.deep_equal(captured.find, config.get().find))
+  check(
+    "actions.files: no override → global find",
+    vim.deep_equal(captured.find, config.get().find)
+  )
 
   -- Partial override: only the given fields change, the rest stays global.
   files.run(
@@ -145,8 +171,13 @@ do
   })
   local coll = config.get().collections[1]
   local resolved
-  collection_source.get(coll, config.get(), function(src) resolved = src end, {})
-  check("sources.collection: find passed through to Source", resolved and resolved.find and resolved.find.hidden == false)
+  collection_source.get(coll, config.get(), function(src)
+    resolved = src
+  end, {})
+  check(
+    "sources.collection: find passed through to Source",
+    resolved and resolved.find and resolved.find.hidden == false
+  )
 end
 
 -- ── pickers.last / pickers.command.dispatch — :PickersRepeat state ──────────
@@ -156,8 +187,12 @@ do
 
   local calls = {}
   local fake_engine = {
-    pick_files = function(opts) calls[#calls + 1] = { kind = "files", opts = opts } end,
-    live_grep = function(opts) calls[#calls + 1] = { kind = "grep", opts = opts } end,
+    pick_files = function(opts)
+      calls[#calls + 1] = { kind = "files", opts = opts }
+    end,
+    live_grep = function(opts)
+      calls[#calls + 1] = { kind = "grep", opts = opts }
+    end,
   }
 
   -- pickers.command.dispatch is the single choke point every scope (standard,
@@ -286,7 +321,10 @@ do
 
   -- Fully inert contract (same as selected_index): disabled → wrap returns
   -- `orig` completely unchanged, including nil.
-  check("result_count.wrap: disabled → nil stays nil", result_count.wrap_attach_mappings(nil) == nil)
+  check(
+    "result_count.wrap: disabled → nil stays nil",
+    result_count.wrap_attach_mappings(nil) == nil
+  )
   local passthrough = function() end
   check(
     "result_count.wrap: disabled → orig fn unchanged",
@@ -490,9 +528,18 @@ do
   check("entry_actions.fzf: ctrl-a present when enabled", type(fa["ctrl-a"]) == "function")
 
   config.apply({ keys = { enable = false } })
-  check("entry_actions.telescope: empty when keys.enable=false", vim.tbl_isempty(ts.get_mappings().i))
-  check("entry_actions.fzf: empty when keys.enable=false", vim.tbl_isempty(fzf_adapter.get_actions()))
-  check("entry_actions.snacks: empty when keys.enable=false", vim.tbl_isempty(snacks_adapter.get_keys()))
+  check(
+    "entry_actions.telescope: empty when keys.enable=false",
+    vim.tbl_isempty(ts.get_mappings().i)
+  )
+  check(
+    "entry_actions.fzf: empty when keys.enable=false",
+    vim.tbl_isempty(fzf_adapter.get_actions())
+  )
+  check(
+    "entry_actions.snacks: empty when keys.enable=false",
+    vim.tbl_isempty(snacks_adapter.get_keys())
+  )
 
   -- Restore defaults for any later blocks relying on them.
   config.apply({
@@ -530,7 +577,10 @@ do
   -- carry fzf's own icon/ANSI formatting and must still be stripped.
   local icon_line = "\239\130\156 /home/user/project/main.lua"
   local stripped = extract({ icon_line })
-  check("extract.fzf: icon-prefixed [1] fallback still stripped", stripped:find("main.lua", 1, true) ~= nil)
+  check(
+    "extract.fzf: icon-prefixed [1] fallback still stripped",
+    stripped:find("main.lua", 1, true) ~= nil
+  )
   check("extract.fzf: icon glyph removed", not stripped:find("239", 1, true))
 end
 
@@ -613,8 +663,14 @@ do
   -- top-level `Snacks` table (whose metatable turns Snacks.command_history
   -- into a failing require("snacks.command_history")). This guards the whole
   -- snacks builtin path — the user's default engine.
-  check("builtins.engine_module: snacks → snacks.picker", builtins.engine_module("snacks") == "snacks.picker")
-  check("builtins.engine_module: telescope → telescope.builtin", builtins.engine_module("telescope") == "telescope.builtin")
+  check(
+    "builtins.engine_module: snacks → snacks.picker",
+    builtins.engine_module("snacks") == "snacks.picker"
+  )
+  check(
+    "builtins.engine_module: telescope → telescope.builtin",
+    builtins.engine_module("telescope") == "telescope.builtin"
+  )
   check("builtins.engine_module: fzf → fzf-lua", builtins.engine_module("fzf") == "fzf-lua")
 
   -- Dispatch actually calls the right function on the right module (stubbed,
@@ -622,18 +678,34 @@ do
   do
     local prev = package.loaded["snacks.picker"]
     local called_with
-    package.loaded["snacks.picker"] = { command_history = function(o) called_with = o end }
+    package.loaded["snacks.picker"] = {
+      command_history = function(o)
+        called_with = o
+      end,
+    }
     builtins.run("command_history", { marker = 1 }, "snacks")
     package.loaded["snacks.picker"] = prev
-    check("builtins.run: snacks dispatches to snacks.picker[fn]", type(called_with) == "table" and called_with.marker == 1)
+    check(
+      "builtins.run: snacks dispatches to snacks.picker[fn]",
+      type(called_with) == "table" and called_with.marker == 1
+    )
   end
 
   -- explorer: snacks fn, telescope custom run-invoker, fzf documented gap.
   local explorer = builtins.REGISTRY.explorer
-  check("builtins: explorer snacks uses fn=explorer", explorer.snacks and explorer.snacks.fn == "explorer")
-  check("builtins: explorer telescope uses a run-invoker", type(explorer.telescope.run) == "function")
+  check(
+    "builtins: explorer snacks uses fn=explorer",
+    explorer.snacks and explorer.snacks.fn == "explorer"
+  )
+  check(
+    "builtins: explorer telescope uses a run-invoker",
+    type(explorer.telescope.run) == "function"
+  )
   check("builtins: explorer has no fzf impl", explorer.fzf == false)
-  check("builtins.run: explorer run-invoker path does not throw", pcall(builtins.run, "explorer", nil, "telescope"))
+  check(
+    "builtins.run: explorer run-invoker path does not throw",
+    pcall(builtins.run, "explorer", nil, "telescope")
+  )
 
   -- Documented gaps match what was verified against the real plugin sources.
   local git_diff = builtins.REGISTRY.git_diff
@@ -761,6 +833,62 @@ do
     check("debounce: cleanup is callable", type(cleanup) == "function")
     cleanup() -- must not error when idle
   end
+end
+
+-- ── pickers.smart.score — pure scorer + merge/rank ──────────────────────────
+do
+  local score = require("pickers.smart.score")
+  local w = { filename = 1.0, content = 1.0, both = 25 }
+
+  -- match(): substring beats subsequence; no-match is nil; empty needle = 0
+  check("score.match: empty needle → 0", score.match("anything", "") == 0)
+  check("score.match: no match → nil", score.match("abc", "xyz") == nil)
+  local prefix = score.match("config.lua", "config")
+  local mid = score.match("my_config.lua", "config")
+  check(
+    "score.match: prefix beats mid",
+    prefix and mid and prefix > mid,
+    tostring(prefix) .. " vs " .. tostring(mid)
+  )
+  local sub = score.match("cfg", "config") -- subsequence only? "config" not subseq of "cfg" → nil
+  check("score.match: non-subsequence → nil", sub == nil)
+  check("score.match: subsequence weak match", (score.match("configuration", "cfg") or 0) > 0)
+
+  -- score_file: filename hit outranks a path-only hit
+  local name_hit = score.score_file("init", "lua/init.lua", w)
+  local path_hit = score.score_file("lua", "lua/deep/nested.lua", w)
+  check("score.score_file: name hit > path hit", name_hit and path_hit and name_hit > path_hit)
+  check("score.score_file: no match → nil", score.score_file("zzz", "a/b/c.lua", w) == nil)
+
+  -- rank: merges files + greps into ONE list, both_bonus floats the dual hit
+  local files = {
+    { path = "smart.lua", root = "/r", abspath = "/r/smart.lua" },
+    { path = "smarty.lua", root = "/r", abspath = "/r/smarty.lua" },
+  }
+  local greps = {
+    {
+      path = "smart.lua",
+      root = "/r",
+      abspath = "/r/smart.lua",
+      lnum = 3,
+      col = 1,
+      text = "local smart = true",
+    },
+  }
+  local ranked = score.rank("smart", files, greps, w, 100)
+  check("score.rank: merged length", #ranked == 3, "#=" .. #ranked)
+  check(
+    "score.rank: has file + grep kinds",
+    ranked[1] and (ranked[1].kind == "file" or ranked[1].kind == "grep")
+  )
+  -- the file that also has grep hits (smart.lua) should be the top file
+  local top = ranked[1]
+  check("score.rank: dual-hit file floats to top", top.abspath == "/r/smart.lua", top.abspath)
+  check("score.rank: _rank assigned", ranked[1]._rank == 1 and ranked[#ranked]._rank == #ranked)
+
+  -- limit trims
+  local trimmed = score.rank("smart", files, greps, w, 2)
+  check("score.rank: limit trims", #trimmed == 2, "#=" .. #trimmed)
 end
 
 -- ── Summary ─────────────────────────────────────────────────────────────────

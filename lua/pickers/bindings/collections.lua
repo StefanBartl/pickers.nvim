@@ -3,7 +3,8 @@
 ---@description
 ---   :{PascalName}Files  →  :Pickers {name} files
 ---   :{PascalName}Grep   →  :Pickers {name} grep
---- Plus optional keymaps from coll.keys.files / coll.keys.grep.
+---   :{PascalName}Smart  →  :Pickers {name} smart
+--- Plus optional keymaps from coll.keys.files / coll.keys.grep / coll.keys.smart.
 
 local util = require("pickers.bindings.util")
 
@@ -15,6 +16,7 @@ function M.register(coll)
   local pascal = util.to_pascal(coll.name)
   local files_cmd = pascal .. "Files"
   local grep_cmd = pascal .. "Grep"
+  local smart_cmd = pascal .. "Smart"
   local name = coll.name
 
   -- Skip if the compat command already exists (e.g. WkdBookFiles from usrcmds)
@@ -30,6 +32,12 @@ function M.register(coll)
     end, "[pickers coll] :" .. grep_cmd .. " → :Pickers " .. name .. " grep", "?")
   end
 
+  if vim.fn.exists(":" .. smart_cmd) ~= 2 then
+    util.usercmd(smart_cmd, function(_)
+      require("pickers.command").handle({ fargs = { name, "smart" } })
+    end, "[pickers coll] :" .. smart_cmd .. " → :Pickers " .. name .. " smart", "?")
+  end
+
   -- Optional keymaps from coll.keys
   if type(coll.keys) == "table" then
     if coll.keys.files then
@@ -41,6 +49,11 @@ function M.register(coll)
       util.map(coll.keys.grep, function()
         require("pickers.command").handle({ fargs = { name, "grep" } })
       end, "[pickers] " .. name .. ": live grep")
+    end
+    if coll.keys.smart then
+      util.map(coll.keys.smart, function()
+        require("pickers.command").handle({ fargs = { name, "smart" } })
+      end, "[pickers] " .. name .. ": smart (grep + find)")
     end
     require("pickers.bindings.whichkey").register_collection(coll)
   end
