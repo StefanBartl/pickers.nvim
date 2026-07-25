@@ -97,11 +97,14 @@ Full options: >lua
       config_smart = nil,             -- smart (grep + find) in nvim config
       folder_smart = nil,             -- smart (grep + find) in picked folder
     },
+    mappings = {},                    -- declarative mappings, empty by default (see |pickers-keymaps|)
     usercmds = { enable = true },
     smart = {                         -- combined grep + find (see |pickers-smart|)
       weights = { filename = 1.0, content = 1.0, both = 25 },
       limit   = 2000,
       timeout = 3000,
+      frecency = { enabled = false, weight = 1.0, dir = nil },
+      dedup_grep_rows = false,
     },
     history = {
       enabled   = false,             -- off by default
@@ -109,14 +112,39 @@ Full options: >lua
       dir       = nil,               -- default: stdpath("data")/pickers.nvim/history
       limit     = 200,
     },
-    selected_index = {
-      enabled    = false,             -- telescope-only, off by default
-      position   = "right_align",     -- "overlay"|"right_align"|"eol"|"top"|"down"
-      highlight  = { preset = "default" },
-      toggle_key = nil,                -- e.g. "<M-i>" to toggle live in an open picker
+    display = { path_shorten = false }, -- cosmetic, off by default (see |pickers-display|)
+    experimental = {                  -- not-yet-stable features
+      selected_index = {
+        enabled    = false,           -- telescope-only, off by default
+        position   = "right_align",   -- "overlay"|"right_align"|"eol"|"top"|"down"
+        highlight  = { preset = "default" },
+        toggle_key = nil,              -- e.g. "<M-i>" to toggle live in an open picker
+      },
     },
   })
 <
+
+Optional engine ownership + auto-install~
+  By default pickers.nvim only detects whichever engine you already
+  declared/configured yourself -- it never calls Snacks.setup()/
+  telescope.setup()/fzf-lua's setup() for you.  To have it install AND
+  configure the engine too, use require("pickers").plugin_spec() from your
+  OWN plugin list, at spec-build time (NOT from setup() -- lazy.nvim
+  resolves `dependencies` before `config()` runs, so the engine choice must
+  be known earlier than setup() fires): >lua
+    require("lazy").setup({
+      require("pickers").plugin_spec({
+        engine      = "snacks",     -- "telescope"|"fzf"|"snacks" ("auto" unsupported here)
+        own_engine  = true,         -- opt-in; default false (unchanged behaviour)
+        engine_opts = {},           -- passed to the engine's own setup()
+        picker_opts = { repos_dir = vim.env.REPOS_DIR }, -- passed to pickers.setup()
+      }),
+      -- ...your other plugins
+    })
+<
+  Returns a list of ready lazy spec entries -- splat it into your own list.
+  own_engine=true requires an explicit engine ("auto" has no single engine
+  to install) and errors immediately if omitted.
 
 Note: `setup()` is optional.  The `:Pickers` command is always registered
 automatically by `plugin/pickers.lua`, built-in scopes included.  Collection

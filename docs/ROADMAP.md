@@ -38,36 +38,43 @@ a promise; it is a backlog of ideas ordered roughly by usefulness.
     entirely (a display-density choice, not a re-scoring). See
     [docs/CONFIGURATION.md](CONFIGURATION.md#dedup-grep-rows-opt-in).
 
-- [ ] _(low priority, needs a design decision)_ **Optional engine ownership +
-  auto-install.** `require("pickers").setup({ engine = "snacks", own_engine =
-  true })` (opt-in, default `false` — today's behaviour, unchanged) would make
-  pickers.nvim install *and* configure the chosen engine itself instead of the
-  user declaring/configuring it in their own lazy spec.
+- [x] **Optional engine ownership + auto-install.** `require("pickers")
+  .plugin_spec({ engine = "snacks", own_engine = true })` — the shape the
+  earlier design note below concluded "could actually work" — returns a
+  ready lazy.nvim spec list (1 entry when `own_engine` is off/default, 2
+  when on): the engine's own spec (`config()` calls `Snacks.setup()`/
+  `telescope.setup()`/`fzf-lua`'s `setup()` with `opts.engine_opts`) plus
+  pickers.nvim's own spec (depending on both `lib.nvim` and the engine,
+  `config()` calls `pickers.setup(opts.picker_opts)` with `engine=` filled
+  in). Called from the *user's own* plugin list at spec-BUILD time (not
+  from `setup()`), since lazy.nvim resolves `dependencies` before any
+  `config()` runs — `setup({ own_engine = true })` alone genuinely cannot
+  install a missing engine, only configure one already present. No new
+  `Pickers.Config` runtime field needed: the engine's own `config()` (which
+  lazy.nvim runs before the dependent pickers.nvim's `config()`) already
+  calls its `setup()`, so `pickers.setup()` itself needs nothing beyond the
+  `engine=` it already supported. `own_engine` defaults to off (unchanged
+  behaviour — pickers.nvim still never calls the engine's `setup()` on its
+  own by default); `engine = "auto"` + `own_engine = true` errors
+  immediately (at spec-build time) since there's no single engine to
+  install. See `lua/pickers/plugin_spec.lua` and
+  [docs/INSTALLATION.md](INSTALLATION.md#optional-engine-ownership--auto-install).
   - **Why this is harder than "just add a dependency":** lazy.nvim reads a
     plugin's static `dependencies` field *before* any `config()` function
     runs — so pickers.nvim's own spec can't conditionally depend on
     `folke/snacks.nvim` based on the `engine=` value passed into `setup()`,
     since that value isn't known until `config()` runs, which is *after*
-    lazy has already resolved/installed dependencies. A `require("pickers")
-    .plugin_spec({ engine = "snacks", own_engine = true })` helper — called
-    from the *user's own* plugin list, at spec-build time, so the engine
-    choice is known early enough — is the shape that could actually work:
-    it returns a ready lazy spec entry (or entries) with the right
-    `dependencies` and a `config()` that also calls `Snacks.setup()` /
-    `telescope.setup()` / `fzf-lua.setup()` on the user's behalf.
+    lazy has already resolved/installed dependencies.
   - **Why `own_engine` must default to off:** `docs/KEYMAPS.md` and
     `pickers.keys` already document, deliberately, that "pickers.nvim does
     not own `Snacks.setup()`" — so users keep full control over
     engine-specific config that has nothing to do with picking (snacks
     dashboard/explorer/notifier, telescope extensions, fzf-lua winopts, …)
     without a second competing `setup()` call fighting theirs. `own_engine =
-    true` would be a real, separate mode — self-contained convenience for
-    users who want zero engine config of their own — not a replacement for
+    true` is a real, separate mode — self-contained convenience for users
+    who want zero engine config of their own — not a replacement for
     today's "you own the engine, pickers.nvim just detects it" model, which
     stays the default.
-  - `engine = "auto"` + `own_engine = true` is probably out of scope (which
-    engine would it even install?) — `own_engine` most likely only makes
-    sense paired with an explicit `engine`.
 
 - [x] **Ignore/hidden/follow control.** `find = { hidden, no_ignore, follow, exclude }`
   in `setup()`, honoured by both engines for the built-in file pickers.
