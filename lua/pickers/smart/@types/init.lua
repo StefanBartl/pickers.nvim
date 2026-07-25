@@ -20,9 +20,17 @@
 -- Config (setup surface)
 
 ---@class Pickers.SmartConfig
----@field weights Pickers.Smart.Weights  Relative weighting of the score components
----@field limit   integer                Max merged results kept after ranking (default 2000)
----@field timeout integer                Per-command wait timeout in ms (default 3000)
+---@field weights  Pickers.Smart.Weights        Relative weighting of the score components
+---@field limit    integer                      Max merged results kept after ranking (default 2000)
+---@field timeout  integer                      Per-command wait timeout in ms (default 3000)
+---@field frecency Pickers.Smart.FrecencyConfig  Opt-in recency/frequency ranking boost
+
+--- Opt-in (off by default): boosts a file's smart-action score by how often
+--- and how recently it was opened, via `pickers.smart.frecency`.
+---@class Pickers.Smart.FrecencyConfig
+---@field enabled boolean      Default: false
+---@field weight  number       Multiplier applied to the raw frecency score (default 1.0)
+---@field dir     string|nil   Override storage dir (default: stdpath("data")/pickers.nvim)
 
 -- ###########################################################################
 -- Raw candidates (produced by pickers.smart.search)

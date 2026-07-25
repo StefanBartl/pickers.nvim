@@ -101,6 +101,16 @@ do
   local cfg3 = config.get()
   check("smart: weight overridden", cfg3.smart.weights.content == 2.0)
   check("smart: sibling weight kept", cfg3.smart.weights.filename == 1.0)
+
+  -- smart.frecency: opt-in, off by default
+  check("smart.frecency: default disabled", cfg.smart.frecency.enabled == false)
+  check("smart.frecency: default weight", cfg.smart.frecency.weight == 1.0)
+  config.apply({ smart = { frecency = { enabled = true, weight = 2.5 } } })
+  local cfg4 = config.get()
+  check("smart.frecency: enabled overridden", cfg4.smart.frecency.enabled == true)
+  check("smart.frecency: weight overridden", cfg4.smart.frecency.weight == 2.5)
+  check("smart.frecency: sibling weights untouched", cfg4.smart.weights.filename == 1.0)
+  config.apply({ smart = { frecency = { enabled = false, weight = 1.0 } } })
 end
 
 -- ── pickers.bindings.keymaps — repos_files/repos_grep/system_files opt-in ───
@@ -990,6 +1000,55 @@ do
   check("search.rg_args: no exclude → no extra -g beyond .git", not has(rg_none, "!*.log"))
 end
 
+-- ── pickers.smart.frecency — opt-in recency/frequency ranking boost ─────────
+do
+  local frecency = require("pickers.smart.frecency")
+  local config = require("pickers.config")
+
+  local tmp_dir = vim.fn.tempname()
+  vim.fn.mkdir(tmp_dir, "p")
+  local cfg = vim.tbl_deep_extend(
+    "force",
+    config.get(),
+    { smart = { frecency = { enabled = true, weight = 1.0, dir = tmp_dir } } }
+  )
+
+  frecency._reset_cache()
+  check("frecency: unrecorded path scores 0", frecency.score(cfg, "/never/visited.lua") == 0)
+
+  frecency.record(cfg, "/tmp/a.lua")
+  check("frecency: recorded path scores > 0", frecency.score(cfg, "/tmp/a.lua") > 0)
+
+  frecency.record(cfg, "/tmp/a.lua")
+  frecency.record(cfg, "/tmp/b.lua")
+  check(
+    "frecency: more visits score higher (same recency)",
+    frecency.score(cfg, "/tmp/a.lua") > frecency.score(cfg, "/tmp/b.lua")
+  )
+
+  -- lookup(): only returns entries for the requested abspaths, weighted.
+  local lk = frecency.lookup(cfg, { "/tmp/a.lua", "/tmp/never.lua" })
+  check("frecency.lookup: includes visited path", lk["/tmp/a.lua"] and lk["/tmp/a.lua"] > 0)
+  check("frecency.lookup: excludes unvisited path", lk["/tmp/never.lua"] == nil)
+
+  -- Disabled → lookup() always empty, regardless of recorded visits.
+  local cfg_off =
+    vim.tbl_deep_extend("force", config.get(), { smart = { frecency = { enabled = false } } })
+  check(
+    "frecency.lookup: disabled → empty",
+    vim.tbl_isempty(frecency.lookup(cfg_off, { "/tmp/a.lua" }))
+  )
+
+  -- flush()/persistence round-trip: reset the in-memory cache and re-load
+  -- from the dir we just wrote to.
+  frecency.flush(cfg)
+  frecency._reset_cache()
+  check("frecency: score survives a flush + cache reset", frecency.score(cfg, "/tmp/a.lua") > 0)
+
+  frecency._reset_cache()
+  vim.fn.delete(tmp_dir, "rf")
+end
+
 -- ── pickers.smart.score — pure scorer + merge/rank ──────────────────────────
 do
   local score = require("pickers.smart.score")
@@ -1044,6 +1103,15 @@ do
   -- limit trims
   local trimmed = score.rank("smart", files, greps, w, 2)
   check("score.rank: limit trims", #trimmed == 2, "#=" .. #trimmed)
+
+  -- optional 6th `frecency` param: additive bonus by abspath, nil-safe when
+  -- omitted (already covered by every check above, all called without it).
+  local ranked_plain = score.rank("smart", files, greps, w, 100)
+  local ranked_boosted = score.rank("smart", files, greps, w, 100, { ["/r/smarty.lua"] = 1000 })
+  local plain_top = ranked_plain[1].abspath
+  local boosted_top = ranked_boosted[1].abspath
+  check("score.rank: frecency bonus changes ranking", plain_top ~= boosted_top, boosted_top)
+  check("score.rank: frecency bonus floats boosted path to top", boosted_top == "/r/smarty.lua")
 end
 
 -- ── Summary ─────────────────────────────────────────────────────────────────

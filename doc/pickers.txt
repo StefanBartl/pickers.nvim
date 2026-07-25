@@ -664,6 +664,11 @@ Configuration (all optional): >lua
       },
       limit   = 2000,     -- max merged results kept after ranking
       timeout = 3000,     -- per-command (rg/fd) wait timeout in ms
+      frecency = {        -- opt-in recency/frequency ranking boost, off by default
+        enabled = false,
+        weight  = 1.0,    -- multiplier applied to the raw frecency score
+        dir     = nil,    -- default: stdpath("data") .. "/pickers.nvim"
+      },
     },
   })
 <
@@ -675,6 +680,10 @@ Tuning:
     set 0 to disable that boost.
   • limit caps the merged list after ranking (lower it on huge trees).
   • timeout bounds each per-keystroke rg/fd call.
+  • frecency.enabled boosts files you've opened before (BufReadPost-tracked,
+    persisted as JSON under stdpath("data")/pickers.nvim/frecency.json by
+    default) so a frequently/recently edited file outranks an equal-scoring
+    stranger. Tune overall strength with frecency.weight.
 
 Opt-in keymaps: cwd_smart, config_smart, folder_smart (nil by default; see
 |pickers-keymaps|). Per-collection: keys.smart, plus a :{PascalName}Smart
