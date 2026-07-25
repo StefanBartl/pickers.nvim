@@ -11,9 +11,16 @@
 --- The two halves deliberately mirror the existing single-purpose actions so
 --- "smart" covers the same ground as running them separately:
 ---   * files half → honours cfg.find (hidden/no_ignore/follow/exclude), like
----     pickers.actions.files.
+---     pickers.actions.files. See `M.fd_args`.
 ---   * grep  half → always --hidden --no-ignore-vcs --smart-case (+ any
----     source.additional_args), exactly like pickers.engines.*.live_grep.
+---     source.additional_args), exactly like pickers.engines.*.live_grep;
+---     `find.exclude` is honoured too (the other find.* flags don't apply,
+---     same as live_grep). See `M.rg_args`.
+---
+--- `fd_args`/`rg_args` are exported (rather than kept local) purely so they
+--- are unit-testable as pure functions -- both run through `vim.system`
+--- with an argv list (no shell), so exclude globs are passed raw/unescaped
+--- here, unlike `pickers.engines.fzf`'s shell-string `rg_opts`.
 
 local M = {}
 
@@ -33,7 +40,7 @@ end
 ---@param find Pickers.FindOpts
 ---@param query string
 ---@return string[]
-local function fd_args(find, query)
+function M.fd_args(find, query)
   local args = { "--type", "f", "--color", "never", "--exclude", ".git" }
   if find.hidden then args[#args + 1] = "--hidden" end
   if find.no_ignore then args[#args + 1] = "--no-ignore" end
@@ -49,10 +56,11 @@ local function fd_args(find, query)
 end
 
 ---Build the rg argument list (vimgrep format). Mirrors live_grep's flags.
+---@param find Pickers.FindOpts  only `.exclude` is honoured (rest is hardcoded below)
 ---@param extra string[]|nil  source.additional_args
 ---@param query string
 ---@return string[]
-local function rg_args(extra, query)
+function M.rg_args(find, extra, query)
   local args = {
     "--vimgrep",
     "--color",
@@ -65,6 +73,10 @@ local function rg_args(extra, query)
     "-g",
     "!.git",
   }
+  for _, e in ipairs((find or {}).exclude or {}) do
+    args[#args + 1] = "-g"
+    args[#args + 1] = "!" .. e
+  end
   vim.list_extend(args, extra or {})
   args[#args + 1] = "--"
   args[#args + 1] = query
@@ -92,7 +104,7 @@ function M.collect(opts)
     -- ── files (fd) ──────────────────────────────────────────────────────────
     if fd then
       local cmd = { fd }
-      vim.list_extend(cmd, fd_args(find, query))
+      vim.list_extend(cmd, M.fd_args(find, query))
       local ok, res = pcall(function()
         return vim.system(cmd, { cwd = root, text = true }):wait(timeout)
       end)
@@ -113,7 +125,7 @@ function M.collect(opts)
     -- behave like a file picker (files only), filling in once the user types.
     if rg and query ~= "" then
       local cmd = { rg }
-      vim.list_extend(cmd, rg_args(opts.additional_args, query))
+      vim.list_extend(cmd, M.rg_args(find, opts.additional_args, query))
       local ok, res = pcall(function()
         return vim.system(cmd, { cwd = root, text = true }):wait(timeout)
       end)

@@ -428,7 +428,10 @@ All keys are optional.  Unset keys retain their default values.
       hidden    (bool, default true)   — show dotfiles / hidden entries
       no_ignore (bool, default false)  — ignore .gitignore/.ignore rules
       follow    (bool, default true)   — follow symlinks
-      exclude   (string[]|nil)         — extra globs to skip (e.g. node_modules)
+      exclude   (string[]|nil)         — extra globs to skip (e.g. node_modules);
+                                          applied to BOTH the file listing and
+                                          live grep (as rg -g '!<glob>'), and to
+                                          the smart action's fd/rg calls
 
   keymaps (table)~
     enable       (bool, default true)  — set false to disable all keymaps
@@ -627,8 +630,8 @@ preserved with sort_empty=false), telescope via new_dynamic + sorters.empty(),
 fzf-lua via Lua-function live mode (needs fzf >= 0.45).
 
 The files half honours |pickers-config| `find` (hidden/no_ignore/follow/
-exclude); the grep half always searches --hidden --no-ignore-vcs --smart-case,
-exactly like live_grep.
+exclude); the grep half always searches --hidden --no-ignore-vcs --smart-case
+plus `find.exclude`, exactly like live_grep.
 
 Configuration (all optional): >lua
   require("pickers").setup({

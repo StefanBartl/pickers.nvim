@@ -19,6 +19,6 @@
 ---@field query           string|nil
 ---@field find_command    string[]|nil
 ---@field additional_args string[]|nil
----@field find            Pickers.FindOpts|nil   File-listing flags (ignored when find_command is set)
+---@field find            Pickers.FindOpts|nil   pick_files: full flags (ignored when find_command is set). live_grep: only `.exclude` is honoured (hidden/no_ignore/follow are hardcoded there already)
 
 return {}

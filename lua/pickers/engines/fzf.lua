@@ -159,7 +159,12 @@ function M.live_grep(opts)
   end
 
   local extra = opts.additional_args or {}
-  local rg_opts_list = vim.list_extend({ "--hidden", "--no-ignore-vcs", "-S" }, extra)
+  local rg_opts_list = { "--hidden", "--no-ignore-vcs", "-S" }
+  for _, g in ipairs((opts.find or {}).exclude or {}) do
+    rg_opts_list[#rg_opts_list + 1] = "-g"
+    rg_opts_list[#rg_opts_list + 1] = vim.fn.shellescape("!" .. g)
+  end
+  vim.list_extend(rg_opts_list, extra)
 
   safe_call(fzf.live_grep, {
     search_dirs = opts.roots,

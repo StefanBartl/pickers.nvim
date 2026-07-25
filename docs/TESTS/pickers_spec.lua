@@ -883,6 +883,30 @@ do
   end
 end
 
+-- ── pickers.smart.search — fd_args/rg_args exclude-glob wiring ──────────────
+do
+  local search = require("pickers.smart.search")
+
+  local fd = search.fd_args({ exclude = { "*.log", "node_modules" } }, "foo")
+  local function count_pairs(list, flag, value)
+    local n = 0
+    for i, v in ipairs(list) do
+      if v == flag and list[i + 1] == value then n = n + 1 end
+    end
+    return n
+  end
+  check("search.fd_args: --exclude *.log", count_pairs(fd, "--exclude", "*.log") == 1)
+  check("search.fd_args: --exclude node_modules", count_pairs(fd, "--exclude", "node_modules") == 1)
+
+  local rg = search.rg_args({ exclude = { "*.log", "node_modules" } }, nil, "foo")
+  check("search.rg_args: -g !*.log", count_pairs(rg, "-g", "!*.log") == 1)
+  check("search.rg_args: -g !node_modules", count_pairs(rg, "-g", "!node_modules") == 1)
+  check("search.rg_args: still ends in -- query", rg[#rg - 1] == "--" and rg[#rg] == "foo")
+
+  local rg_none = search.rg_args({}, nil, "foo")
+  check("search.rg_args: no exclude → no extra -g beyond .git", not has(rg_none, "!*.log"))
+end
+
 -- ── pickers.smart.score — pure scorer + merge/rank ──────────────────────────
 do
   local score = require("pickers.smart.score")

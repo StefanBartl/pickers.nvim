@@ -262,11 +262,15 @@ separately in each of 5 custom utilities, all replaced by pickers.nvim's one
   `ctrl-t` are fixed/native there already (not a capability gap). No new
   pickers.nvim-side logic. See `lua/pickers/keys/` and
   [docs/KEYMAPS.md](KEYMAPS.md#in-picker-keys-preview-scroll--history--entry-actions).
-- [ ] **Grep exclude globs.** `find.exclude` only applies to the file
-  listing, not live grep — the old fzf-lua/telescope grep configs each had
-  their own hand-rolled `--glob '!...'` exclude list. Today this relies on
-  `.gitignore` alone; fine for most repos, a documented gap for
-  ignored-but-noisy non-git dirs.
+- [x] **Grep exclude globs.** `find.exclude` now also applies to live grep
+  (`pickers.actions.grep` merges `source.find`/`cfg.find` and forwards it as
+  `opts.find`, same pattern as `pickers.actions.files`), each engine turning
+  it into its own correctly-escaped `-g '!glob'` rg flags: raw/unescaped for
+  telescope and snacks (argv lists, no shell), `vim.fn.shellescape`d for
+  fzf-lua (`rg_opts` is a shell string there). The `smart` action's own rg
+  call (`smart/search.lua`'s `M.rg_args`, exported for unit testing) got the
+  same fix. See `lua/pickers/actions/grep.lua`,
+  `lua/pickers/engines/{telescope,fzf,snacks}.lua`.
 - [ ] _(optional, low value)_ Long-path display shortening (old telescope
   `path_display/`old fzf `entry_maker`) — cosmetic only, no functional gap.
 
