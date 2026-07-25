@@ -19,8 +19,18 @@ a promise; it is a backlog of ideas ordered roughly by usefulness.
   (`fzf ≥ 0.45`). Tunable via `smart = { weights, limit, timeout }`. See
   [docs/COMMANDS.md](COMMANDS.md#the-smart-action) and
   [docs/CONFIGURATION.md](CONFIGURATION.md#smart-combined-grep--find).
-  - [ ] _(future)_ Frecency / recently-opened boost as an optional score
-    component, so a file you edit often outranks an equal-scoring stranger.
+  - [x] **Frecency / recently-opened boost.** `smart.frecency = { enabled,
+    weight, dir }`, opt-in and off by default. A new `pickers.smart.frecency`
+    module records visits on `BufReadPost` (real, listed file buffers only),
+    persisted as JSON under `stdpath("data")/pickers.nvim/frecency.json`
+    (override via `dir`, same convention as `pickers.history`'s `dir`).
+    `M.score()` combines log-dampened visit frequency with a bucketed
+    recency weight (the same shape of heuristic telescope-frecency/browsers
+    use) into a plain number; `pickers.smart.query` builds a per-query
+    `abspath -> bonus` lookup table and threads it into `score.rank`'s new
+    optional `frecency` param, keeping the scorer itself pure/side-effect-
+    free (the lookup is computed once by the caller, not read from disk
+    inside the scorer). See [docs/CONFIGURATION.md](CONFIGURATION.md#frecency-opt-in-ranking-boost).
   - [ ] _(future)_ Dedup grep rows down to one-per-file (best line) behind a
     config flag, for users who want the file list denser.
 

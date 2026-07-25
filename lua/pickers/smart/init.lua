@@ -15,6 +15,7 @@ function M.defaults()
     weights = { filename = 1.0, content = 1.0, both = 25 },
     limit = 2000,
     timeout = 3000,
+    frecency = { enabled = false, weight = 1.0, dir = nil },
   }
 end
 
@@ -41,7 +42,21 @@ function M.query(query, opts)
     additional_args = opts.additional_args,
     timeout = sm.timeout,
   })
-  return require("pickers.smart.score").rank(query or "", files, greps, sm.weights, sm.limit)
+
+  local frecency
+  if sm.frecency and sm.frecency.enabled then
+    local abspaths = {}
+    for _, f in ipairs(files) do
+      abspaths[#abspaths + 1] = f.abspath
+    end
+    for _, g in ipairs(greps) do
+      abspaths[#abspaths + 1] = g.abspath
+    end
+    local cfg = require("pickers.config").get()
+    frecency = require("pickers.smart.frecency").lookup(cfg, abspaths)
+  end
+
+  return require("pickers.smart.score").rank(query or "", files, greps, sm.weights, sm.limit, frecency)
 end
 
 return M

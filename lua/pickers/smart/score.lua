@@ -93,13 +93,19 @@ end
 --- A file that ALSO has grep hits gets `weights.both` added (strong relevance:
 --- matched by name and contains matches), which floats it above lone hits of
 --- either kind — the grep rows for that file still appear on their own merits.
----@param query string
----@param files Pickers.Smart.File[]
----@param greps Pickers.Smart.Grep[]
----@param w     Pickers.Smart.Weights
----@param limit integer|nil
+---
+--- `frecency` (optional) is a plain `abspath -> bonus` lookup table added
+--- on top of the match score for every item sharing that abspath — computed
+--- and weighted by the caller (`pickers.smart`), not looked up here, so this
+--- function stays pure/side-effect-free. See `pickers.smart.frecency`.
+---@param query    string
+---@param files    Pickers.Smart.File[]
+---@param greps    Pickers.Smart.Grep[]
+---@param w        Pickers.Smart.Weights
+---@param limit    integer|nil
+---@param frecency table<string, number>|nil
 ---@return Pickers.Smart.Item[]
-function M.rank(query, files, greps, w, limit)
+function M.rank(query, files, greps, w, limit, frecency)
   local items = {} ---@type Pickers.Smart.Item[]
 
   local grepped = {} ---@type table<string, boolean>
@@ -111,6 +117,7 @@ function M.rank(query, files, greps, w, limit)
     local s = M.score_file(query, f.path, w)
     if s then
       if grepped[f.abspath] then s = s + w.both end
+      if frecency then s = s + (frecency[f.abspath] or 0) end
       items[#items + 1] = {
         kind = "file",
         path = f.path,
@@ -124,6 +131,7 @@ function M.rank(query, files, greps, w, limit)
 
   for _, g in ipairs(greps) do
     local s = M.score_grep(query, g.path, g.text, w)
+    if frecency then s = s + (frecency[g.abspath] or 0) end
     items[#items + 1] = {
       kind = "grep",
       path = g.path,

@@ -160,6 +160,7 @@ local M = {
   --   weights.both     - flat bonus for a file that ALSO has grep hits
   --   limit            - max merged results kept after ranking
   --   timeout          - per-command (rg/fd) wait timeout in ms
+  --   frecency         - opt-in recency/frequency ranking boost, off by default
   smart = {
     weights = {
       filename = 1.0,
@@ -168,6 +169,11 @@ local M = {
     },
     limit = 2000,
     timeout = 3000,
+    frecency = {
+      enabled = false,
+      weight = 1.0,
+      dir = nil, -- default: stdpath("data") .. "/pickers.nvim"
+    },
   },
 
   -- Long-path display shortening. Cosmetic only, off by default -- pure

@@ -65,6 +65,12 @@ require("pickers").setup({
     weights = { filename = 1.0, content = 1.0, both = 25 },
     limit   = 2000,   -- max merged results kept after ranking
     timeout = 3000,   -- per-command (rg/fd) wait timeout in ms
+    -- Opt-in recency/frequency ranking boost, disabled by default.
+    frecency = {
+      enabled = false,
+      weight  = 1.0,  -- multiplier applied to the raw frecency score
+      dir     = nil,  -- default: stdpath("data") .. "/pickers.nvim"
+    },
   },
 
   -- Native picker history, disabled by default. See "History" below.
@@ -294,6 +300,19 @@ Requirements: `fd` (or `fdfind`) and `rg` on `PATH`. The files half honours
 `live_grep`. On the
 fzf-lua engine the smart action needs fzf ≥ 0.45 (Lua-function live mode); use
 telescope or snacks on older fzf.
+
+### Frecency (opt-in ranking boost)
+
+`smart.frecency.enabled = true` adds a recency/frequency bonus to the score
+of any file you've opened before, so a file you edit often outranks an
+equal-scoring stranger. Visits are recorded on `BufReadPost` (real, listed
+file buffers only) and persisted as JSON under
+`stdpath("data")/pickers.nvim/frecency.json` (override with
+`smart.frecency.dir`). The bonus combines visit frequency (log-dampened, so
+one file opened hundreds of times doesn't permanently dominate) with how
+recently it was last opened (a visit from the last hour counts far more
+than one from a month ago); tune the overall strength with
+`smart.frecency.weight`. See `lua/pickers/smart/frecency.lua`.
 
 ---
 
