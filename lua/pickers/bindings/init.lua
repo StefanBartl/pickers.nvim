@@ -26,6 +26,11 @@ function M.setup(cfg)
     require("pickers.bindings.collections").register(coll)
   end
 
+  -- Declarative mappings: a second, more flexible keymap surface alongside
+  -- the fixed keymaps.* fields above (any scope×action or builtin name,
+  -- optional per-entry engine override). No-op when cfg.mappings is unset.
+  require("pickers.mappings").apply(cfg)
+
   -- Patch the in-picker keys onto each engine's global config. Placed here (not
   -- in pickers.setup) so it also fires on the VimEnter fallback when the user
   -- never called setup() — keys default to enabled, so they should apply either

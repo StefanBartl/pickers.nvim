@@ -231,31 +231,24 @@ a promise; it is a backlog of ideas ordered roughly by usefulness.
   context (`fzf-lua.utils.__CTX().winid`), best-effort, no line positioning.
   See `lua/pickers/entry_actions/open_background.lua` and
   [docs/KEYMAPS.md](KEYMAPS.md#in-picker-keys-preview-scroll--history--entry-actions).
-- [ ] _(low priority)_ **Declarative `mappings` table with per-entry engine
-  override.** One flat config surface listing every picker action by name,
-  each pointing at an lhs and, optionally, the engine to run it on — where a
-  per-entry engine **overrides** the global default engine just for that
-  mapping. An engine named but not installed falls back to the default engine
-  (never a dead keymap). Sketch:
-  ```lua
-  mappings = {
-    find_files = { "<leader>ff", "telescope" }, -- always telescope
-    grep_cwd   = { "<leader>gr" },               -- active/default engine
-    explorer   = { "<leader>.",  "snacks" },     -- always snacks
-    some       = { "<leader>sm", "fzf" },        -- always fzf (→ default if fzf absent)
-  }
-  ```
-  Names would resolve against a single action table unifying the scope×action
-  dispatch (`find_files`/`grep_cwd`/…) *and* the builtins registry
-  (`explorer`/`git_status`/…), so any picker is bindable this way. Would
-  eventually supersede the fixed `keymaps.<name>` fields (which are
-  engine-agnostic and can't override the engine per-key). Plumbing: the
-  scaffolding for per-call engine override already exists at the bottom
-  (`pickers.engines.load(requested)` takes an override; `pickers.builtins.run`
-  takes an `engine_name`), but `pickers.command.handle`/`.dispatch` currently
-  resolve the engine internally with no override arg — threading `requested`
-  through those is the main work. The fixed `keymaps` block stays as-is
-  until/unless this lands.
+- [x] **Declarative `mappings` table with per-entry engine override.**
+  `mappings = { [name] = { lhs, engine? } }` (empty by default) — a new
+  `lua/pickers/mappings/` module resolves `name` against a single unified
+  table: `pickers.builtins.names()` for builtins, and `<scope>_files` /
+  `<scope>_grep` / `<scope>_smart` / `<scope>_find_all` for scope×action
+  (any built-in scope or collection; `dir` unsupported, same limitation as
+  the "find all" escape hatch). Threaded `pickers.command.handle`'s
+  `opts.engine` straight into `pickers.engines.load(opts.engine)` (already
+  had the fallback-to-auto-detect scaffolding) — a one-line change, since
+  every internal routing helper already took an already-resolved
+  `engine_mod`, not a name. Builtins pre-resolve the requested engine via
+  `engines.load(requested)` too (rather than passing the raw name straight
+  to `builtins.run`'s `engine_name` param, which does NOT itself re-verify
+  availability). An engine named but not installed falls back to the
+  default (never a dead keymap); an unresolvable name or malformed entry is
+  skipped with a warning, never a throw. Does **not** supersede the fixed
+  `keymaps.*` fields — both stay, `mappings` is a second, more flexible
+  surface. See [docs/KEYMAPS.md](KEYMAPS.md#declarative-mappings-per-entry-engine-override).
 
 ## Feature-parity audit vs. the pre-pickers.nvim config
 

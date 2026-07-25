@@ -141,9 +141,13 @@ end
 -- ── Public: handle ────────────────────────────────────────────────────────────
 
 ---Entry point called by the :Pickers user command.
----@param opts { fargs: string[] }
+---@param opts { fargs: string[], engine?: Pickers.Engine }  `engine` overrides
+---the configured default for this call only (falls back to auto-detect if
+---not installed, via `pickers.engines.load`'s own fallback logic) -- used by
+---`pickers.mappings`' per-entry engine override; unset (the default) for
+---every other caller, which resolves the engine normally.
 function M.handle(opts)
-  local engine_mod = require("pickers.engines").load()
+  local engine_mod = require("pickers.engines").load(opts.engine)
   if not engine_mod then return end
 
   local fargs = opts.fargs or {}

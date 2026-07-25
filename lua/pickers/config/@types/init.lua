@@ -22,6 +22,17 @@
 ---@field cwd_find_all string|nil   Find files in cwd, forcing hidden+no_ignore+follow for this search only (default: nil)
 
 -- ###########################################################################
+-- Declarative mappings (flat name -> {lhs, engine?})
+
+--- One flat surface listing every picker action by name (any scope×action
+--- combo, or any `pickers.builtins` name), each with an lhs and an optional
+--- per-entry engine override. See `pickers.mappings` for name resolution
+--- rules. Does not supersede `Pickers.Keymaps` -- a second, more flexible
+--- surface, not a replacement.
+---@alias Pickers.MappingSpec { [1]: string, [2]: Pickers.Engine|nil }
+---@alias Pickers.MappingsConfig table<string, Pickers.MappingSpec>
+
+-- ###########################################################################
 -- User-commands
 
 ---@class Pickers.Usercmds
@@ -67,6 +78,7 @@
 ---@field depth_aliases  table<string, fun():string>
 ---@field find           Pickers.FindOpts
 ---@field keymaps        Pickers.Keymaps
+---@field mappings       Pickers.MappingsConfig
 ---@field usercmds       Pickers.Usercmds
 ---@field keys           Pickers.KeysConfig
 ---@field history        Pickers.HistoryConfig

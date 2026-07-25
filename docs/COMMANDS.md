@@ -19,6 +19,12 @@ no-op on `grep`/`smart` (silently ignored there, since live grep already
 searches `--hidden --no-ignore-vcs` unconditionally). See
 [docs/KEYMAPS.md](KEYMAPS.md) for the opt-in `cwd_find_all` keymap.
 
+`pickers.command.handle({ fargs = {...}, engine = "telescope" })` also
+accepts an optional `engine` override (Lua API only, not exposed on the
+`:Pickers` command itself) — falls back to the configured default if that
+engine isn't installed. This is what `mappings`' per-entry engine override
+uses under the hood; see [docs/KEYMAPS.md](KEYMAPS.md#declarative-mappings-per-entry-engine-override).
+
 | Scope | Nav (dir only) | Action | Result |
 |---|---|---|---|
 | _(none)_ | — | — | scope picker (built-ins + collections) |

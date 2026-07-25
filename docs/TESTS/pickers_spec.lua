@@ -290,8 +290,72 @@ do
   cmd.handle({ fargs = { "cwd", "grep", "all" } })
   check("command.handle: 'grep all' still dispatches grep, ignoring 'all'", captured ~= nil)
 
+  -- opts.engine threads straight into pickers.engines.load(requested).
+  local seen_requested
+  engines.load = function(requested)
+    seen_requested = requested
+    return fake_engine
+  end
+  cmd.handle({ fargs = { "cwd", "files" }, engine = "telescope" })
+  check("command.handle: opts.engine reaches engines.load", seen_requested == "telescope")
+  cmd.handle({ fargs = { "cwd", "files" } })
+  check("command.handle: unset opts.engine passes nil (default resolution)", seen_requested == nil)
+
   engines.load = real_load
   config.apply({ find = { hidden = true, no_ignore = false, follow = true } })
+end
+
+-- ── pickers.mappings — name classification + registration ───────────────────
+do
+  local mappings = require("pickers.mappings")
+  local config = require("pickers.config")
+
+  -- classify(): builtin names win over the <scope>_<action> pattern.
+  check("mappings.classify: builtin name", mappings.classify("explorer") == "builtin")
+  local kind, scope, action = mappings.classify("cwd_files")
+  check("mappings.classify: scope_action kind", kind == "scope_action")
+  check("mappings.classify: scope_action scope", scope == "cwd", tostring(scope))
+  check("mappings.classify: scope_action action", action == "files", tostring(action))
+
+  local k2, s2, a2 = mappings.classify("notes_lua_grep")
+  check("mappings.classify: scope with underscore kind", k2 == "scope_action")
+  check("mappings.classify: scope with underscore", s2 == "notes_lua" and a2 == "grep", s2)
+
+  local k3, s3 = mappings.classify("cwd_find_all")
+  check("mappings.classify: find_all kind", k3 == "find_all")
+  check("mappings.classify: find_all scope", s3 == "cwd", tostring(s3))
+
+  check("mappings.classify: unresolvable name", mappings.classify("not_a_real_thing_xyz") == nil)
+
+  -- apply(): valid entries register a normal-mode keymap; malformed/
+  -- unresolvable entries are skipped (no keymap, no throw).
+  config.apply({
+    mappings = {
+      cwd_files = { "<leader>ZZtestfiles" },
+      explorer = { "<leader>ZZtestexplorer", "snacks" },
+      bogus_entry_name = { "<leader>ZZtestbogus" },
+      malformed = "not-a-table",
+    },
+  })
+  local ok_apply = pcall(mappings.apply, config.get())
+  check("mappings.apply: does not throw", ok_apply)
+  check(
+    "mappings.apply: valid scope_action entry registers a keymap",
+    vim.fn.maparg("<leader>ZZtestfiles", "n") ~= ""
+  )
+  check(
+    "mappings.apply: valid builtin entry registers a keymap",
+    vim.fn.maparg("<leader>ZZtestexplorer", "n") ~= ""
+  )
+  check(
+    "mappings.apply: unresolvable name registers no keymap",
+    vim.fn.maparg("<leader>ZZtestbogus", "n") == ""
+  )
+
+  -- Cleanup: unset the test keymaps and reset mappings config.
+  pcall(vim.keymap.del, "n", "<leader>ZZtestfiles")
+  pcall(vim.keymap.del, "n", "<leader>ZZtestexplorer")
+  config.apply({ mappings = {} })
 end
 
 -- ── pickers.ui.scope_picker.list() — :PickersScopes' data source ────────────

@@ -60,6 +60,13 @@ local M = {
     cwd_find_all = nil,
   },
 
+  -- Declarative mappings: one flat surface listing every picker action by
+  -- name (<scope>_<files|grep|smart|find_all>, or any pickers.builtins
+  -- name), each with an lhs and an optional per-entry engine override.
+  -- Empty by default -- a second, more flexible surface alongside the fixed
+  -- `keymaps` fields above, not a replacement for them. See pickers.mappings.
+  mappings = {},
+
   -- File-listing behaviour for the built-in file pickers (config/cwd/folder/
   -- repos/collections). Ignored for the `system` scope, which builds its own fd
   -- command. no_ignore stays false so per-repo .gitignore rules keep working
