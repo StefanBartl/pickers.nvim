@@ -81,8 +81,26 @@ local function make_update_selected_index(action_state, ns, get_picker)
     end
     if not row then row = 0 end
 
+    -- `picker:get_index(row)` is telescope's OWN authoritative row<->index
+    -- mapping (see telescope/pickers.lua), and the actual fix for the
+    -- long-standing "indexing is wrong" bug: it accounts for
+    -- `sorting_strategy` (default "descending", where index 1 sits at
+    -- `row == max_results - 1`, NOT `row == 0`), which the previous
+    -- `entry.index`/`compute_index_from_picker` fallback chain never did --
+    -- `entry.index` is never actually set by telescope's core builtins or
+    -- this plugin's own entry_makers, and `compute_index_from_picker`'s
+    -- `picker.results`/`picker.manager.results`/`picker._results` lookups
+    -- don't exist on a modern telescope Picker/EntryManager (results live in
+    -- a linked list, not a flat array) -- so both of those old paths always
+    -- silently fell through to a plain `row + 1`, which is only correct
+    -- under the non-default "ascending" sorting_strategy. This was wrong on
+    -- EVERY render, not just intermittently, which is why it looked wrong
+    -- "both on initial open and after prompt updates": it was never a
+    -- timing/race bug, just the wrong formula.
     local index
-    if ok_ent and type(entry) == "table" and type(entry.index) == "number" then
+    if type(picker.get_index) == "function" then
+      index = picker.get_index(row)
+    elseif ok_ent and type(entry) == "table" and type(entry.index) == "number" then
       index = entry.index
     else
       index = compute.compute_index_from_picker(picker, row)
@@ -90,7 +108,7 @@ local function make_update_selected_index(action_state, ns, get_picker)
 
     if not (index and index > 0) then return end
 
-    local cfg = require("pickers.config").get().selected_index
+    local cfg = require("pickers.config").get().experimental.selected_index
     local pos = cfg.position or "right_align"
 
     if pos == "overlay" or pos == "right_align" or pos == "eol" then
@@ -131,7 +149,7 @@ function M.attach_mappings(prompt_bufnr, map)
 
   local results_bufnr = picker.results_bufnr
   local ns = get_or_create_namespace(results_bufnr)
-  local cfg = require("pickers.config").get().selected_index
+  local cfg = require("pickers.config").get().experimental.selected_index
 
   _visible_by_bufnr[results_bufnr] = cfg.enabled
 
@@ -198,7 +216,7 @@ end
 ---@param orig (fun(prompt_bufnr:integer, map:function):boolean|nil)|nil
 ---@return (fun(prompt_bufnr:integer, map:function):boolean|nil)|nil
 function M.wrap_attach_mappings(orig)
-  local cfg = require("pickers.config").get().selected_index
+  local cfg = require("pickers.config").get().experimental.selected_index
   -- Defensive: a config without `selected_index` (e.g. a stale vim.loader cache
   -- of an older DEFAULTS, or a partial config) must never crash the picker.
   if not cfg or (not cfg.enabled and not cfg.toggle_key) then return orig end

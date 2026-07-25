@@ -1,6 +1,11 @@
 ---@module 'pickers.selected_index.compute'
----@brief Fallback index computation, used when the selected entry has no
----`entry.index` field (see `pickers.selected_index` update logic).
+---@brief Last-resort fallback index computation, used only when neither
+---`picker:get_index(row)` (telescope's own authoritative row<->index
+---mapping, the primary path -- see `pickers.selected_index` update logic)
+---nor `entry.index` is available. In practice this means a non-standard
+---picker object (missing `get_index`) with an entry_maker that happens to
+---set `.index` some other way; real telescope Pickers always have
+---`get_index`, so this module is defensive/legacy rather than load-bearing.
 
 local M = {}
 

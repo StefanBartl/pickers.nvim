@@ -318,78 +318,118 @@ do
   )
 end
 
--- ── config.apply — selected_index normalisation ─────────────────────────────
+-- ── config.apply — experimental.selected_index normalisation ────────────────
 do
   local config = require("pickers.config")
   local cfg0 = config.get()
-  check("selected_index: default disabled", cfg0.selected_index.enabled == false)
-  check("selected_index: default position", cfg0.selected_index.position == "right_align")
-  check("selected_index: default preset", cfg0.selected_index.highlight.preset == "default")
+  check("selected_index: default disabled", cfg0.experimental.selected_index.enabled == false)
+  check(
+    "selected_index: default position",
+    cfg0.experimental.selected_index.position == "right_align"
+  )
+  check(
+    "selected_index: default preset",
+    cfg0.experimental.selected_index.highlight.preset == "default"
+  )
 
   config.apply({
-    selected_index = {
-      enabled = true,
-      position = "right",
-      highlight = { preset = "accent" },
+    experimental = {
+      selected_index = {
+        enabled = true,
+        position = "right",
+        highlight = { preset = "accent" },
+      },
     },
   })
   local cfg1 = config.get()
-  check("selected_index: enabled overridden", cfg1.selected_index.enabled == true)
+  check("selected_index: enabled overridden", cfg1.experimental.selected_index.enabled == true)
   check(
     "selected_index: 'right' normalised to 'right_align'",
-    cfg1.selected_index.position == "right_align",
-    tostring(cfg1.selected_index.position)
+    cfg1.experimental.selected_index.position == "right_align",
+    tostring(cfg1.experimental.selected_index.position)
   )
-  check("selected_index: preset overridden", cfg1.selected_index.highlight.preset == "accent")
+  check(
+    "selected_index: preset overridden",
+    cfg1.experimental.selected_index.highlight.preset == "accent"
+  )
 
   config.apply({
-    selected_index = {
-      position = "not_a_real_position",
-      highlight = { preset = "not_a_real_preset" },
+    experimental = {
+      selected_index = {
+        position = "not_a_real_position",
+        highlight = { preset = "not_a_real_preset" },
+      },
     },
   })
   local cfg2 = config.get()
   check(
     "selected_index: invalid position falls back to previous",
-    cfg2.selected_index.position == "right_align",
-    tostring(cfg2.selected_index.position)
+    cfg2.experimental.selected_index.position == "right_align",
+    tostring(cfg2.experimental.selected_index.position)
   )
   check(
     "selected_index: invalid preset falls back to default",
-    cfg2.selected_index.highlight.preset == "default",
-    tostring(cfg2.selected_index.highlight.preset)
+    cfg2.experimental.selected_index.highlight.preset == "default",
+    tostring(cfg2.experimental.selected_index.highlight.preset)
   )
 
   config.apply({
-    selected_index = {
-      highlight = { preset = "custom", custom = { fg = "#ff0000", bold = true, not_a_field = 1 } },
+    experimental = {
+      selected_index = {
+        highlight = {
+          preset = "custom",
+          custom = { fg = "#ff0000", bold = true, not_a_field = 1 },
+        },
+      },
     },
   })
   local cfg3 = config.get()
-  check("selected_index: custom fg kept", cfg3.selected_index.highlight.custom.fg == "#ff0000")
-  check("selected_index: custom bold kept", cfg3.selected_index.highlight.custom.bold == true)
+  check(
+    "selected_index: custom fg kept",
+    cfg3.experimental.selected_index.highlight.custom.fg == "#ff0000"
+  )
+  check(
+    "selected_index: custom bold kept",
+    cfg3.experimental.selected_index.highlight.custom.bold == true
+  )
   check(
     "selected_index: unknown custom field dropped",
-    cfg3.selected_index.highlight.custom.not_a_field == nil
+    cfg3.experimental.selected_index.highlight.custom.not_a_field == nil
   )
 
-  check("selected_index: toggle_key default nil", cfg3.selected_index.toggle_key == nil)
+  check(
+    "selected_index: toggle_key default nil",
+    cfg3.experimental.selected_index.toggle_key == nil
+  )
 
-  config.apply({ selected_index = { toggle_key = "<M-i>" } })
+  config.apply({ experimental = { selected_index = { toggle_key = "<M-i>" } } })
   local cfg4 = config.get()
-  check("selected_index: toggle_key set", cfg4.selected_index.toggle_key == "<M-i>")
+  check("selected_index: toggle_key set", cfg4.experimental.selected_index.toggle_key == "<M-i>")
 
-  config.apply({ selected_index = { toggle_key = 42 } })
+  config.apply({ experimental = { selected_index = { toggle_key = 42 } } })
   local cfg5 = config.get()
   check(
     "selected_index: invalid toggle_key type keeps previous",
-    cfg5.selected_index.toggle_key == "<M-i>",
-    tostring(cfg5.selected_index.toggle_key)
+    cfg5.experimental.selected_index.toggle_key == "<M-i>",
+    tostring(cfg5.experimental.selected_index.toggle_key)
   )
 
-  config.apply({ selected_index = { toggle_key = false } })
+  config.apply({ experimental = { selected_index = { toggle_key = false } } })
   local cfg6 = config.get()
-  check("selected_index: toggle_key = false clears it", cfg6.selected_index.toggle_key == nil)
+  check(
+    "selected_index: toggle_key = false clears it",
+    cfg6.experimental.selected_index.toggle_key == nil
+  )
+
+  -- Back-compat guard: the OLD top-level opts.selected_index shape (pre-move)
+  -- must be ignored, not silently applied to the wrong place.
+  config.apply({ experimental = { selected_index = { enabled = false } } }) -- reset
+  ---@diagnostic disable-next-line: assign-type-mismatch
+  config.apply({ selected_index = { enabled = true } })
+  check(
+    "selected_index: old top-level shape is ignored",
+    config.get().experimental.selected_index.enabled == false
+  )
 end
 
 -- ── config.apply — result_count normalisation; wrap_attach_mappings contract ─

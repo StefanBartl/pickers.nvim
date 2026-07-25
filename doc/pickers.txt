@@ -471,11 +471,16 @@ All keys are optional.  Unset keys retain their default values.
     dir       (string|nil, default nil) — override history dir
     limit     (integer, default 200)  — max entries kept per history file
 
-  selected_index (table)~
-    enabled    (bool, default false)          — master toggle, telescope-only
-    position   (string, default "right_align") — see |pickers-selected-index|
-    highlight  (table, default { preset = "default" })
-    toggle_key (string|nil, default nil)      — in-picker live toggle keymap
+  experimental (table)~
+    Not-yet-stable features, namespaced so their shape can keep changing
+    without a compat promise on the rest of setup(). Currently just
+    selected_index; an old top-level `selected_index` opt is ignored with a
+    warning pointing here.
+      selected_index (table)~
+        enabled    (bool, default false)          — master toggle, telescope-only
+        position   (string, default "right_align") — see |pickers-selected-index|
+        highlight  (table, default { preset = "default" })
+        toggle_key (string|nil, default nil)      — in-picker live toggle keymap
 
   result_count (table)~
     enabled (bool, default false) — master toggle, telescope-only, see
@@ -557,6 +562,10 @@ fzf_scope (fzf-lua only)~
 ==============================================================================
 11. SELECTED INDEX DISPLAY                              *pickers-selected-index*
 
+EXPERIMENTAL — lives under experimental.selected_index (moved there from a
+top-level selected_index; the old shape is now ignored with a warning
+pointing at the new location).  See "Experimental features" note below.
+
 An optional overlay showing the index of the currently selected entry
 (e.g. "12. ") directly in the results buffer, kept in sync as the selection
 moves.  Telescope-only — fzf-lua already shows a position/total counter
@@ -564,10 +573,12 @@ natively, so the overlay is skipped there.  Disabled by default.
 
 Enable: >lua
   require("pickers").setup({
-    selected_index = {
-      enabled   = true,
-      position  = "right_align",
-      highlight = { preset = "accent" },
+    experimental = {
+      selected_index = {
+        enabled   = true,
+        position  = "right_align",
+        highlight = { preset = "accent" },
+      },
     },
   })
 <
@@ -596,9 +607,11 @@ Live toggle~
   toggle_key registers an in-picker keymap (insert + normal mode) that
   switches the overlay on/off for the currently open results list, e.g.: >lua
   require("pickers").setup({
-    selected_index = {
-      enabled    = false,     -- starts hidden
-      toggle_key = "<M-i>",   -- press inside any Telescope picker to show/hide
+    experimental = {
+      selected_index = {
+        enabled    = false,     -- starts hidden
+        toggle_key = "<M-i>",   -- press inside any Telescope picker to show/hide
+      },
     },
   })
 <
@@ -606,6 +619,16 @@ Live toggle~
   starts visible and toggle_key hides it; with enabled = false it starts
   hidden and toggle_key shows it. Leaving toggle_key unset (the default)
   registers no extra keymap, so enabled = false alone stays fully inert.
+
+Indexing fix~
+  The overlay used to show the wrong number on every render (not just
+  intermittently): it fell back to a plain "row + 1", correct only under
+  telescope's non-default sorting_strategy = "ascending". Under the default
+  "descending" strategy (best match closest to the prompt), row + 1 is wrong
+  by an amount depending on row and max_results. It now uses
+  picker:get_index(row) -- telescope's own authoritative row<->index
+  mapping, which already accounts for sorting_strategy -- so the overlay is
+  correct regardless of strategy, with no caching or timing involved.
 
 ==============================================================================
 12. RESULT COUNT                                          *pickers-result-count*

@@ -139,13 +139,13 @@ function M.check()
     end
   end
 
-  if cfg.selected_index.enabled then
+  if cfg.experimental.selected_index.enabled then
     if has_telescope then
       vim.health.ok(
         "selected_index enabled (position="
-          .. cfg.selected_index.position
+          .. cfg.experimental.selected_index.position
           .. ", highlight="
-          .. (cfg.selected_index.highlight.preset or "default")
+          .. (cfg.experimental.selected_index.highlight.preset or "default")
           .. ")"
       )
     else
