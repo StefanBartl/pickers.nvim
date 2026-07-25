@@ -111,6 +111,12 @@ do
   check("smart.frecency: weight overridden", cfg4.smart.frecency.weight == 2.5)
   check("smart.frecency: sibling weights untouched", cfg4.smart.weights.filename == 1.0)
   config.apply({ smart = { frecency = { enabled = false, weight = 1.0 } } })
+
+  -- smart.dedup_grep_rows: opt-in, off by default
+  check("smart.dedup_grep_rows: default disabled", cfg.smart.dedup_grep_rows == false)
+  config.apply({ smart = { dedup_grep_rows = true } })
+  check("smart.dedup_grep_rows: overridden", config.get().smart.dedup_grep_rows == true)
+  config.apply({ smart = { dedup_grep_rows = false } })
 end
 
 -- ── pickers.bindings.keymaps — repos_files/repos_grep/system_files opt-in ───
@@ -1112,6 +1118,40 @@ do
   local boosted_top = ranked_boosted[1].abspath
   check("score.rank: frecency bonus changes ranking", plain_top ~= boosted_top, boosted_top)
   check("score.rank: frecency bonus floats boosted path to top", boosted_top == "/r/smarty.lua")
+
+  -- optional 7th `dedup_grep_rows` param: collapses multiple grep hits for
+  -- the SAME file down to its single best-scoring line.
+  local multi_greps = {
+    { path = "dup.lua", root = "/r", abspath = "/r/dup.lua", lnum = 1, col = 1, text = "smart" },
+    {
+      path = "dup.lua",
+      root = "/r",
+      abspath = "/r/dup.lua",
+      lnum = 5,
+      col = 1,
+      text = "not a match at all",
+    },
+    {
+      path = "dup.lua",
+      root = "/r",
+      abspath = "/r/dup.lua",
+      lnum = 9,
+      col = 1,
+      text = "smart smart smart",
+    },
+  }
+  local no_dedup = score.rank("smart", {}, multi_greps, w, 100)
+  check("score.rank: no dedup keeps every grep row", #no_dedup == 3, "#=" .. #no_dedup)
+
+  local deduped = score.rank("smart", {}, multi_greps, w, 100, nil, true)
+  check("score.rank: dedup collapses to one row per file", #deduped == 1, "#=" .. #deduped)
+  -- "smart" (lnum 1) is an exact whole-line match to the query and outscores
+  -- "smart smart smart" (lnum 9, longer, no exact-match bonus) and the
+  -- non-matching line (lnum 5) -- dedup keeps that highest-scoring row.
+  local kept_score = score.score_grep("smart", "dup.lua", "smart", w)
+  local other_score = score.score_grep("smart", "dup.lua", "smart smart smart", w)
+  check("score.rank: dedup keeps the best-scoring line", deduped[1].lnum == 1, deduped[1].lnum)
+  check("score.rank: kept line does outscore the other candidate", kept_score > other_score)
 end
 
 -- ── Summary ─────────────────────────────────────────────────────────────────

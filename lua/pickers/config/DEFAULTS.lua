@@ -161,6 +161,8 @@ local M = {
   --   limit            - max merged results kept after ranking
   --   timeout          - per-command (rg/fd) wait timeout in ms
   --   frecency         - opt-in recency/frequency ranking boost, off by default
+  --   dedup_grep_rows  - collapse multiple grep hits per file to the best
+  --                      line, off by default
   smart = {
     weights = {
       filename = 1.0,
@@ -174,6 +176,7 @@ local M = {
       weight = 1.0,
       dir = nil, -- default: stdpath("data") .. "/pickers.nvim"
     },
+    dedup_grep_rows = false,
   },
 
   -- Long-path display shortening. Cosmetic only, off by default -- pure
