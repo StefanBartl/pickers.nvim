@@ -42,12 +42,15 @@ collections = {
 ## find override
 
 A collection's `find` field (`{ hidden?, no_ignore?, follow?, exclude? }`)
-overrides the global `find` config for that collection's **files** action
-only — grep is unaffected (it doesn't use `find` flags). It's a partial
-merge: only the fields you set change, everything else keeps the global
-default. Useful for e.g. a vendored-code collection where you want
+overrides the global `find` config for that collection's **files** action.
+It's a partial merge: only the fields you set change, everything else keeps
+the global default. Useful for e.g. a vendored-code collection where you want
 `.gitignore`d files included, without changing that behaviour everywhere
 else.
+
+`find.exclude` (only) also applies to that collection's **grep** action —
+`hidden`/`no_ignore`/`follow` don't apply there since live grep already
+searches `--hidden --no-ignore-vcs` unconditionally.
 
 ## Auto-generated compat commands
 

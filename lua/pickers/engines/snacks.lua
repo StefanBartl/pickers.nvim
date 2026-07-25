@@ -97,7 +97,12 @@ function M.live_grep(opts)
   local extra = opts.additional_args or {}
   -- Same flags telescope/fzf pass; "-S" is redundant with grep's own
   -- always-on "--smart-case" but harmless.
-  local args = vim.list_extend({ "--hidden", "--no-ignore-vcs", "-S" }, extra)
+  local args = { "--hidden", "--no-ignore-vcs", "-S" }
+  for _, g in ipairs((opts.find or {}).exclude or {}) do
+    args[#args + 1] = "-g"
+    args[#args + 1] = "!" .. g
+  end
+  vim.list_extend(args, extra)
 
   local call_opts = { title = opts.prompt, args = args }
   if #opts.roots > 1 then

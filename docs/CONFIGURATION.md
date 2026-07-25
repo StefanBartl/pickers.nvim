@@ -33,7 +33,9 @@ require("pickers").setup({
     no_ignore = false,  -- respect .gitignore/.ignore; set true to list ignored files too
     follow    = true,   -- follow symlinks
     exclude   = nil,    -- optional list of extra globs to skip, e.g. { "node_modules", "*.min.js" }
-    -- Honoured by telescope, fzf-lua, and snacks.nvim.
+    -- Honoured by telescope, fzf-lua, and snacks.nvim, for BOTH the file
+    -- listing and live grep (as rg -g '!<glob>'), and by the smart action's
+    -- own fd/rg calls.
   },
 
   keymaps = {
@@ -286,6 +288,7 @@ Tuning guide:
 
 Requirements: `fd` (or `fdfind`) and `rg` on `PATH`. The files half honours
 `find` (hidden/no_ignore/follow/exclude); the grep half always searches
-`--hidden --no-ignore-vcs --smart-case`, exactly like `live_grep`. On the
+`--hidden --no-ignore-vcs --smart-case` plus `find.exclude`, exactly like
+`live_grep`. On the
 fzf-lua engine the smart action needs fzf ≥ 0.45 (Lua-function live mode); use
 telescope or snacks on older fzf.

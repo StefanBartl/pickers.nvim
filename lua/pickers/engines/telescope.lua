@@ -96,12 +96,18 @@ function M.live_grep(opts)
   end
 
   local extra = opts.additional_args or {}
+  local exclude = (opts.find or {}).exclude or {}
   safe_call(builtin.live_grep, {
     prompt_title = opts.prompt,
     search_dirs = opts.roots,
     default_text = opts.query,
     additional_args = function()
-      return vim.list_extend({ "--hidden", "--no-ignore-vcs", "-S" }, extra)
+      local args = { "--hidden", "--no-ignore-vcs", "-S" }
+      for _, g in ipairs(exclude) do
+        args[#args + 1] = "-g"
+        args[#args + 1] = "!" .. g
+      end
+      return vim.list_extend(args, extra)
     end,
     attach_mappings = require("pickers.result_count").wrap_attach_mappings(
       require("pickers.selected_index").wrap_attach_mappings(nil)
