@@ -68,14 +68,23 @@ local function action_arg()
   return { name = "action", type = "STRING", values = ACTION_VALUES, optional = true }
 end
 
+-- "find all" escape hatch: forces hidden+no_ignore+follow for this one
+-- search only. Only meaningful after `files`, but offered unconditionally
+-- (same trailing-optional-slot leniency as action_arg) — pickers.command
+-- silently ignores it for grep/smart.
+---@return Lib.UserCmd.Composer.ArgSpec
+local function find_all_arg()
+  return { name = "all", type = "STRING", values = { "all" }, optional = true }
+end
+
 ---@param scope string
 local function scope_route(scope)
   return {
     path = { scope },
-    args = { action_arg() },
+    args = { action_arg(), find_all_arg() },
     desc = "Scope: " .. scope,
     run = function(ctx)
-      require("pickers.command").handle({ fargs = { scope, ctx.pos[1] } })
+      require("pickers.command").handle({ fargs = { scope, ctx.pos[1], ctx.pos[2] } })
     end,
   }
 end
@@ -109,10 +118,10 @@ end
 local function collection_route(name)
   return {
     path = { name },
-    args = { action_arg() },
+    args = { action_arg(), find_all_arg() },
     desc = "User-defined collection: " .. name,
     run = function(ctx)
-      require("pickers.command").handle({ fargs = { name, ctx.pos[1] } })
+      require("pickers.command").handle({ fargs = { name, ctx.pos[1], ctx.pos[2] } })
     end,
   }
 end

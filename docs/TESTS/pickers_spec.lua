@@ -162,6 +162,23 @@ do
     config.get().find.hidden == true
   )
 
+  -- 3rd-arg override (the "find all" escape hatch): forced on top of
+  -- cfg.find/source.find, regardless of configured defaults.
+  config.apply({ find = { hidden = false, no_ignore = false, follow = false } })
+  files.run(
+    { roots = { "/tmp" }, prompt = "cwd> " },
+    fake_engine,
+    { hidden = true, no_ignore = true, follow = true }
+  )
+  check("actions.files: override forces hidden=true", captured.find.hidden == true)
+  check("actions.files: override forces no_ignore=true", captured.find.no_ignore == true)
+  check("actions.files: override forces follow=true", captured.find.follow == true)
+  check(
+    "actions.files: override does not mutate global cfg.find",
+    config.get().find.hidden == false
+  )
+  config.apply({ find = { hidden = true, no_ignore = false, follow = true } })
+
   -- sources.collection passes coll.find through to the resolved Source.
   local collection_source = require("pickers.sources.collection")
   config.apply({
@@ -211,6 +228,54 @@ do
   -- resolved engine, without needing to re-specify anything.
   local ok = pcall(last.run)
   check("last.run: does not throw", ok)
+end
+
+-- ── pickers.command.handle — "find all" escape hatch (:Pickers cwd files all) ─
+do
+  local config = require("pickers.config")
+  local engines = require("pickers.engines")
+  local cmd = require("pickers.command")
+
+  config.apply({ find = { hidden = false, no_ignore = false, follow = false } })
+
+  local captured
+  local fake_engine = {
+    pick_files = function(opts)
+      captured = opts
+    end,
+    live_grep = function(opts)
+      captured = opts
+    end,
+  }
+  local real_load = engines.load
+  engines.load = function()
+    return fake_engine
+  end
+
+  cmd.handle({ fargs = { "cwd", "files", "all" } })
+  check(
+    "command.handle: 'files all' forces hidden",
+    captured and captured.find and captured.find.hidden == true
+  )
+  check("command.handle: 'files all' forces no_ignore", captured.find.no_ignore == true)
+  check("command.handle: 'files all' forces follow", captured.find.follow == true)
+  check(
+    "command.handle: 'files all' does not mutate global cfg.find",
+    config.get().find.hidden == false
+  )
+
+  -- Without the "all" token, plain configured defaults apply unforced.
+  captured = nil
+  cmd.handle({ fargs = { "cwd", "files" } })
+  check("command.handle: plain 'files' keeps configured hidden=false", captured.find.hidden == false)
+
+  -- "all" is a no-op for grep (files-only escape hatch).
+  captured = nil
+  cmd.handle({ fargs = { "cwd", "grep", "all" } })
+  check("command.handle: 'grep all' still dispatches grep, ignoring 'all'", captured ~= nil)
+
+  engines.load = real_load
+  config.apply({ find = { hidden = true, no_ignore = false, follow = true } })
 end
 
 -- ── pickers.ui.scope_picker.list() — :PickersScopes' data source ────────────

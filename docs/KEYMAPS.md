@@ -19,19 +19,28 @@ They mirror the keymaps from the original individual modules exactly:
 | _(disabled)_ `cwd_smart` | `:Pickers cwd smart` — combined grep + find in CWD | — |
 | _(disabled)_ `config_smart` | `:Pickers config smart` — combined grep + find in nvim config | — |
 | _(disabled)_ `folder_smart` | `:Pickers folder smart` — pick folder, then combined grep + find | — |
+| _(disabled)_ `cwd_find_all` | `:Pickers cwd files all` — find files in CWD, forcing hidden+no_ignore+follow | `<leader>fa` |
 
 `cwd_files`, `repos_files`, `repos_grep`, `system_files`, `cwd_smart`,
-`config_smart`, and `folder_smart` are opt-in (`nil` by default) — set a
-`keymaps.<name>` value to enable one:
+`config_smart`, `folder_smart`, and `cwd_find_all` are opt-in (`nil` by
+default) — set a `keymaps.<name>` value to enable one:
 ```lua
 require("pickers").setup({
   keymaps = {
     repos_files = "<leader>rf",
     repos_grep  = "<leader>rg",
     cwd_smart   = "<leader>ss", -- combined grep + find in CWD
+    cwd_find_all = "<leader>fa", -- find all files in CWD (forces hidden+no_ignore+follow)
   },
 })
 ```
+
+`cwd_find_all` is the **"find all" escape hatch**: it force-enables
+`hidden`+`no_ignore`+`follow` for this one search only, regardless of
+configured `find.*` defaults — the old `<leader>fa` behaviour. It's a thin
+wrapper over `:Pickers cwd files all` (see
+[docs/COMMANDS.md](COMMANDS.md#pickers)), which works for every scope/
+collection, not just `cwd`.
 
 Collections can carry a `smart` key too, alongside `files`/`grep`:
 ```lua

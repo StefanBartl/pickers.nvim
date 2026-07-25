@@ -249,9 +249,19 @@ old config resolved "auto" engine (fzf → telescope, snacks never considered)
 separately in each of 5 custom utilities, all replaced by pickers.nvim's one
 `engine="auto"` resolution.
 
-- [ ] **"Find all" escape hatch.** Old `<leader>fa` force-enabled
-  hidden+no_ignore+follow for one search regardless of configured defaults.
-  `find.*` is global/setup-time only today — no per-invocation override.
+- [x] **"Find all" escape hatch.** `:Pickers <scope|collection> files all`
+  forces `hidden`+`no_ignore`+`follow` for that one search only, regardless
+  of configured `find.*` defaults — matching the old `<leader>fa` behaviour,
+  now generalised to every scope/collection (not just cwd). Threaded as an
+  optional 3rd arg through `pickers.actions.files.run` (merged force on top
+  of `cfg.find`/`source.find`) and an optional `force_find_all` flag through
+  `pickers.command`'s internal routing helpers; `pickers.command.dispatch`
+  (the public entry point used by `pickers.last`/`dir` scope) and `dir`
+  scope itself are unaffected — the escape hatch is one-off by design, so
+  `:PickersRepeat` replaying a recorded {action, source} without it is
+  correct, not a gap. New opt-in `keymaps.cwd_find_all` (nil by default,
+  same convention as `cwd_files`). See `lua/pickers/command/init.lua`,
+  `lua/pickers/actions/files.lua`.
 - [x] **Split/vsplit/tab as a unified `keys` action.** `keys = { split,
   vsplit, tab }`, default `<C-s>`/`<C-v>`/`<C-t>` across all three engines
   (matching the old fzf-lua config). Wired the same shape as

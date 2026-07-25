@@ -12,6 +12,10 @@
 ---   :Pickers dir <nav> <action>           → fully specified
 ---   :Pickers <collection>                 → collection as root → action picker
 ---   :Pickers <collection> <action>        → collection root + direct action
+---   :Pickers <scope|collection> files all → "find all" escape hatch: forces
+---                                            hidden+no_ignore+follow for this
+---                                            one search only (dir scope does
+---                                            not support the "all" modifier)
 ---
 --- Engine is always taken from config; it is never exposed in the command.
 --- M.handle is the dispatch engine called both by the composer-registered
@@ -56,17 +60,19 @@ end
 
 -- ── Routing helpers ───────────────────────────────────────────────────────────
 
----@param action     Pickers.Action
----@param source     Pickers.Source
----@param engine_mod table
-local function dispatch_action(action, source, engine_mod)
+---@param action          Pickers.Action
+---@param source          Pickers.Source
+---@param engine_mod      table
+---@param force_find_all  boolean|nil  "find all" escape hatch (files action only)
+local function dispatch_action(action, source, engine_mod, force_find_all)
   require("pickers.last").set(action, source)
   if action == "grep" then
     require("pickers.actions.grep").run(source, engine_mod)
   elseif action == "smart" then
     require("pickers.actions.smart").run(source, engine_mod)
   else
-    require("pickers.actions.files").run(source, engine_mod)
+    local override = force_find_all and { hidden = true, no_ignore = true, follow = true } or nil
+    require("pickers.actions.files").run(source, engine_mod, override)
   end
 end
 
@@ -79,25 +85,27 @@ function M.dispatch(action, source, engine_mod)
   dispatch_action(action, source, engine_mod)
 end
 
----@param source     Pickers.Source|nil
----@param action     Pickers.Action|nil
----@param engine_mod table
-local function after_source(source, action, engine_mod)
+---@param source          Pickers.Source|nil
+---@param action          Pickers.Action|nil
+---@param engine_mod      table
+---@param force_find_all  boolean|nil
+local function after_source(source, action, engine_mod, force_find_all)
   if not source then return end
   if action then
-    dispatch_action(action, source, engine_mod)
+    dispatch_action(action, source, engine_mod, force_find_all)
   else
     require("pickers.ui.action_picker").open(function(chosen)
-      if chosen then dispatch_action(chosen, source, engine_mod) end
+      if chosen then dispatch_action(chosen, source, engine_mod, force_find_all) end
     end)
   end
 end
 
 ---Run a built-in (non-dir) scope.
----@param scope      string
----@param action     Pickers.Action|nil
----@param engine_mod table
-local function run_standard_scope(scope, action, engine_mod)
+---@param scope           string
+---@param action          Pickers.Action|nil
+---@param engine_mod      table
+---@param force_find_all  boolean|nil
+local function run_standard_scope(scope, action, engine_mod, force_find_all)
   local cfg = require("pickers.config").get()
   local ok, src_mod = pcall(require, "pickers.sources." .. scope)
   if not ok or not src_mod then
@@ -109,23 +117,24 @@ local function run_standard_scope(scope, action, engine_mod)
   -- folder / repos / wkdbooks need engine_mod for their sub-pickers
   if scope == "folder" or scope == "repos" or scope == "wkdbooks" then
     src_mod.get(cfg, function(source)
-      after_source(source, action, engine_mod)
+      after_source(source, action, engine_mod, force_find_all)
     end, engine_mod)
   else
     src_mod.get(cfg, function(source)
-      after_source(source, action, engine_mod)
+      after_source(source, action, engine_mod, force_find_all)
     end)
   end
 end
 
 ---Run a user-defined collection as a scope.
----@param coll       Pickers.Collection
----@param action     Pickers.Action|nil
----@param engine_mod table
-local function run_collection_scope(coll, action, engine_mod)
+---@param coll            Pickers.Collection
+---@param action          Pickers.Action|nil
+---@param engine_mod      table
+---@param force_find_all  boolean|nil
+local function run_collection_scope(coll, action, engine_mod, force_find_all)
   local cfg = require("pickers.config").get()
   require("pickers.sources.collection").get(coll, cfg, function(source)
-    after_source(source, action, engine_mod)
+    after_source(source, action, engine_mod, force_find_all)
   end, engine_mod)
 end
 
@@ -185,7 +194,7 @@ function M.handle(opts)
       )
       action = nil
     end
-    run_standard_scope(scope, action, engine_mod)
+    run_standard_scope(scope, action, engine_mod, arg3 == "all")
     return
   end
 
@@ -199,7 +208,7 @@ function M.handle(opts)
       )
       action = nil
     end
-    run_collection_scope(coll, action, engine_mod)
+    run_collection_scope(coll, action, engine_mod, arg3 == "all")
     return
   end
 

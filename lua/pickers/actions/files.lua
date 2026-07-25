@@ -5,10 +5,17 @@ local M = {}
 
 ---@param source     Pickers.Source
 ---@param engine_mod table
-function M.run(source, engine_mod)
+---@param override   Pickers.FindOpts|nil  Forced on top of cfg.find/source.find (e.g. the
+---                                        "find all" escape hatch). Ignored when
+---                                        source.find_command is set (system source
+---                                        carries its own flags already).
+function M.run(source, engine_mod, override)
   local find = require("pickers.config").get().find
   if type(source.find) == "table" then
     find = vim.tbl_deep_extend("force", find, source.find)
+  end
+  if type(override) == "table" then
+    find = vim.tbl_deep_extend("force", find, override)
   end
 
   engine_mod.pick_files({

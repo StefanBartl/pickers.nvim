@@ -39,6 +39,7 @@ function M.register(km)
   add(km.cwd_smart, "Pickers: smart grep+find (cwd)")
   add(km.config_smart, "Pickers: smart grep+find (config)")
   add(km.folder_smart, "Pickers: smart grep+find (folder)")
+  add(km.cwd_find_all, "Pickers: find all files (cwd, forces hidden+no_ignore+follow)")
 
   if #spec > 0 then pcall(wk.add, spec) end
 end
