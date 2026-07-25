@@ -78,6 +78,39 @@ If startup time matters and you only want the plugin loaded on first use:
 lazy.nvim registers stub keymaps / commands that load the plugin on first
 use; `setup()` then replaces them with the real ones.
 
+## Optional: engine ownership + auto-install
+
+By default pickers.nvim only *detects* whichever engine you already declared
+and configured yourself (the spec above) — it never calls
+`Snacks.setup()`/`telescope.setup()`/`fzf-lua.setup()` for you, so your own
+engine config (dashboard, extensions, winopts, …) is never fought over by a
+second competing `setup()` call.
+
+If you'd rather have pickers.nvim install **and** configure the engine too —
+zero engine config of your own — use `require("pickers").plugin_spec()` in
+your own plugin list, at spec-build time:
+
+```lua
+require("lazy").setup({
+  require("pickers").plugin_spec({
+    engine      = "snacks",       -- "telescope" | "fzf" | "snacks" ("auto" not supported here)
+    own_engine  = true,           -- opt-in; false/unset is the default (unchanged) behaviour
+    engine_opts = {},             -- passed to Snacks.setup() / telescope.setup() / fzf-lua's setup()
+    picker_opts = {                -- passed to require("pickers").setup() (engine= is filled in for you)
+      repos_dir = vim.env.REPOS_DIR,
+    },
+  }),
+  -- ...your other plugins
+})
+```
+
+`plugin_spec()` returns a list of ready lazy.nvim spec entries (splat it
+into your own list as shown) — a plain `setup({ own_engine = true })` call
+alone can't install a missing engine, since lazy.nvim resolves a plugin's
+`dependencies` *before* `config()` runs, so the engine choice has to be
+known at spec-build time instead. `own_engine = true` requires an explicit
+`engine` — there's no single engine to install for `"auto"`.
+
 ## packer.nvim
 
 ```lua

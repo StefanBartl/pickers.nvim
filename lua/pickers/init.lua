@@ -20,8 +20,17 @@
 ---
 --- Without setup() the plugin still works — default keymaps and compat
 --- user-commands are registered automatically at VimEnter by plugin/pickers.lua.
+---
+--- Optional engine ownership + auto-install: `require("pickers").plugin_spec({
+--- engine = "snacks", own_engine = true })` returns a ready lazy.nvim spec
+--- list that installs AND configures the chosen engine too, called from
+--- your OWN plugin list at spec-build time (not from setup()) — see
+--- `pickers.plugin_spec` for why, and ROADMAP.md. Off by default; the
+--- example above (bring-your-own-engine) remains the default model.
 
 local M = {}
+
+M.plugin_spec = require("pickers.plugin_spec").plugin_spec
 
 ---Configure and activate pickers.nvim.
 ---

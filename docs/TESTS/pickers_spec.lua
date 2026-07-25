@@ -358,6 +358,76 @@ do
   config.apply({ mappings = {} })
 end
 
+-- ── pickers.plugin_spec — engine ownership + auto-install spec builder ──────
+do
+  local pickers = require("pickers")
+  local plugin_spec = pickers.plugin_spec
+
+  -- own_engine unset/false: single entry, no engine dependency added.
+  local plain = plugin_spec({})
+  check("plugin_spec: own_engine=false returns 1 entry", #plain == 1, "#=" .. #plain)
+  check("plugin_spec: repo is pickers.nvim", plain[1][1] == "StefanBartl/pickers.nvim")
+  check(
+    "plugin_spec: deps are just lib.nvim",
+    #plain[1].dependencies == 1 and plain[1].dependencies[1] == "StefanBartl/lib.nvim"
+  )
+
+  local real_setup = pickers.setup
+  local captured_opts
+  pickers.setup = function(o)
+    captured_opts = o
+  end
+  plain[1].config()
+  check("plugin_spec: plain config() calls pickers.setup", captured_opts ~= nil)
+  pickers.setup = real_setup
+
+  -- own_engine=true, engine="auto" (or unset): errors immediately, at
+  -- spec-build time -- "auto" has no single engine to install.
+  local ok_auto = pcall(plugin_spec, { own_engine = true, engine = "auto" })
+  check("plugin_spec: own_engine=true + engine='auto' errors", not ok_auto)
+  local ok_unset = pcall(plugin_spec, { own_engine = true })
+  check("plugin_spec: own_engine=true + no engine errors", not ok_unset)
+
+  -- own_engine=true, engine="snacks": 2 entries, engine repo first (no
+  -- pickers.nvim dependency loop), pickers.nvim depends on both lib.nvim
+  -- and the engine repo.
+  local snacks_spec = plugin_spec({ own_engine = true, engine = "snacks", engine_opts = { x = 1 } })
+  check("plugin_spec: own_engine=true returns 2 entries", #snacks_spec == 2, "#=" .. #snacks_spec)
+  check("plugin_spec: engine entry repo", snacks_spec[1][1] == "folke/snacks.nvim")
+  check("plugin_spec: pickers entry repo", snacks_spec[2][1] == "StefanBartl/pickers.nvim")
+  check(
+    "plugin_spec: pickers entry depends on both lib.nvim and the engine",
+    has(snacks_spec[2].dependencies, "StefanBartl/lib.nvim")
+      and has(snacks_spec[2].dependencies, "folke/snacks.nvim")
+  )
+
+  -- engine entry's config() calls the engine's own setup() with engine_opts
+  -- (stubbed via package.loaded so this doesn't require snacks installed).
+  local captured_engine_opts
+  package.loaded["snacks"] = { setup = function(o) captured_engine_opts = o end }
+  snacks_spec[1].config()
+  check(
+    "plugin_spec: engine config() calls Snacks.setup(engine_opts)",
+    captured_engine_opts and captured_engine_opts.x == 1
+  )
+  package.loaded["snacks"] = nil
+
+  -- pickers entry's config() calls pickers.setup() with engine filled in.
+  pickers.setup = function(o)
+    captured_opts = o
+  end
+  snacks_spec[2].config()
+  check("plugin_spec: pickers config() fills in engine=snacks", captured_opts.engine == "snacks")
+  pickers.setup = real_setup
+
+  -- telescope pulls in plenary as an extra dependency.
+  local ts_spec = plugin_spec({ own_engine = true, engine = "telescope" })
+  check(
+    "plugin_spec: telescope entry depends on plenary",
+    has(ts_spec[1].dependencies, "nvim-lua/plenary.nvim")
+  )
+end
+
 -- ── pickers.ui.scope_picker.list() — :PickersScopes' data source ────────────
 do
   local config = require("pickers.config")
