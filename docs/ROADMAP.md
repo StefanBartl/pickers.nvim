@@ -160,8 +160,9 @@ a promise; it is a backlog of ideas ordered roughly by usefulness.
   used to bypass it with its own inline files/grep branch, now delegates to
   `pickers.command.dispatch` instead. See `lua/pickers/last.lua` and
   [docs/COMMANDS.md](COMMANDS.md#pickersrepeat).
-- [x] **Selected-index overlay.** `selected_index = { enabled, position, highlight, toggle_key }`
-  in `setup()` — shows the index of the selected entry in the results buffer.
+- [x] **Selected-index overlay.** `experimental.selected_index = { enabled,
+  position, highlight, toggle_key }` in `setup()` (moved under `experimental`,
+  see below) — shows the index of the selected entry in the results buffer.
   Telescope-only, disabled by default. Native port of the (now retired)
   `telescope-selected-index.nvim` companion plugin — see `lua/pickers/selected_index/`.
   `toggle_key` registers an in-picker keymap to switch it on/off live for an
