@@ -57,6 +57,50 @@ Disable all keymaps:
 require("pickers").setup({ keymaps = { enable = false } })
 ```
 
+## Declarative mappings (per-entry engine override)
+
+`mappings` is a second, more flexible keymap surface alongside the fixed
+`keymaps.*` fields above — one flat table listing any scope×action combo or
+any [builtin](BUILTINS.md) by name, each with an lhs and an **optional
+per-entry engine override**. It does not replace `keymaps.*`; use whichever
+fits — `keymaps.*` for the common cases with a stable field name, `mappings`
+when you want a name-per-picker table or a per-key engine pin.
+
+```lua
+require("pickers").setup({
+  mappings = {
+    cwd_files    = { "<leader>ff", "telescope" }, -- always telescope
+    cwd_grep     = { "<leader>gr" },               -- active/default engine
+    explorer     = { "<leader>.",  "snacks" },     -- always snacks
+    notes_smart  = { "<leader>ns", "fzf" },        -- "notes" collection, always fzf
+  },
+})
+```
+
+**Name resolution:**
+
+| Name shape | Dispatches to |
+|---|---|
+| a [`:Pickers builtin <name>`](BUILTINS.md) name | `pickers.builtins.run(name)` |
+| `<scope>_files` / `<scope>_grep` / `<scope>_smart` | `:Pickers <scope> <action>` |
+| `<scope>_find_all` | `:Pickers <scope> files all` (see the escape hatch above) |
+
+`<scope>` is any built-in scope (`cwd`/`config`/`folder`/`repos`/`wkdbooks`/
+`system`/`drives`) or a user-defined collection name — `notes_lua_grep`
+resolves to collection `notes_lua`, action `grep` (the LAST `_files`/
+`_grep`/`_smart`/`_find_all` suffix is stripped, so scope names may contain
+underscores). `dir` is **not** supported — its nav argument doesn't fit this
+flat shape (same limitation as the "find all" escape hatch).
+
+**Engine override.** The optional 2nd element pins that one entry to a
+specific engine — `"telescope"` | `"fzf"` | `"snacks"` — regardless of the
+configured default. An engine named but not installed **falls back to the
+default engine, never a dead keymap** (reuses `pickers.engines.load()`'s own
+fallback-to-auto-detect logic).
+
+An unresolvable name or malformed entry (`{ lhs, engine? }` expected) is
+skipped with a `notify.warn`, never a throw.
+
 Change a keymap:
 ```lua
 require("pickers").setup({ keymaps = { cwd_grep = "<leader>sg" } })

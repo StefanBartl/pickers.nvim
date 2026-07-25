@@ -57,6 +57,12 @@ require("pickers").setup({
                                     -- for one search in CWD (disabled by default)
   },
 
+  -- Declarative mappings: a second, more flexible keymap surface alongside
+  -- keymaps.* above -- any scope×action or builtin name, with an optional
+  -- per-entry engine override. Empty by default. See "Declarative mappings"
+  -- in docs/KEYMAPS.md.
+  mappings = {},
+
   usercmds = { enable = true },
 
   -- Smart action: combined grep + find files, merged and ranked. See

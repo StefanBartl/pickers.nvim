@@ -229,6 +229,10 @@ function M.apply(opts)
   if type(opts.keymaps) == "table" then
     cfg.keymaps = vim.tbl_deep_extend("force", cfg.keymaps, opts.keymaps)
   end
+  -- Plain replace, not merged -- each entry is independent and there is no
+  -- meaningful "default" to merge a user's mappings table against (unlike
+  -- keymaps/find/smart, DEFAULTS.mappings is always empty).
+  if type(opts.mappings) == "table" then cfg.mappings = opts.mappings end
   if type(opts.usercmds) == "table" then
     cfg.usercmds = vim.tbl_deep_extend("force", cfg.usercmds, opts.usercmds)
   end

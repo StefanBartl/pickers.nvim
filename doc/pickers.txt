@@ -317,6 +317,36 @@ Change a keymap: >lua
   require("pickers").setup({ keymaps = { cwd_grep = "<leader>sg" } })
 <
 
+Declarative mappings (per-entry engine override)~
+  `mappings` is a second, more flexible keymap surface alongside the fixed
+  keymaps.* fields -- any scope×action combo or any |pickers-command|
+  builtin name, each with an lhs and an OPTIONAL per-entry engine override.
+  Does not replace keymaps.*. >lua
+    require("pickers").setup({
+      mappings = {
+        cwd_files   = { "<leader>ff", "telescope" }, -- always telescope
+        cwd_grep    = { "<leader>gr" },               -- active/default engine
+        explorer    = { "<leader>.",  "snacks" },     -- always snacks
+      },
+    })
+<
+  Name resolution:
+    <builtin name>                              -> pickers.builtins.run(name)
+    <scope>_files | <scope>_grep | <scope>_smart -> :Pickers <scope> <action>
+    <scope>_find_all                             -> :Pickers <scope> files all
+
+  <scope> is any built-in scope or a collection name (the LAST
+  _files/_grep/_smart/_find_all suffix is stripped, so scope names may
+  contain underscores, e.g. notes_lua_grep -> collection "notes_lua",
+  action "grep").  `dir` is NOT supported (same limitation as the "find
+  all" escape hatch).
+
+  The optional 2nd element pins that entry to a specific engine
+  ("telescope"|"fzf"|"snacks") regardless of the configured default.  An
+  engine named but not installed falls back to the default engine, never a
+  dead keymap.  An unresolvable name or malformed entry is skipped with a
+  warning, never a throw.
+
 In-picker keys (preview scroll + history + entry actions)~
   Separate from the keymaps above, `keys` controls bindings that act *inside*
   an open picker — one config surface for everything in this category,
@@ -461,6 +491,11 @@ All keys are optional.  Unset keys retain their default values.
     cwd_find_all (string|nil)          — default nil (disabled) — "find all"
                                           escape hatch, forces
                                           hidden+no_ignore+follow for one search
+
+  mappings (table, default {})~
+    Declarative mappings: table<name, {lhs, engine?}>, empty by default.
+    A second, more flexible keymap surface alongside keymaps.* above.  See
+    "Declarative mappings" under |pickers-keymaps|.
 
   usercmds (table)~
     enable (bool, default true)
