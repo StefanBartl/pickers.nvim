@@ -84,13 +84,17 @@ require("pickers").setup({
     limit = 200,
   },
 
-  -- Overlay showing the index of the currently selected entry. Telescope-only,
-  -- disabled by default. See "Selected index display" below.
-  selected_index = {
-    enabled = false,
-    position = "right_align",         -- "overlay" | "right_align" | "eol" | "top" | "down"
-    highlight = { preset = "default" }, -- see presets below
-    toggle_key = nil,                 -- e.g. "<M-i>" to toggle live in an open picker
+  -- Not-yet-stable features, namespaced separately so their config surface
+  -- can keep changing shape without a compat promise on the stable options.
+  experimental = {
+    -- Overlay showing the index of the currently selected entry. Telescope-
+    -- only, disabled by default. See "Selected index display" below.
+    selected_index = {
+      enabled = false,
+      position = "right_align",         -- "overlay" | "right_align" | "eol" | "top" | "down"
+      highlight = { preset = "default" }, -- see presets below
+      toggle_key = nil,                 -- e.g. "<M-i>" to toggle live in an open picker
+    },
   },
 
   -- Unified in-picker keys: preview scroll + history navigation (patched
@@ -170,7 +174,23 @@ and additive with, the `history_back`/`history_forward` keys in
 
 ---
 
+## Experimental features
+
+`experimental = { ... }` namespaces config for features whose shape isn't
+considered stable yet — options there may still be renamed or restructured
+without the deprecation care the rest of `setup()` gets. Currently just
+`experimental.selected_index` (see below). Passing the OLD, pre-move
+top-level shape for a feature that has moved here is ignored with a
+`notify.warn` pointing at the new location, rather than silently applying
+in the wrong place.
+
+---
+
 ## Selected index display
+
+**Experimental** — lives under `experimental.selected_index` (moved there
+from a top-level `selected_index`; the old shape is now ignored with a
+warning telling you where it went — see "Experimental features" below).
 
 An optional overlay that shows the index (e.g. `12. `) of the currently
 selected entry directly in the results buffer, updated as you move the
@@ -180,10 +200,12 @@ counter natively, so the overlay has no effect there and is skipped.
 
 ```lua
 require("pickers").setup({
-  selected_index = {
-    enabled = true,
-    position = "right_align",   -- "overlay" | "right_align" | "eol" | "top" | "down"
-    highlight = { preset = "accent" },
+  experimental = {
+    selected_index = {
+      enabled = true,
+      position = "right_align",   -- "overlay" | "right_align" | "eol" | "top" | "down"
+      highlight = { preset = "accent" },
+    },
   },
 })
 ```
@@ -219,9 +241,11 @@ on demand:
 
 ```lua
 require("pickers").setup({
-  selected_index = {
-    enabled = false,     -- starts hidden
-    toggle_key = "<M-i>", -- press inside any Telescope picker to show/hide it
+  experimental = {
+    selected_index = {
+      enabled = false,     -- starts hidden
+      toggle_key = "<M-i>", -- press inside any Telescope picker to show/hide it
+    },
   },
 })
 ```
@@ -231,6 +255,16 @@ overlay starts visible and `toggle_key` can hide it; with `enabled = false`
 it starts hidden and `toggle_key` can show it. Leaving `toggle_key` unset
 (the default) registers no extra keymap at all, so `enabled = false` alone
 stays fully inert.
+
+**Indexing fix.** The overlay used to show the wrong number on every render
+(not just intermittently): it fell back to a plain `row + 1`, which is only
+correct under telescope's non-default `sorting_strategy = "ascending"`.
+Under the default `"descending"` strategy (best match closest to the
+prompt), `row + 1` is wrong by an amount that depends on `row` and
+`max_results`. It now uses `picker:get_index(row)` — telescope's own
+authoritative row↔index mapping, which already accounts for
+`sorting_strategy` — so the overlay is correct regardless of strategy, with
+no caching or timing involved.
 
 ---
 

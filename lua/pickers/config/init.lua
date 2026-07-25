@@ -240,8 +240,17 @@ function M.apply(opts)
   end
 
   if type(opts.selected_index) == "table" then
-    cfg.selected_index = normalise_selected_index(opts.selected_index, cfg.selected_index)
-    require("pickers.selected_index.highlight").apply(cfg.selected_index.highlight)
+    notify.warn(
+      "selected_index moved under experimental = { selected_index = {...} } "
+        .. "(opt-in, signals it's not yet stable) -- see docs/CONFIGURATION.md. "
+        .. "This top-level opts.selected_index was ignored."
+    )
+  end
+
+  if type(opts.experimental) == "table" and type(opts.experimental.selected_index) == "table" then
+    cfg.experimental.selected_index =
+      normalise_selected_index(opts.experimental.selected_index, cfg.experimental.selected_index)
+    require("pickers.selected_index.highlight").apply(cfg.experimental.selected_index.highlight)
   end
 
   if type(opts.result_count) == "table" then
