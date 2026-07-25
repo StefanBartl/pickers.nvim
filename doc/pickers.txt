@@ -129,12 +129,19 @@ toggle keymaps/usercmds.
 
                                                                       *:Pickers*
 :Pickers [{scope} [{action}]]
+:Pickers [{scope} files all]
 :Pickers dir [{nav} [{action}]]
 
   scope    One of: cwd config folder repos wkdbooks system drives dir
            or any user-defined collection name (see |pickers-collections|)
   action   One of: files grep smart      (smart: see |pickers-smart|)
   nav      (dir only) alias name, integer depth, or path=<dir>
+
+A trailing "all" after "files" is the "find all" escape hatch: forces
+hidden+no_ignore+follow for this one search only, regardless of configured
+find.* defaults.  Works for every built-in scope and collection, not `dir`.
+No-op on grep/smart (silently ignored, live grep already searches
+--hidden --no-ignore-vcs unconditionally).
 
 When an argument is omitted an interactive picker (hover_select or
 vim.ui.select) prompts the user.
@@ -144,6 +151,7 @@ Examples: >
   :Pickers cwd                " action picker for CWD
   :Pickers cwd files          " find files in CWD
   :Pickers cwd smart          " grep + find in CWD, merged and ranked
+  :Pickers cwd files all      " find files in CWD, forcing hidden+no_ignore+follow
   :Pickers config grep        " live grep in nvim config
   :Pickers dir                " dir-nav picker → action picker
   :Pickers dir 2              " go 2 dirs up → action picker
@@ -297,6 +305,8 @@ The following are opt-in (nil, disabled by default):
   cwd_smart     :Pickers cwd smart    (grep + find in CWD; see |pickers-smart|)
   config_smart  :Pickers config smart (grep + find in nvim config)
   folder_smart  :Pickers folder smart (pick folder, then grep + find)
+  cwd_find_all  :Pickers cwd files all ("find all" escape hatch: forces
+                                        hidden+no_ignore+follow for one search)
 
 Disable all keymaps: >lua
   require("pickers").setup({ keymaps = { enable = false } })
@@ -444,6 +454,12 @@ All keys are optional.  Unset keys retain their default values.
     repos_files  (string|nil)          — default nil (disabled)
     repos_grep   (string|nil)          — default nil (disabled)
     system_files (string|nil)          — default nil (disabled)
+    cwd_smart    (string|nil)          — default nil (disabled), see |pickers-smart|
+    config_smart (string|nil)          — default nil (disabled)
+    folder_smart (string|nil)          — default nil (disabled)
+    cwd_find_all (string|nil)          — default nil (disabled) — "find all"
+                                          escape hatch, forces
+                                          hidden+no_ignore+follow for one search
 
   usercmds (table)~
     enable (bool, default true)

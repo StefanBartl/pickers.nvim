@@ -19,6 +19,7 @@
 ---@field cwd_smart    string|nil   Smart (grep + find) in cwd    (default: nil)
 ---@field config_smart string|nil   Smart (grep + find) in nvim config (default: nil)
 ---@field folder_smart string|nil   Smart (grep + find) in picked folder (default: nil)
+---@field cwd_find_all string|nil   Find files in cwd, forcing hidden+no_ignore+follow for this search only (default: nil)
 
 -- ###########################################################################
 -- User-commands

@@ -54,6 +54,10 @@ local M = {
     cwd_smart = nil,
     config_smart = nil,
     folder_smart = nil,
+    -- "Find all" escape hatch: forces hidden+no_ignore+follow for this one
+    -- search only, regardless of configured find.* defaults. Opt-in, nil by
+    -- default -- same as cwd_files. Equivalent to `:Pickers cwd files all`.
+    cwd_find_all = nil,
   },
 
   -- File-listing behaviour for the built-in file pickers (config/cwd/folder/

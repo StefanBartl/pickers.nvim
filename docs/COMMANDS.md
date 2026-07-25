@@ -4,11 +4,20 @@
 
 ```
 :Pickers [scope] [action]
+:Pickers [scope] files all
 :Pickers dir [nav] [action]
 ```
 
 `action` is one of `files`, `grep`, or `smart`. When an argument is omitted an
 interactive picker appears (`hover_select` or `vim.ui.select`).
+
+A trailing `all` after `files` is the **"find all" escape hatch**: it forces
+`hidden`+`no_ignore`+`follow` on for this one search only, regardless of
+configured `find.*` defaults — e.g. `:Pickers cwd files all`. It works for
+every built-in scope and every collection, but not for `dir` scope. It's a
+no-op on `grep`/`smart` (silently ignored there, since live grep already
+searches `--hidden --no-ignore-vcs` unconditionally). See
+[docs/KEYMAPS.md](KEYMAPS.md) for the opt-in `cwd_find_all` keymap.
 
 | Scope | Nav (dir only) | Action | Result |
 |---|---|---|---|
@@ -16,6 +25,7 @@ interactive picker appears (`hover_select` or `vim.ui.select`).
 | `cwd` | — | _(none)_ | action picker for CWD |
 | `cwd` | — | `files` | find files in CWD |
 | `cwd` | — | `smart` | combined grep + find in CWD (merged & ranked) |
+| `cwd` | — | `files all` | find files in CWD, forcing hidden+no_ignore+follow |
 | `config` | — | `grep` | live grep in nvim config |
 | `folder` | — | `files` | pick a folder → find files |
 | `repos` | — | `files` | pick a repo → find files |

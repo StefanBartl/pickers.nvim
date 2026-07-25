@@ -53,6 +53,8 @@ require("pickers").setup({
     cwd_smart    = nil,            -- Smart (grep + find) in CWD           (disabled by default)
     config_smart = nil,            -- Smart (grep + find) in nvim config    (disabled by default)
     folder_smart = nil,            -- Smart (grep + find) in picked folder  (disabled by default)
+    cwd_find_all = nil,            -- "Find all" escape hatch: forces hidden+no_ignore+follow
+                                    -- for one search in CWD (disabled by default)
   },
 
   usercmds = { enable = true },

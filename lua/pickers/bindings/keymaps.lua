@@ -14,6 +14,7 @@
 ---   (cwd_smart)    Smart grep+find in CWD          (nil by default)
 ---   (config_smart) Smart grep+find in nvim config  (nil by default)
 ---   (folder_smart) Smart grep+find in picked folder (nil by default)
+---   (cwd_find_all) Find files in CWD, forcing hidden+no_ignore+follow (nil by default)
 
 local map = require("pickers.bindings.util").map
 
@@ -72,6 +73,10 @@ function M.register(km)
   map(km.folder_smart, function()
     require("pickers.command").handle({ fargs = { "folder", "smart" } })
   end, "[pickers] Smart (grep + find) in interactively picked folder")
+
+  map(km.cwd_find_all, function()
+    require("pickers.command").handle({ fargs = { "cwd", "files", "all" } })
+  end, "[pickers] Find all files in CWD (forces hidden+no_ignore+follow)")
 end
 
 return M
