@@ -16,6 +16,7 @@ function M.defaults()
     limit = 2000,
     timeout = 3000,
     frecency = { enabled = false, weight = 1.0, dir = nil },
+    dedup_grep_rows = false,
   }
 end
 
@@ -56,7 +57,15 @@ function M.query(query, opts)
     frecency = require("pickers.smart.frecency").lookup(cfg, abspaths)
   end
 
-  return require("pickers.smart.score").rank(query or "", files, greps, sm.weights, sm.limit, frecency)
+  return require("pickers.smart.score").rank(
+    query or "",
+    files,
+    greps,
+    sm.weights,
+    sm.limit,
+    frecency,
+    sm.dedup_grep_rows
+  )
 end
 
 return M

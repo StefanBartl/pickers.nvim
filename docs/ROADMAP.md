@@ -31,8 +31,12 @@ a promise; it is a backlog of ideas ordered roughly by usefulness.
     optional `frecency` param, keeping the scorer itself pure/side-effect-
     free (the lookup is computed once by the caller, not read from disk
     inside the scorer). See [docs/CONFIGURATION.md](CONFIGURATION.md#frecency-opt-in-ranking-boost).
-  - [ ] _(future)_ Dedup grep rows down to one-per-file (best line) behind a
-    config flag, for users who want the file list denser.
+  - [x] **Dedup grep rows down to one-per-file (best line).** `smart.
+    dedup_grep_rows = false` (opt-in). `score.rank`'s new optional 7th
+    param collapses multiple grep hits sharing an `abspath` down to the
+    single highest-scoring line; a file's other matches are dropped
+    entirely (a display-density choice, not a re-scoring). See
+    [docs/CONFIGURATION.md](CONFIGURATION.md#dedup-grep-rows-opt-in).
 
 - [ ] _(low priority, needs a design decision)_ **Optional engine ownership +
   auto-install.** `require("pickers").setup({ engine = "snacks", own_engine =

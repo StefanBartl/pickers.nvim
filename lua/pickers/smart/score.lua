@@ -98,14 +98,21 @@ end
 --- on top of the match score for every item sharing that abspath — computed
 --- and weighted by the caller (`pickers.smart`), not looked up here, so this
 --- function stays pure/side-effect-free. See `pickers.smart.frecency`.
----@param query    string
----@param files    Pickers.Smart.File[]
----@param greps    Pickers.Smart.Grep[]
----@param w        Pickers.Smart.Weights
----@param limit    integer|nil
----@param frecency table<string, number>|nil
+---
+--- `dedup_grep_rows` (optional, default false) collapses multiple grep hits
+--- for the SAME file down to just its single highest-scoring line, for
+--- users who want the merged list denser (one row per file instead of one
+--- row per match). A file's OTHER matches are dropped entirely, not merged
+--- into the kept row — this is a display-density choice, not a re-scoring.
+---@param query           string
+---@param files           Pickers.Smart.File[]
+---@param greps           Pickers.Smart.Grep[]
+---@param w               Pickers.Smart.Weights
+---@param limit           integer|nil
+---@param frecency        table<string, number>|nil
+---@param dedup_grep_rows boolean|nil
 ---@return Pickers.Smart.Item[]
-function M.rank(query, files, greps, w, limit, frecency)
+function M.rank(query, files, greps, w, limit, frecency, dedup_grep_rows)
   local items = {} ---@type Pickers.Smart.Item[]
 
   local grepped = {} ---@type table<string, boolean>
@@ -129,10 +136,11 @@ function M.rank(query, files, greps, w, limit, frecency)
     end
   end
 
+  local grep_items = {} ---@type Pickers.Smart.Item[]
   for _, g in ipairs(greps) do
     local s = M.score_grep(query, g.path, g.text, w)
     if frecency then s = s + (frecency[g.abspath] or 0) end
-    items[#items + 1] = {
+    grep_items[#grep_items + 1] = {
       kind = "grep",
       path = g.path,
       root = g.root,
@@ -143,6 +151,24 @@ function M.rank(query, files, greps, w, limit, frecency)
       score = s,
       display = string.format("%s:%d: %s", g.path, g.lnum, (g.text or ""):gsub("^%s+", "")),
     }
+  end
+
+  if dedup_grep_rows then
+    local best = {} ---@type table<string, Pickers.Smart.Item>
+    local order = {} ---@type string[]
+    for _, it in ipairs(grep_items) do
+      local cur = best[it.abspath]
+      if not cur then order[#order + 1] = it.abspath end
+      if not cur or it.score > cur.score then best[it.abspath] = it end
+    end
+    grep_items = {}
+    for _, abspath in ipairs(order) do
+      grep_items[#grep_items + 1] = best[abspath]
+    end
+  end
+
+  for _, it in ipairs(grep_items) do
+    items[#items + 1] = it
   end
 
   table.sort(items, function(a, b)

@@ -20,10 +20,11 @@
 -- Config (setup surface)
 
 ---@class Pickers.SmartConfig
----@field weights  Pickers.Smart.Weights        Relative weighting of the score components
----@field limit    integer                      Max merged results kept after ranking (default 2000)
----@field timeout  integer                      Per-command wait timeout in ms (default 3000)
----@field frecency Pickers.Smart.FrecencyConfig  Opt-in recency/frequency ranking boost
+---@field weights          Pickers.Smart.Weights        Relative weighting of the score components
+---@field limit            integer                      Max merged results kept after ranking (default 2000)
+---@field timeout          integer                      Per-command wait timeout in ms (default 3000)
+---@field frecency         Pickers.Smart.FrecencyConfig  Opt-in recency/frequency ranking boost
+---@field dedup_grep_rows  boolean                      Collapse multiple grep hits per file to the best-scoring line (default false)
 
 --- Opt-in (off by default): boosts a file's smart-action score by how often
 --- and how recently it was opened, via `pickers.smart.frecency`.

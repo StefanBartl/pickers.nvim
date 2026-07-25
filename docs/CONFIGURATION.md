@@ -71,6 +71,9 @@ require("pickers").setup({
       weight  = 1.0,  -- multiplier applied to the raw frecency score
       dir     = nil,  -- default: stdpath("data") .. "/pickers.nvim"
     },
+    -- Collapse multiple grep hits for the same file to its single
+    -- best-scoring line, for a denser merged list. Off by default.
+    dedup_grep_rows = false,
   },
 
   -- Native picker history, disabled by default. See "History" below.
@@ -313,6 +316,14 @@ one file opened hundreds of times doesn't permanently dominate) with how
 recently it was last opened (a visit from the last hour counts far more
 than one from a month ago); tune the overall strength with
 `smart.frecency.weight`. See `lua/pickers/smart/frecency.lua`.
+
+### Dedup grep rows (opt-in)
+
+`smart.dedup_grep_rows = true` collapses multiple grep hits for the same
+file down to its single highest-scoring line, for users who want the merged
+list denser (one row per file instead of one row per match). The file's
+other matches are dropped entirely, not merged into the kept row — this is
+a display-density choice, not a re-scoring. Off by default.
 
 ---
 

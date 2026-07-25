@@ -669,6 +669,7 @@ Configuration (all optional): >lua
         weight  = 1.0,    -- multiplier applied to the raw frecency score
         dir     = nil,    -- default: stdpath("data") .. "/pickers.nvim"
       },
+      dedup_grep_rows = false, -- collapse multiple grep hits per file to the best line
     },
   })
 <
@@ -684,6 +685,9 @@ Tuning:
     persisted as JSON under stdpath("data")/pickers.nvim/frecency.json by
     default) so a frequently/recently edited file outranks an equal-scoring
     stranger. Tune overall strength with frecency.weight.
+  • dedup_grep_rows collapses multiple grep hits for the same file to its
+    single best-scoring line (denser list, one row per file); off by
+    default. Other matches for that file are dropped, not merged.
 
 Opt-in keymaps: cwd_smart, config_smart, folder_smart (nil by default; see
 |pickers-keymaps|). Per-collection: keys.smart, plus a :{PascalName}Smart
