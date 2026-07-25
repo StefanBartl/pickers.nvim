@@ -14,6 +14,12 @@
 --- pickers.engines.telescope/fzf handle them: shell out to `fd` ourselves for
 --- pick_dir, and build a custom finder via snacks' own proc() builder (the
 --- same one files.lua/grep.lua use internally) for find_command.
+---
+--- `cfg.display.path_shorten` (see `pickers.config`'s `Pickers.DisplayConfig`)
+--- is intentionally NOT wired here, unlike telescope/fzf-lua: snacks already
+--- truncates the displayed path to fit the available column width by
+--- default (`Snacks.picker.util.truncpath`, in its own formatter), so there
+--- is nothing to opt into.
 
 local notify = require("lib.nvim.notify").create("[pickers.engines.snacks]")
 

@@ -19,7 +19,8 @@ CONTENTS                                                      *pickers-contents*
  11. Selected index display .......... |pickers-selected-index|
  12. Result count ..................... |pickers-result-count|
  13. Smart action ..................... |pickers-smart|
- 14. Health check ..................... |pickers-health|
+ 14. Display .......................... |pickers-display|
+ 15. Health check ..................... |pickers-health|
 
 ==============================================================================
 1. INTRODUCTION                                                  *pickers-intro*
@@ -480,6 +481,10 @@ All keys are optional.  Unset keys retain their default values.
     enabled (bool, default false) — master toggle, telescope-only, see
                                      |pickers-result-count|
 
+  display (table)~
+    path_shorten (bool, default false) — cosmetic long-path shortening, see
+                                          |pickers-display|
+
   keys (table)~
     Unified in-picker keys: preview scroll + history navigation (patched
     globally into telescope/fzf-lua/snacks) plus the create_file/
@@ -676,7 +681,22 @@ Opt-in keymaps: cwd_smart, config_smart, folder_smart (nil by default; see
 compat command (see |pickers-collections|).
 
 ==============================================================================
-14. HEALTH CHECK                                                *pickers-health*
+14. DISPLAY                                                    *pickers-display*
+
+Cosmetic only, disabled by default.  `display.path_shorten = true` visually
+shortens long paths in the results list, via each engine's own native
+mechanism -- no pickers.nvim-side logic: >lua
+  require("pickers").setup({
+    display = { path_shorten = true },
+  })
+<
+  telescope   path_display = { "shorten" } passed to find_files/live_grep
+  fzf-lua     path_shorten = true passed to files/live_grep
+  snacks      no-op -- already truncates to fit the available column width
+              by default, nothing to opt into
+
+==============================================================================
+15. HEALTH CHECK                                                *pickers-health*
 
 Run: >
   :checkhealth pickers

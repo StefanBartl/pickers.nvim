@@ -106,6 +106,16 @@ local function history_fzf_opts(kind)
   return { ["--history"] = require("pickers.history").fzf_path(cfg, kind) }
 end
 
+---`path_shorten` opt for `fzf.files`/`fzf.live_grep`, or nil when the cosmetic
+---"shorten long paths" toggle is off (the default). See `pickers.config`'s
+---`Pickers.DisplayConfig`.
+---@return boolean|nil
+local function path_shorten_opt()
+  local cfg = require("pickers.config").get()
+  if not (cfg.display and cfg.display.path_shorten) then return nil end
+  return true
+end
+
 -- ── Public engine interface ───────────────────────────────────────────────────
 
 ---@return boolean
@@ -127,6 +137,7 @@ function M.pick_files(opts)
     query = opts.query,
     winopts = { on_create = setup_double_esc },
     fzf_opts = history_fzf_opts("files"),
+    path_shorten = path_shorten_opt(),
   }
 
   -- Custom find command (system source: pre-built fd argv)
@@ -173,6 +184,7 @@ function M.live_grep(opts)
     query = opts.query,
     winopts = { on_create = setup_double_esc },
     fzf_opts = history_fzf_opts("grep"),
+    path_shorten = path_shorten_opt(),
   })
 end
 

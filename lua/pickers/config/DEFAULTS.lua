@@ -169,6 +169,14 @@ local M = {
     limit = 2000,
     timeout = 3000,
   },
+
+  -- Long-path display shortening. Cosmetic only, off by default -- pure
+  -- pass-through to each engine's own native mechanism (telescope
+  -- path_display={"shorten"}, fzf-lua path_shorten=true). snacks already
+  -- truncates to fit the available column width by default, no toggle needed.
+  display = {
+    path_shorten = false,
+  },
 }
 
 return M
