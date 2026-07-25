@@ -76,6 +76,9 @@ snacks. See `lua/pickers/keys/`.
 | `create_file` | `<C-a>` | ✓ | fixed (`ctrl-a`) | ✓ |
 | `open_background` | `<S-CR>`, `<C-o>` | ✓ | fixed (`ctrl-o`/`shift-enter`) | ✓ |
 | `preview_toggle` | _(off, opt-in)_ | ✓ | native (`<F4>`) | native (`<A-p>`) |
+| `split` | `<C-s>` | ✓ | native (`ctrl-s`) | ✓ |
+| `vsplit` | `<C-v>` | ✓ | native (`ctrl-v`) | ✓ |
+| `tab` | `<C-t>` | ✓ | native (`ctrl-t`) | ✓ |
 
 fzf-lua is the capability gap: its builtin previewer has no horizontal preview
 scroll, its history is fzf's own `--history` bound to `ctrl-p`/`ctrl-n`
@@ -84,6 +87,17 @@ natively, and its entry-action bindings are fixed to `ctrl-a`/`ctrl-o`/
 syntax) — none of these four are remappable there. Unmappable actions are
 skipped and reported once via `notify.debug` (or surfaced in `:checkhealth
 pickers` for the static, always-true gaps).
+
+**`split`/`vsplit`/`tab`** open the selected entry in a horizontal/vertical
+split or a new tab instead of the current window. All three engines already
+ship the underlying primitive natively (telescope
+`actions.select_horizontal`/`select_vertical`/`select_tab`, snacks
+`actions.split`/`vsplit`/`tab`, fzf-lua's fixed `ctrl-s`/`ctrl-v`/`ctrl-t`), so
+— like `preview_toggle` on fzf-lua/snacks — this is pure translation-table
+wiring, no pickers.nvim-side logic. They default to `<C-s>`/`<C-v>`/`<C-t>`
+(matching the pre-pickers.nvim fzf-lua config) for a consistent lhs across
+engines; fzf-lua's keys are fixed/unremappable and simply left unpatched
+there (not a capability gap — fzf already ships them).
 
 **`create_file`/`open_background` are not patched globally** like the other
 actions — they run pickers.nvim-specific logic (`lua/pickers/entry_actions/`),

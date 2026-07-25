@@ -9,6 +9,9 @@
 ---   history_back         → actions.cycle_history_prev
 ---   history_forward      → actions.cycle_history_next
 ---   preview_toggle        → actions.layout.toggle_preview
+---   split                 → actions.select_horizontal
+---   vsplit                → actions.select_vertical
+---   tab                   → actions.select_tab
 ---
 --- `mappings()` builds a `defaults.mappings` table (`{ i = {...}, n = {...} }`);
 --- `patch()` installs it via `telescope.setup()`. Telescope deep-merges
@@ -25,6 +28,9 @@ local ACTION_TO_TS = {
   preview_scroll_right = "preview_scrolling_right",
   history_back = "cycle_history_prev",
   history_forward = "cycle_history_next",
+  split = "select_horizontal",
+  vsplit = "select_vertical",
+  tab = "select_tab",
 }
 
 --- action name → telescope.actions.layout field name. A separate table

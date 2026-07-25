@@ -19,5 +19,8 @@
 ---@field open_background      Pickers.KeyBinding Default: { "<S-CR>", "<C-o>" }
 ---@field open_background_show boolean            Also display (not focus) the entry in the background window. Default: false
 ---@field preview_toggle       Pickers.KeyBinding Default: false (opt-in, telescope-only)
+---@field split                Pickers.KeyBinding Open selected entry in a horizontal split. Default: "<C-s>"
+---@field vsplit               Pickers.KeyBinding Open selected entry in a vertical split. Default: "<C-v>"
+---@field tab                  Pickers.KeyBinding Open selected entry in a new tab. Default: "<C-t>"
 
 return {}

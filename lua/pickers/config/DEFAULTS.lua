@@ -101,6 +101,13 @@ local M = {
     -- <F4>, snacks on <A-p>; only telescope has no default key for its
     -- existing toggle_preview action.
     preview_toggle = false,
+    -- Open the selected entry in a split/vsplit/new tab. All three engines
+    -- already ship the primitive natively; unified here for a consistent
+    -- lhs across engines (fzf-lua's ctrl-s/ctrl-v/ctrl-t are fixed/native
+    -- and not remapped, same class as its history keys).
+    split = "<C-s>",
+    vsplit = "<C-v>",
+    tab = "<C-t>",
   },
 
   -- Native picker-history file(s) under stdpath("data")/pickers.nvim/history.

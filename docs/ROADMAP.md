@@ -252,14 +252,16 @@ separately in each of 5 custom utilities, all replaced by pickers.nvim's one
 - [ ] **"Find all" escape hatch.** Old `<leader>fa` force-enabled
   hidden+no_ignore+follow for one search regardless of configured defaults.
   `find.*` is global/setup-time only today — no per-invocation override.
-- [ ] **Split/vsplit/tab as a unified `keys` action.** Old fzf-lua config
-  bound `ctrl-s`/`ctrl-v`/`ctrl-t` to split/vsplit/tabedit. All three engines
-  already ship the underlying primitive natively (telescope
-  `actions.select_horizontal`/`select_vertical`/`select_tab`, snacks
-  `actions.split`/`vsplit`/`tab`, fzf-lua's builtin `ctrl-s`/`ctrl-v`/
-  `ctrl-t`) — this would only need a new unified key name + `keys.patch()`
-  wiring, the same shape as `preview_scroll_*`/`history_*`, no new
-  pickers.nvim-side logic (unlike `create_file`/`open_background`).
+- [x] **Split/vsplit/tab as a unified `keys` action.** `keys = { split,
+  vsplit, tab }`, default `<C-s>`/`<C-v>`/`<C-t>` across all three engines
+  (matching the old fzf-lua config). Wired the same shape as
+  `preview_scroll_*`/`history_*`/`preview_toggle`: telescope via
+  `actions.select_horizontal`/`select_vertical`/`select_tab`, snacks via its
+  own matching action names (`split`/`vsplit`/`tab`, passthrough like
+  preview-scroll/history), fzf-lua left unpatched since `ctrl-s`/`ctrl-v`/
+  `ctrl-t` are fixed/native there already (not a capability gap). No new
+  pickers.nvim-side logic. See `lua/pickers/keys/` and
+  [docs/KEYMAPS.md](KEYMAPS.md#in-picker-keys-preview-scroll--history--entry-actions).
 - [ ] **Grep exclude globs.** `find.exclude` only applies to the file
   listing, not live grep — the old fzf-lua/telescope grep configs each had
   their own hand-rolled `--glob '!...'` exclude list. Today this relies on

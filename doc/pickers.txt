@@ -341,6 +341,18 @@ In-picker keys (preview scroll + history + entry actions)~
   globally (a plain built-in telescope action): >lua
     require("pickers").setup({ keys = { preview_toggle = "<M-p>" } })
 <
+  `split`/`vsplit`/`tab` open the selected entry in a horizontal/vertical
+  split or a new tab, default <C-s>/<C-v>/<C-t> across all three engines.
+  All three engines already ship the primitive natively (telescope
+  actions.select_horizontal/select_vertical/select_tab, snacks
+  actions.split/vsplit/tab, fzf-lua's fixed ctrl-s/ctrl-v/ctrl-t) — this is
+  pure translation-table wiring like preview_toggle, no pickers.nvim-side
+  logic.  fzf-lua's keys are fixed/unremappable and left unpatched (not a
+  capability gap, fzf already ships them): >lua
+    require("pickers").setup({
+      keys = { split = "<C-x>", vsplit = false },  -- rebind / unbind
+    })
+<
 
 ==============================================================================
 8. COMPAT COMMANDS                                               *pickers-compat*
@@ -465,6 +477,12 @@ All keys are optional.  Unset keys retain their default values.
       open_background      (string|string[]|false, default { "<S-CR>", "<C-o>" })
       preview_toggle       (string|string[]|false, default false) — opt-in,
                              telescope-only (fzf-lua/snacks ship this natively)
+      split                (string|string[]|false, default "<C-s>") — open in
+                             horizontal split
+      vsplit               (string|string[]|false, default "<C-v>") — open in
+                             vertical split
+      tab                  (string|string[]|false, default "<C-t>") — open in
+                             new tab
     fzf-lua only binds the vertical preview scroll and the fixed ctrl-a/
     ctrl-o/shift-enter entry actions — horizontal scroll, history, and
     remapping the entry-action keys are all fzf-native/fixed there.
