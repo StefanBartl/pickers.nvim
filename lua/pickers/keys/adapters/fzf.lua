@@ -17,6 +17,11 @@
 --- pickers` (`M.skipped()`, consumed by `pickers.health`), which is pull-based.
 --- fzf-lua's `keymap.builtin` keys use Neovim-style notation (`<PageDown>`,
 --- `<C-d>`), so the resolved lhs pass through unchanged.
+---
+--- `split`/`vsplit`/`tab` are absent from `ACTION_TO_FZF` on purpose (like
+--- `preview_toggle`): fzf-lua already ships fixed, unremappable `ctrl-s`/
+--- `ctrl-v`/`ctrl-t` for this natively, so it's not a capability gap and
+--- does not appear in `M.skipped()` either.
 
 local M = {}
 

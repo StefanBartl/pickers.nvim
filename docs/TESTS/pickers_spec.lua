@@ -489,6 +489,54 @@ do
   config.apply({ keys = { preview_toggle = false } })
 end
 
+-- ── pickers.keys — split/vsplit/tab: on by default, native in all 3 engines ─
+do
+  local config = require("pickers.config")
+  local keys = require("pickers.keys")
+
+  local cfg0 = config.get()
+  check("keys: default split lhs", cfg0.keys.split == "<C-s>")
+  check("keys: default vsplit lhs", cfg0.keys.vsplit == "<C-v>")
+  check("keys: default tab lhs", cfg0.keys.tab == "<C-t>")
+
+  local r = keys.resolve(cfg0)
+  check("keys.resolve: split lhs", has(r.split.lhs, "<C-s>"))
+  check("keys.resolve: vsplit lhs", has(r.vsplit.lhs, "<C-v>"))
+  check("keys.resolve: tab lhs", has(r.tab.lhs, "<C-t>"))
+  check("keys.resolve: split modes i+n", has(r.split.modes, "i") and has(r.split.modes, "n"))
+
+  -- telescope adapter: select_horizontal/select_vertical/select_tab
+  local tm = keys.telescope_mappings(cfg0)
+  if pcall(require, "telescope.actions") then
+    check("keys.telescope: split bound (i)", tm.i["<C-s>"] ~= nil)
+    check("keys.telescope: vsplit bound (n)", tm.n["<C-v>"] ~= nil)
+    check("keys.telescope: tab bound (i)", tm.i["<C-t>"] ~= nil)
+  else
+    check("keys.telescope: split unbound (telescope absent)", tm.i["<C-s>"] == nil)
+  end
+
+  -- fzf-lua ships ctrl-s/ctrl-v/ctrl-t natively/fixed -- must not appear in
+  -- keymap.builtin or fzf_skipped() (not a capability gap).
+  local fk = keys.fzf_keymap(cfg0)
+  check("keys.fzf: excludes split/vsplit/tab", fk["<C-s>"] == nil and fk["<C-v>"] == nil and fk["<C-t>"] == nil)
+  local skipped = keys.fzf_skipped(cfg0)
+  check("keys.fzf_skipped: excludes split/vsplit/tab", not has(skipped, "split") and not has(skipped, "vsplit"))
+
+  -- snacks adapter: action names match 1:1, so they pass through the default
+  -- (non-history, non-skip) branch onto input+list+preview.
+  local win = keys.snacks_win(cfg0)
+  check("keys.snacks: input has split", win.input.keys["<C-s>"] ~= nil)
+  check("keys.snacks: list has vsplit", win.list.keys["<C-v>"] == "vsplit")
+  check("keys.snacks: preview has tab", win.preview.keys["<C-t>"] == "tab")
+
+  -- Unbinding via false
+  config.apply({ keys = { split = false } })
+  check("keys: split unbind", #keys.resolve(config.get()).split.lhs == 0)
+
+  -- Restore defaults for any later blocks relying on them.
+  config.apply({ keys = { split = "<C-s>", vsplit = "<C-v>", tab = "<C-t>" } })
+end
+
 -- ── pickers.entry_actions — absorbed into pickers.keys, adapters read resolve() ─
 do
   local config = require("pickers.config")

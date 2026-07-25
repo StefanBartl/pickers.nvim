@@ -25,6 +25,12 @@
 --- engine-neutral name), and snacks already binds it by default
 --- (`<A-p>`), so this action is telescope-only; see
 --- `pickers.keys.adapters.telescope`.
+---
+--- `split`/`vsplit`/`tab` are NOT excluded: snacks' own action names are
+--- exactly `"split"`/`"vsplit"`/`"tab"`, matching pickers.nvim's
+--- engine-neutral names 1:1 (same trick as preview-scroll/history), so they
+--- fall through the default branch below and get bound on input+list+preview
+--- with no dedicated handling needed.
 
 local M = {}
 

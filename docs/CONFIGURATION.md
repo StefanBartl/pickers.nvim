@@ -96,8 +96,12 @@ require("pickers").setup({
     open_background      = { "<S-CR>", "<C-o>" },
     open_background_show = false, -- opt-in: also display (not focus) the entry in the background window
     preview_toggle       = false, -- opt-in, telescope-only (fzf-lua/snacks ship this natively)
+    split                = "<C-s>", -- open selected entry in a horizontal split
+    vsplit               = "<C-v>", -- open selected entry in a vertical split
+    tab                  = "<C-t>", -- open selected entry in a new tab
     -- fzf-lua only binds the vertical preview scroll and the fixed ctrl-a/
     -- ctrl-o/shift-enter entry actions -- everything else is fzf-native/fixed.
+    -- split/vsplit/tab are fzf-native too (fixed ctrl-s/ctrl-v/ctrl-t).
   },
 })
 ```

@@ -11,6 +11,7 @@
 ---   history_back          history_forward
 ---   create_file           open_background
 ---   preview_toggle
+---   split   vsplit   tab
 ---
 --- Installation mirrors `pickers.history`: rather than injecting per-call into
 --- every engine adapter, preview-scroll/history are patched onto each engine's
@@ -45,6 +46,17 @@
 --- this fills that one gap. It IS patched globally (unlike create_file/
 --- open_background) since it's a plain built-in telescope action, same as
 --- preview-scroll/history.
+---
+--- `split`/`vsplit`/`tab` open the selected entry in a horizontal/vertical
+--- split or a new tab instead of the current window. All three engines
+--- already ship the underlying primitive natively (telescope
+--- `actions.select_horizontal`/`select_vertical`/`select_tab`, snacks
+--- `actions.split`/`vsplit`/`tab`, fzf-lua's fixed `ctrl-s`/`ctrl-v`/`ctrl-t`)
+--- so — like `preview_toggle` on fzf-lua/snacks — this is pure `keys.patch()`
+--- wiring, no pickers.nvim-side logic. fzf-lua's keys are fixed/unremappable
+--- (same class as its history keys) and simply not patched; snacks' action
+--- names happen to equal pickers.nvim's (`split`/`vsplit`/`tab`), so they pass
+--- straight through like preview-scroll/history do.
 
 local M = {}
 
@@ -67,6 +79,12 @@ M.ACTIONS = {
   -- telescope has the action (actions.layout.toggle_preview) with no
   -- default key bound to it.
   preview_toggle = { default = false, modes = { "i", "n" } },
+  -- Open the selected entry in a split/vsplit/new tab. All three engines
+  -- already ship the primitive natively; unified here for a consistent lhs
+  -- across engines (mirrors the old fzf-lua config's ctrl-s/ctrl-v/ctrl-t).
+  split = { default = "<C-s>", modes = { "i", "n" } },
+  vsplit = { default = "<C-v>", modes = { "i", "n" } },
+  tab = { default = "<C-t>", modes = { "i", "n" } },
 }
 
 --- Stable iteration order (pairs() is unordered; adapters and tests want
@@ -82,6 +100,9 @@ M.ORDER = {
   "create_file",
   "open_background",
   "preview_toggle",
+  "split",
+  "vsplit",
+  "tab",
 }
 
 --- Normalise one raw config value into a list of lhs strings.
