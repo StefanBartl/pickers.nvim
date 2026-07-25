@@ -408,6 +408,24 @@ do
   check("result_count: restored to disabled", config.get().result_count.enabled == false)
 end
 
+-- ── config.apply — display.path_shorten normalisation (cosmetic, optional) ──
+do
+  local config = require("pickers.config")
+
+  local cfg0 = config.get()
+  check("display: default path_shorten disabled", cfg0.display.path_shorten == false)
+
+  config.apply({ display = { path_shorten = true } })
+  check("display: path_shorten overridden", config.get().display.path_shorten == true)
+
+  -- Invalid value is silently ignored, keeping the previous value.
+  config.apply({ display = { path_shorten = "yes" } })
+  check("display: non-boolean ignored, keeps previous", config.get().display.path_shorten == true)
+
+  config.apply({ display = { path_shorten = false } })
+  check("display: restored to disabled", config.get().display.path_shorten == false)
+end
+
 -- ── config.apply — history normalisation ────────────────────────────────────
 do
   local config = require("pickers.config")

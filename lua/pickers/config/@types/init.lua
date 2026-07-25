@@ -37,6 +37,18 @@
 ---@field exclude   string[]|nil  Extra glob patterns to exclude (default: nil)
 
 -- ###########################################################################
+-- Display (cosmetic, optional)
+
+--- Long-path display shortening. Cosmetic only, off by default, and purely a
+--- pass-through to each engine's own native mechanism -- no pickers.nvim-side
+--- logic: telescope gets `path_display = { "shorten" }`, fzf-lua gets
+--- `path_shorten = true`. snacks is not listed here on purpose: it already
+--- truncates the displayed path to fit the available column width by
+--- default, so there is nothing to opt into there.
+---@class Pickers.DisplayConfig
+---@field path_shorten boolean  Default: false
+
+-- ###########################################################################
 -- Top-level configuration
 
 ---@class Pickers.Config
@@ -52,5 +64,6 @@
 ---@field selected_index Pickers.SelectedIndexConfig
 ---@field result_count   Pickers.ResultCountConfig
 ---@field smart          Pickers.SmartConfig
+---@field display        Pickers.DisplayConfig
 
 return {}

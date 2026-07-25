@@ -39,6 +39,16 @@ local function history_opts()
   return require("pickers.history").telescope_opts(cfg)
 end
 
+---`path_display` opts for `find_files`/`live_grep`, or nil when the cosmetic
+---"shorten long paths" toggle is off (the default). See `pickers.config`'s
+---`Pickers.DisplayConfig`.
+---@return string[]|nil
+local function path_display_opts()
+  local cfg = require("pickers.config").get()
+  if not (cfg.display and cfg.display.path_shorten) then return nil end
+  return { "shorten" }
+end
+
 -- ── Public engine interface ───────────────────────────────────────────────────
 
 ---@return boolean
@@ -83,6 +93,7 @@ function M.pick_files(opts)
     require("pickers.selected_index").wrap_attach_mappings(nil)
   )
   call_opts.history = history_opts()
+  call_opts.path_display = path_display_opts()
 
   safe_call(builtin.find_files, call_opts)
 end
@@ -113,6 +124,7 @@ function M.live_grep(opts)
       require("pickers.selected_index").wrap_attach_mappings(nil)
     ),
     history = history_opts(),
+    path_display = path_display_opts(),
   })
 end
 

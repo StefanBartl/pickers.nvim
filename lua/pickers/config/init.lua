@@ -255,6 +255,12 @@ function M.apply(opts)
   if type(opts.smart) == "table" then
     cfg.smart = vim.tbl_deep_extend("force", cfg.smart, opts.smart)
   end
+
+  if type(opts.display) == "table" then
+    if type(opts.display.path_shorten) == "boolean" then
+      cfg.display.path_shorten = opts.display.path_shorten
+    end
+  end
 end
 
 return M

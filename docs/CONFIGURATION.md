@@ -294,3 +294,25 @@ Requirements: `fd` (or `fdfind`) and `rg` on `PATH`. The files half honours
 `live_grep`. On the
 fzf-lua engine the smart action needs fzf ≥ 0.45 (Lua-function live mode); use
 telescope or snacks on older fzf.
+
+---
+
+## Long-path display shortening
+
+Cosmetic only, **disabled by default**. When on, long paths in the results
+list are visually shortened by each engine's own native mechanism — no
+pickers.nvim-side logic:
+
+```lua
+require("pickers").setup({
+  display = {
+    path_shorten = true,
+  },
+})
+```
+
+| Engine | Effect |
+|---|---|
+| telescope | `path_display = { "shorten" }` passed to `find_files`/`live_grep` |
+| fzf-lua | `path_shorten = true` passed to `files`/`live_grep` |
+| snacks | no-op — snacks already truncates the displayed path to fit the available column width by default, so there's nothing to opt into |

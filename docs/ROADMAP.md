@@ -281,8 +281,16 @@ separately in each of 5 custom utilities, all replaced by pickers.nvim's one
   call (`smart/search.lua`'s `M.rg_args`, exported for unit testing) got the
   same fix. See `lua/pickers/actions/grep.lua`,
   `lua/pickers/engines/{telescope,fzf,snacks}.lua`.
-- [ ] _(optional, low value)_ Long-path display shortening (old telescope
-  `path_display/`old fzf `entry_maker`) — cosmetic only, no functional gap.
+- [x] _(optional, low value)_ **Long-path display shortening.** `display =
+  { path_shorten = false }`, opt-in, purely cosmetic. Pass-through to each
+  engine's own native mechanism: telescope gets `path_display = {
+  "shorten" }`, fzf-lua gets `path_shorten = true` (verified against both
+  plugins' installed sources — `telescope/utils.lua`'s `path_display`
+  handling, `fzf-lua/make_entry.lua`'s `opts.path_shorten`). snacks is
+  intentionally left unwired: it already truncates the displayed path to
+  fit the available column width by default
+  (`Snacks.picker.util.truncpath`), so there's nothing to opt into there.
+  See [docs/CONFIGURATION.md](CONFIGURATION.md#long-path-display-shortening).
 
 **Explicit non-goals** (recommend documenting rather than building):
 file-browser/explorer parity — telescope-file-browser and fzf-lua's explorer
