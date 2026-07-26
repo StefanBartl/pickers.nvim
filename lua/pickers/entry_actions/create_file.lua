@@ -67,15 +67,16 @@ function M.run(path)
   end
 
   vim.schedule(function()
-    vim.ui.input({
-      prompt = "Create in " .. fn.fnamemodify(parent_dir, ":~:.") .. " (/ for folder): ",
+    require("lib.nvim.ui.kit").input({
+      title = "Create in " .. fn.fnamemodify(parent_dir, ":~:.") .. " (/ for folder): ",
       default = "",
-    }, function(input)
-      if not input or input == "" then
-        return
-      end
-      create_entry(parent_dir, input)
-    end)
+      on_submit = function(input)
+        if not input or input == "" then
+          return
+        end
+        create_entry(parent_dir, input)
+      end,
+    })
   end)
 end
 

@@ -77,19 +77,23 @@ function M.get(_cfg, callback)
     return
   end
 
-  vim.ui.input({ prompt = "System search (name .ext /path ...): " }, function(input)
-    if not input or input:match("^%s*$") then
-      callback(nil)
-      return
-    end
+  require("lib.nvim.ui.kit").input({
+    title = "System search (name .ext /path ...): ",
+    on_submit = function(input)
+      if not input or input:match("^%s*$") then
+        callback(nil)
+        return
+      end
 
-    local cmd = build_fd_cmd(input, fd)
-    callback({
-      roots = { "/" },
-      prompt = "System> ",
-      find_command = cmd,
-    })
-  end)
+      local cmd = build_fd_cmd(input, fd)
+      callback({
+        roots = { "/" },
+        prompt = "System> ",
+        find_command = cmd,
+      })
+    end,
+    on_cancel = function() callback(nil) end,
+  })
 end
 
 return M
