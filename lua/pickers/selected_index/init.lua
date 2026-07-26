@@ -99,7 +99,7 @@ local function make_update_selected_index(action_state, ns, get_picker)
     -- timing/race bug, just the wrong formula.
     local index
     if type(picker.get_index) == "function" then
-      index = picker.get_index(row)
+      index = picker:get_index(row)
     elseif ok_ent and type(entry) == "table" and type(entry.index) == "number" then
       index = entry.index
     else
