@@ -14,6 +14,8 @@ local M = {}
 ---@param cfg      Pickers.Config
 ---@param callback fun(string|nil)
 function M.open(cfg, callback)
+  local kit_ok, kit = pcall(require, "lib.nvim.ui.kit")
+
   -- 1. Sorted alias names
   local alias_names = {}
   for k in pairs(cfg.depth_aliases) do
@@ -47,13 +49,18 @@ function M.open(cfg, callback)
 
     -- path=… → prompt for explicit path
     if choice == "path=…" then
-      vim.ui.input({ prompt = "path= " }, function(input)
+      local function handle_input(input)
         if input and not input:match("^%s*$") then
           callback("path=" .. input)
         else
           callback(nil)
         end
-      end)
+      end
+      if kit_ok and kit and type(kit.input) == "function" then
+        kit.input({ title = "path= ", on_submit = handle_input, on_cancel = function() callback(nil) end })
+      else
+        vim.ui.input({ prompt = "path= " }, handle_input)
+      end
       return
     end
 
@@ -62,8 +69,7 @@ function M.open(cfg, callback)
   end
 
   -- 4. Show picker
-  local ok, kit = pcall(require, "lib.nvim.ui.kit")
-  if ok and kit and type(kit.select) == "function" then
+  if kit_ok and kit and type(kit.select) == "function" then
     kit.select({
       title = "Dir — Navigate to",
       items = items,

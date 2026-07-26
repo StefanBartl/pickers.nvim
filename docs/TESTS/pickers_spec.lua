@@ -1328,6 +1328,83 @@ do
   check("score.rank: kept line does outscore the other candidate", kept_score > other_score)
 end
 
+-- ── sources.system: fd-search prompt routes through kit.input ───────────────
+do
+  local orig_executable = vim.fn.executable
+  vim.fn.executable = function(name) if name == "fd" then return 1 end return 0 end
+
+  local captured_title
+  package.loaded["lib.nvim.ui.kit"] = {
+    input = function(opts)
+      captured_title = opts.title
+      opts.on_submit(".lua /home/user")
+    end,
+  }
+  package.loaded["pickers.sources.system"] = nil
+  local system = require("pickers.sources.system")
+
+  local got_source
+  system.get({}, function(source) got_source = source end)
+
+  check("sources.system: kit.input was asked", captured_title ~= nil, tostring(captured_title))
+  check("sources.system: fd argv built from the submitted input",
+    got_source ~= nil and vim.tbl_contains(got_source.find_command, "/home/user"),
+    got_source and vim.inspect(got_source.find_command))
+
+  vim.fn.executable = orig_executable
+  package.loaded["lib.nvim.ui.kit"] = nil
+  package.loaded["pickers.sources.system"] = nil
+end
+
+-- ── entry_actions.create_file: name prompt routes through kit.input ────────
+do
+  local dir = vim.fn.tempname()
+  vim.fn.mkdir(dir, "p")
+
+  local captured_title
+  package.loaded["lib.nvim.ui.kit"] = {
+    input = function(opts)
+      captured_title = opts.title
+      opts.on_submit("newfile.txt")
+    end,
+  }
+  package.loaded["pickers.entry_actions.create_file"] = nil
+  local create_file = require("pickers.entry_actions.create_file")
+
+  create_file.run(dir)
+  vim.wait(50) -- M.run schedules the prompt
+
+  check("entry_actions.create_file: kit.input was asked", captured_title ~= nil, tostring(captured_title))
+  check("entry_actions.create_file: file created from the submitted name",
+    vim.fn.filereadable(dir .. "/newfile.txt") == 1)
+
+  package.loaded["lib.nvim.ui.kit"] = nil
+  package.loaded["pickers.entry_actions.create_file"] = nil
+end
+
+-- ── ui.dir_nav_picker: "path=…" entry routes through kit.input ──────────────
+do
+  local captured_title
+  package.loaded["lib.nvim.ui.kit"] = {
+    select = function(opts) opts.on_select("path=…") end,
+    input = function(opts)
+      captured_title = opts.title
+      opts.on_submit("/some/dir")
+    end,
+  }
+  package.loaded["pickers.ui.dir_nav_picker"] = nil
+  local dir_nav_picker = require("pickers.ui.dir_nav_picker")
+
+  local got_result
+  dir_nav_picker.open({ depth_aliases = {} }, function(result) got_result = result end)
+
+  check("dir_nav_picker: kit.input was asked for the explicit path", captured_title ~= nil, tostring(captured_title))
+  check("dir_nav_picker: submitted path is prefixed with 'path='", got_result == "path=/some/dir", tostring(got_result))
+
+  package.loaded["lib.nvim.ui.kit"] = nil
+  package.loaded["pickers.ui.dir_nav_picker"] = nil
+end
+
 -- ── Summary ─────────────────────────────────────────────────────────────────
 print(string.format("\n%d passed, %d failed", passed, failed))
 os.exit(failed == 0 and 0 or 1)
