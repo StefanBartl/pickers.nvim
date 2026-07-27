@@ -1,7 +1,7 @@
 ---@module 'pickers.sources.system'
 ---@brief Source: systemwide fd-based file search.
 ---@description
---- Opens a vim.ui.input prompt for the user to specify a search.
+--- Opens a lib.nvim.ui.kit.input prompt for the user to specify a search.
 --- Input format (whitespace-separated tokens, any order):
 ---   name        – substring filename match (first bare word)
 ---   .ext        – file extension (token starting with ".")
