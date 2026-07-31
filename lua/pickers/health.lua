@@ -181,6 +181,8 @@ function M.check()
       end
     end
   end
+
+  require("lib.nvim.usercmd.composer").checkhealth("Pickers")
 end
 
 return M
