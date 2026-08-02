@@ -181,8 +181,16 @@ function M.smart(opts)
     :find()
 end
 
----Pick one item from a string list.
----@param opts { items: string[], prompt: string, on_select: fun(string) }
+---Pick one item from a list. Items may be plain strings (unchanged, no
+---previewer attached) or `Pickers.Item` tables `{ text, file? }` — when at
+---least one carries `file`, entries get a `path` field and the SAME
+---`conf.values.file_previewer({})` `pick_dir` below already uses, so preview
+---is "free": native syntax highlighting/scrolling, nothing custom to
+---maintain. `on_select` always receives back the exact original entry
+---(string or table), via `entry.value` rather than telescope's `entry[1]` —
+---the latter isn't guaranteed to equal the whole entry once a custom
+---`entry_maker` is in play.
+---@param opts { items: (string|Pickers.Item)[], prompt: string, on_select: fun(item: string|Pickers.Item) }
 function M.pick_item(opts)
   local ok, _, pickers, finders, conf, actions, action_state
   ok, _, pickers, finders, conf, actions, action_state = load_telescope()
@@ -191,18 +199,35 @@ function M.pick_item(opts)
     return
   end
 
+  local has_preview = false
+  for _, it in ipairs(opts.items) do
+    if type(it) == "table" and it.file then
+      has_preview = true
+      break
+    end
+  end
+
   pickers
     .new({}, {
       prompt_title = opts.prompt,
-      finder = finders.new_table({ results = opts.items }),
+      finder = finders.new_table({
+        results = opts.items,
+        entry_maker = function(it)
+          if type(it) == "table" then
+            return { value = it, display = it.text, ordinal = it.text, path = it.file }
+          end
+          return { value = it, display = it, ordinal = it }
+        end,
+      }),
       sorter = conf.values.generic_sorter({}),
+      previewer = has_preview and conf.values.file_previewer({}) or false,
       history = history_opts(),
       attach_mappings = require("pickers.result_count").wrap_attach_mappings(
         require("pickers.selected_index").wrap_attach_mappings(function(_, _map)
           actions.select_default:replace(function(bufnr)
             actions.close(bufnr)
             local sel = action_state.get_selected_entry()
-            if sel then opts.on_select(sel[1]) end
+            if sel then opts.on_select(sel.value) end
           end)
           return true
         end)

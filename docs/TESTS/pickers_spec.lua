@@ -1405,6 +1405,175 @@ do
   package.loaded["pickers.ui.dir_nav_picker"] = nil
 end
 
+-- ── pick_item(): Pickers.Item preview extension, all three engines ─────────
+-- Items may be plain strings (unchanged behaviour — repos/wkdbooks sources
+-- still pass those) or `Pickers.Item` tables `{ text, file? }`. When at least
+-- one item carries `file`, each engine attaches its own native preview;
+-- `on_select` always receives back the EXACT original entry, never a
+-- re-parsed copy. Stubbed so this runs without telescope/fzf-lua/snacks
+-- installed — see engines/@types/init.lua for the Pickers.Item contract.
+
+-- telescope ───────────────────────────────────────────────────────────────
+do
+  local prev = {
+    ["telescope.builtin"] = package.loaded["telescope.builtin"],
+    ["telescope.pickers"] = package.loaded["telescope.pickers"],
+    ["telescope.finders"] = package.loaded["telescope.finders"],
+    ["telescope.config"] = package.loaded["telescope.config"],
+    ["telescope.actions"] = package.loaded["telescope.actions"],
+    ["telescope.actions.state"] = package.loaded["telescope.actions.state"],
+  }
+
+  local captured, fake_entry_maker, fake_results
+  package.loaded["telescope.builtin"] = {}
+  package.loaded["telescope.pickers"] = {
+    new = function(_, opts)
+      captured = opts
+      fake_entry_maker = opts.finder.entry_maker
+      fake_results = opts.finder.results
+      return {
+        find = function()
+          local entry = fake_entry_maker(fake_results[1])
+          opts.attach_mappings(nil, nil)
+          _G.__pickers_test_telescope_entry = entry
+          _G.__pickers_test_telescope_select_default()
+        end,
+      }
+    end,
+  }
+  package.loaded["telescope.finders"] = { new_table = function(o) return o end }
+  package.loaded["telescope.config"] = {
+    values = {
+      generic_sorter = function() return "sorter" end,
+      file_previewer = function() return "file_previewer" end,
+    },
+  }
+  package.loaded["telescope.actions"] = {
+    select_default = {
+      replace = function(_self, fn)
+        _G.__pickers_test_telescope_select_default = function() fn(0) end
+      end,
+    },
+    close = function() end,
+  }
+  package.loaded["telescope.actions.state"] = {
+    get_selected_entry = function() return _G.__pickers_test_telescope_entry end,
+  }
+  package.loaded["pickers.engines.telescope"] = nil
+  local telescope_engine = require("pickers.engines.telescope")
+
+  local got
+  telescope_engine.pick_item({
+    items = { "alpha", "beta" },
+    prompt = "Test",
+    on_select = function(item) got = item end,
+  })
+  check("pick_item/telescope: plain strings — on_select gets the string back", got == "alpha")
+  check("pick_item/telescope: plain strings — no previewer attached", captured.previewer == false)
+
+  local items = { { text = "Tmpl A", file = "/tmp/a.lua" }, { text = "Tmpl B" } }
+  local got_item
+  telescope_engine.pick_item({
+    items = items,
+    prompt = "Templates",
+    on_select = function(item) got_item = item end,
+  })
+  check("pick_item/telescope: file-carrying items — previewer attached",
+    captured.previewer == "file_previewer")
+  check("pick_item/telescope: on_select gets back the EXACT original table", got_item == items[1])
+
+  _G.__pickers_test_telescope_entry = nil
+  _G.__pickers_test_telescope_select_default = nil
+  package.loaded["pickers.engines.telescope"] = nil
+  for k, v in pairs(prev) do package.loaded[k] = v end
+end
+
+-- fzf-lua ─────────────────────────────────────────────────────────────────
+do
+  local prev_fzf = package.loaded["fzf-lua"]
+  local captured
+  package.loaded["fzf-lua"] = {
+    fzf_exec = function(items, opts) captured = { items = items, opts = opts } end,
+  }
+  package.loaded["pickers.engines.fzf"] = nil
+  local fzf_engine = require("pickers.engines.fzf")
+
+  local got
+  fzf_engine.pick_item({
+    items = { "alpha", "beta" },
+    prompt = "Test",
+    on_select = function(item) got = item end,
+  })
+  check("pick_item/fzf: plain strings — items passed through untouched", captured.items[1] == "alpha")
+  check("pick_item/fzf: plain strings — no --delimiter set", captured.opts.fzf_opts["--delimiter"] == nil)
+  check("pick_item/fzf: plain strings — no preview function set", captured.opts.preview == nil)
+  captured.opts.actions["default"]({ "alpha" })
+  check("pick_item/fzf: plain strings — on_select gets the raw string", got == "alpha")
+
+  local items = { { text = "Tmpl A", file = "/tmp/a.lua" }, { text = "Tmpl B" } }
+  fzf_engine.pick_item({ items = items, prompt = "Templates", on_select = function() end })
+  check("pick_item/fzf: file item — hidden tab-delimited file field",
+    captured.items[1] == "Tmpl A\t/tmp/a.lua")
+  check("pick_item/fzf: file item — item without `file` has no tab field",
+    captured.items[2] == "Tmpl B")
+  check("pick_item/fzf: file item — --with-nth hides the hidden field",
+    captured.opts.fzf_opts["--with-nth"] == "1")
+  check("pick_item/fzf: file item — preview is a Lua function (no shell `cat` dependency)",
+    type(captured.opts.preview) == "function")
+
+  local tmpfile = vim.fn.tempname()
+  vim.fn.writefile({ "line one", "line two" }, tmpfile)
+  local preview_text = captured.opts.preview({ "Tmpl A\t" .. tmpfile })
+  check("pick_item/fzf: preview function reads the real file content",
+    preview_text == "line one\nline two")
+  check("pick_item/fzf: preview function returns empty for a no-file item",
+    captured.opts.preview({ "Tmpl B" }) == "")
+  vim.fn.delete(tmpfile)
+
+  local got_item
+  fzf_engine.pick_item({
+    items = items,
+    prompt = "Templates",
+    on_select = function(item) got_item = item end,
+  })
+  captured.opts.actions["default"]({ "Tmpl A\t/tmp/a.lua" })
+  check("pick_item/fzf: on_select gets back the EXACT original table via by_line",
+    got_item == items[1])
+
+  package.loaded["pickers.engines.fzf"] = nil
+  package.loaded["fzf-lua"] = prev_fzf
+end
+
+-- snacks ──────────────────────────────────────────────────────────────────
+do
+  local prev_snacks = package.loaded["snacks.picker"]
+  local captured
+  package.loaded["snacks.picker"] = {
+    select = function(items, opts, on_choice) captured = { items = items, opts = opts, on_choice = on_choice } end,
+  }
+  package.loaded["pickers.engines.snacks"] = nil
+  local snacks_engine = require("pickers.engines.snacks")
+
+  snacks_engine.pick_item({ items = { "alpha" }, prompt = "Test", on_select = function() end })
+  check("pick_item/snacks: plain string — format_item uses tostring",
+    captured.opts.format_item("alpha") == "alpha")
+
+  local items = { { text = "Tmpl A", file = "/tmp/a.lua" } }
+  local got_item
+  snacks_engine.pick_item({
+    items = items,
+    prompt = "Templates",
+    on_select = function(item) got_item = item end,
+  })
+  check("pick_item/snacks: table item — format_item reads .text",
+    captured.opts.format_item(items[1]) == "Tmpl A")
+  captured.on_choice(items[1])
+  check("pick_item/snacks: on_select receives the exact original table", got_item == items[1])
+
+  package.loaded["pickers.engines.snacks"] = nil
+  package.loaded["snacks.picker"] = prev_snacks
+end
+
 -- ── Summary ─────────────────────────────────────────────────────────────────
 print(string.format("\n%d passed, %d failed", passed, failed))
 os.exit(failed == 0 and 0 or 1)
