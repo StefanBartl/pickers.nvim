@@ -166,8 +166,20 @@ function M.smart(opts)
   })
 end
 
----Pick one item from a string list.
----@param opts { items: string[], prompt: string, on_select: fun(string) }
+---Pick one item from a list. Items may be plain strings (unchanged) or
+---`Pickers.Item` tables `{ text, file? }`.
+---
+---No branching needed here, unlike the telescope/fzf adapters: `Picker.select`
+---builds its internal finder entries via `setmetatable({}, { __index = item })`
+---for table items (see snacks.picker.select), so `it.file` already resolves
+---straight through to our `file` field — and snacks' own picker config
+---defaults `preview` to `Snacks.picker.preview.file` whenever nothing else is
+---set, which `select()` never overrides. A `file` field is previewed "for
+---free"; items without one just get snacks' own graceful "no preview
+---available" — the config's own existing default, not new behaviour from
+---this change. `format_item` only needs to read `.text` off a table item
+---instead of falling through to `tostring()`.
+---@param opts { items: (string|Pickers.Item)[], prompt: string, on_select: fun(item: string|Pickers.Item) }
 function M.pick_item(opts)
   local ok, Picker = pcall(require, "snacks.picker")
   if not ok then
@@ -175,7 +187,12 @@ function M.pick_item(opts)
     return
   end
 
-  Picker.select(opts.items, { prompt = opts.prompt }, function(item)
+  Picker.select(opts.items, {
+    prompt = opts.prompt,
+    format_item = function(item)
+      return (type(item) == "table") and item.text or tostring(item)
+    end,
+  }, function(item)
     if item then opts.on_select(item) end
   end)
 end

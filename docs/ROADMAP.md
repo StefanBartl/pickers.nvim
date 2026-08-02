@@ -5,6 +5,21 @@ a promise; it is a backlog of ideas ordered roughly by usefulness.
 
 ## Features
 
+- [x] **`pick_item()` preview support.** Items passed to `engine_mod.pick_item()`
+  may now be `Pickers.Item` tables `{ text, file? }` instead of plain strings —
+  when at least one item in a call carries `file`, every engine attaches its
+  own native file preview (telescope's `file_previewer`, snacks' existing
+  default `preview.file` — already worked via its `select()` metatable
+  passthrough, nothing to change there — and, since fzf is a separate process
+  with no Lua object passthrough, a hidden per-line field previewed through a
+  pure-Lua `opts.preview` callback rather than shelling out to `cat`/`bat`).
+  `on_select` always receives back the exact original entry, string or table,
+  never a re-parsed copy. Fully backward compatible: plain `string[]` callers
+  (`sources/collection.lua`, `repos.lua`, `wkdbooks.lua`) are unaffected. First
+  external consumer: filetree.nvim's `create_from_template` template picker.
+  See `lua/pickers/engines/@types/init.lua` (`Pickers.Item`) and
+  `docs/TESTS/pickers_spec.lua`'s `pick_item/*` checks.
+
 - [x] **Smart action (combined grep + find files).** A third action alongside
   `files`/`grep`: `:Pickers <scope> smart` runs `rg` (content) and `fd`
   (filenames) for the same live query and merges both into ONE list ranked by a

@@ -253,8 +253,22 @@ function M.smart(opts)
   })
 end
 
----Pick one item from a string list (used by repos / wkdbooks sources).
----@param opts { items: string[], prompt: string, on_select: fun(string) }
+---Pick one item from a list (used by repos / wkdbooks sources, and by
+---consumers like filetree.nvim's template picker). Items may be plain
+---strings (unchanged — exact original code path, zero risk to existing
+---callers) or `Pickers.Item` tables `{ text, file? }`.
+---
+---fzf is a separate process working on plain text lines, so there is no way
+---to attach a hidden Lua object to a line the way telescope/snacks can:
+---when at least one item carries `file`, every line instead gets a hidden
+---second field (`<text>\t<file>`), `--delimiter`/`--with-nth=1` show/match
+---only the first (the file path never appears or gets fuzzy-matched against),
+---and `opts.preview` — a Lua function, not a shell command — reads that
+---second field's file via `vim.fn.readfile` and returns its content. This
+---avoids depending on `cat`/`bat` being on PATH (relevant on Windows).
+---Selection still returns fzf's full untransformed line, so `by_line` maps it
+---straight back to the original item for `on_select`.
+---@param opts { items: (string|Pickers.Item)[], prompt: string, on_select: fun(item: string|Pickers.Item) }
 function M.pick_item(opts)
   local ok, fzf = pcall(require, "fzf-lua")
   if not ok then
@@ -262,13 +276,58 @@ function M.pick_item(opts)
     return
   end
 
-  fzf.fzf_exec(opts.items, {
+  local has_preview = false
+  for _, it in ipairs(opts.items) do
+    if type(it) == "table" and it.file then
+      has_preview = true
+      break
+    end
+  end
+
+  if not has_preview then
+    fzf.fzf_exec(opts.items, {
+      prompt = opts.prompt,
+      fzf_opts = vim.tbl_extend("force", { ["--no-multi"] = true }, history_fzf_opts("item") or {}),
+      winopts = { on_create = setup_double_esc },
+      actions = {
+        ["default"] = function(selected)
+          if selected and selected[1] then opts.on_select(selected[1]) end
+        end,
+      },
+    })
+    return
+  end
+
+  local lines, by_line = {}, {}
+  for i, it in ipairs(opts.items) do
+    local text = (type(it) == "table") and it.text or it
+    local file = (type(it) == "table") and it.file or nil
+    local line = file and (text .. "\t" .. file) or text
+    lines[i] = line
+    by_line[line] = it
+  end
+
+  fzf.fzf_exec(lines, {
     prompt = opts.prompt,
-    fzf_opts = vim.tbl_extend("force", { ["--no-multi"] = true }, history_fzf_opts("item") or {}),
+    fzf_opts = vim.tbl_extend("force", {
+      ["--no-multi"] = true,
+      ["--delimiter"] = "\\t",
+      ["--with-nth"] = "1",
+    }, history_fzf_opts("item") or {}),
+    preview = function(selected)
+      local line = (type(selected) == "table") and selected[1] or selected
+      local file = line and line:match("\t(.+)$")
+      if not file then return "" end
+      local ok_read, read_lines = pcall(vim.fn.readfile, file)
+      if not ok_read then return "could not read " .. file end
+      return table.concat(read_lines, "\n")
+    end,
     winopts = { on_create = setup_double_esc },
     actions = {
       ["default"] = function(selected)
-        if selected and selected[1] then opts.on_select(selected[1]) end
+        if selected and selected[1] then
+          opts.on_select(by_line[selected[1]] or selected[1])
+        end
       end,
     },
   })
