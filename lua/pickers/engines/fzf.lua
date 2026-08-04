@@ -25,6 +25,7 @@ local M = {}
 ---Sets buffer-local t-mode and n-mode <Esc> keymaps on the fzf terminal buffer
 ---so that the first <Esc> goes to Normal mode (without aborting fzf) and the
 ---second <Esc> closes the window (killing the fzf process via stdin close).
+---@internal
 local function setup_double_esc()
   local buf = vim.api.nvim_get_current_buf()
 
@@ -48,6 +49,7 @@ end
 
 -- ── Other helpers ────────────────────────────────────────────────────────────
 
+---@internal
 ---@return string|nil  "fd" | "fdfind" | nil
 local function fd_exec()
   if vim.fn.executable("fd") == 1 then return "fd" end
@@ -57,6 +59,7 @@ end
 
 ---Build the fd option string (everything after `fd`, before any path args) from
 ---the user's find flags. Reused for single-root fd_opts and multi-root cmd.
+---@internal
 ---@param find Pickers.FindOpts|nil
 ---@return string
 local function fd_opts_string(find)
@@ -75,6 +78,7 @@ local function fd_opts_string(find)
 end
 
 ---Build a shell-safe fd command string for multi-root file listing.
+---@internal
 ---@param roots string[]
 ---@param find  Pickers.FindOpts|nil
 ---@return string
@@ -88,6 +92,7 @@ local function multi_root_cmd(roots, find)
 end
 
 ---Safely call an fzf-lua function, surfacing errors via notify.
+---@internal
 ---@param fn function
 ---@param opts table
 local function safe_call(fn, opts)
@@ -98,6 +103,7 @@ end
 ---`fzf_opts` for `--history`, or nil when history is disabled or scope isn't
 ---"plugin" (under "global"/"patch" the global fzf-lua default already covers
 ---it — see `pickers.history`).
+---@internal
 ---@param kind "files"|"grep"|"item"|"dir"
 ---@return table|nil
 local function history_fzf_opts(kind)
@@ -109,6 +115,7 @@ end
 ---`path_shorten` opt for `fzf.files`/`fzf.live_grep`, or nil when the cosmetic
 ---"shorten long paths" toggle is off (the default). See `pickers.config`'s
 ---`Pickers.DisplayConfig`.
+---@internal
 ---@return boolean|nil
 local function path_shorten_opt()
   local cfg = require("pickers.config").get()
@@ -212,6 +219,7 @@ function M.smart(opts)
 
   local root = opts.roots and opts.roots[1] or vim.uv.cwd()
 
+  ---@internal
   ---@param query string
   ---@return string[]
   local function contents(query)

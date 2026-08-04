@@ -18,6 +18,7 @@ local M = {}
 
 -- ── Helpers ──────────────────────────────────────────────────────────────────
 
+---@internal
 ---@return string|nil  "fd" | "fdfind" | nil
 local function find_fd()
   if vim.fn.executable("fd") == 1 then return "fd" end
@@ -26,6 +27,7 @@ local function find_fd()
 end
 
 ---Parse user input into an fd argv table.
+---@internal
 ---@param input  string
 ---@param fd     string   fd executable name
 ---@return string[]

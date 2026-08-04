@@ -13,6 +13,7 @@ local open_background = require("pickers.entry_actions.open_background")
 
 local M = {}
 
+---@internal
 ---@param prompt_bufnr integer
 local function do_create_file(prompt_bufnr)
   local action_state = require("telescope.actions.state")
@@ -25,6 +26,11 @@ local function do_create_file(prompt_bufnr)
   create_file.run(path)
 end
 
+---@internal
+---Entry-action: open the selected entry in the background window (see
+---pickers.entry_actions.open_background), preserving cursor position when the
+---entry carries a line/col.
+---@param prompt_bufnr integer
 local function do_open_background(prompt_bufnr)
   local action_state = require("telescope.actions.state")
   local entry = action_state.get_selected_entry()

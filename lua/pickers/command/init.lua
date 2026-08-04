@@ -46,6 +46,7 @@ local ACTIONS_SET = { files = true, grep = true, smart = true }
 -- ── Helpers ───────────────────────────────────────────────────────────────────
 
 ---Find a collection by name in the active config.
+---@internal
 ---@param name string
 ---@return Pickers.Collection|nil
 local function find_collection(name)
@@ -60,6 +61,7 @@ end
 
 -- ── Routing helpers ───────────────────────────────────────────────────────────
 
+---@internal
 ---@param action          Pickers.Action
 ---@param source          Pickers.Source
 ---@param engine_mod      table
@@ -85,6 +87,7 @@ function M.dispatch(action, source, engine_mod)
   dispatch_action(action, source, engine_mod)
 end
 
+---@internal
 ---@param source          Pickers.Source|nil
 ---@param action          Pickers.Action|nil
 ---@param engine_mod      table
@@ -101,6 +104,7 @@ local function after_source(source, action, engine_mod, force_find_all)
 end
 
 ---Run a built-in (non-dir) scope.
+---@internal
 ---@param scope           string
 ---@param action          Pickers.Action|nil
 ---@param engine_mod      table
@@ -127,6 +131,7 @@ local function run_standard_scope(scope, action, engine_mod, force_find_all)
 end
 
 ---Run a user-defined collection as a scope.
+---@internal
 ---@param coll            Pickers.Collection
 ---@param action          Pickers.Action|nil
 ---@param engine_mod      table

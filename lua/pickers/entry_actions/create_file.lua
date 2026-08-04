@@ -16,6 +16,7 @@ local fn = vim.fn
 local M = {}
 
 ---Create file or directory, notify, and open newly created files.
+---@internal
 ---@param parent_dir string Parent directory path
 ---@param name string Name of file/folder to create
 local function create_entry(parent_dir, name)
@@ -36,6 +37,7 @@ local function create_entry(parent_dir, name)
 end
 
 ---Resolve the parent directory to create in from a selected path (file or dir).
+---@internal
 ---@param path string
 ---@return string parent_dir
 local function parent_dir_of(path)

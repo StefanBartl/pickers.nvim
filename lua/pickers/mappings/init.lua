@@ -67,6 +67,7 @@ function M.classify(name)
   return nil
 end
 
+---@internal
 ---@param scope string
 ---@return boolean
 local function scope_exists(scope)

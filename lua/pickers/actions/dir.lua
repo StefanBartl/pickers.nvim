@@ -20,6 +20,7 @@ local M = {}
 ---Expand ~ / %WINVAR% / $POSIXVAR in an explicit path string.
 ---Delegates to lib.nvim.cross.fs.expand_path (this module's own version
 ---re-implemented the same ~/%VAR%/$VAR expansion by hand).
+---@internal
 ---@param raw string
 ---@return string
 local function expand_vars(raw)
@@ -27,6 +28,7 @@ local function expand_vars(raw)
 end
 
 ---Walk up `depth` directory levels from cwd.
+---@internal
 ---@param depth integer
 ---@return string
 local function by_depth(depth)
@@ -37,6 +39,7 @@ end
 
 ---Resolve a nav arg to an absolute directory path.
 ---Returns nil when the arg is invalid or the resolver fails.
+---@internal
 ---@param arg string|nil
 ---@param cfg Pickers.Config
 ---@return string|nil
@@ -71,6 +74,7 @@ end
 
 -- ── Dispatch ─────────────────────────────────────────────────────────────────
 
+---@internal
 ---@param path       string
 ---@param action     Pickers.Action
 ---@param engine_mod table

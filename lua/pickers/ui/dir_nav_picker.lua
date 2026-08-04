@@ -34,6 +34,8 @@ function M.open(cfg, callback)
   items[#items + 1] = "path=…"
 
   -- 3. on_select handler (shared by both pickers)
+  ---@internal
+  ---@param choice string|nil
   local function on_select(choice)
     if not choice then
       callback(nil)
@@ -49,6 +51,8 @@ function M.open(cfg, callback)
 
     -- path=… → prompt for explicit path
     if choice == "path=…" then
+      ---@internal
+      ---@param input string|nil
       local function handle_input(input)
         if input and not input:match("^%s*$") then
           callback("path=" .. input)

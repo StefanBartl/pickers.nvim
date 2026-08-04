@@ -3,6 +3,8 @@
 
 local M = {}
 
+---Run all `:checkhealth pickers` sections: dependencies, picker engines, CLI
+---tools, configuration, and collections.
 function M.check()
   -- ── Dependency: lib.nvim ─────────────────────────────────────────────────
   vim.health.start("pickers.nvim — dependencies")

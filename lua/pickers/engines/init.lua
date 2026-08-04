@@ -11,6 +11,7 @@ local notify = require("lib.nvim.notify").create("[pickers.engines]")
 local M = {}
 
 ---Try to load and verify an engine module.
+---@internal
 ---@param name string  "telescope"|"fzf"|"snacks"
 ---@return table|nil
 local function try_load(name)

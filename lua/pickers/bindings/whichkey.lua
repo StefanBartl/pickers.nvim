@@ -8,6 +8,7 @@
 
 local M = {}
 
+---@internal
 ---@return table|nil which-key module if available and new enough (has `add`)
 local function get_wk()
   local ok, wk = pcall(require, "which-key")

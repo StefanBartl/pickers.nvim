@@ -51,6 +51,9 @@ function M.mappings(resolved)
   if not ok then return out end
   local ok_layout, layout = pcall(require, "telescope.actions.layout")
 
+  ---@internal
+  ---@param action string
+  ---@param ts_action function|nil
   local function bind(action, ts_action)
     local spec = resolved[action]
     if not spec or not ts_action then return end
