@@ -10,6 +10,7 @@ M._cache = setmetatable({}, { __mode = "k" })
 local MAX_CACHE_ENTRIES = 100
 
 ---Cleanup old cache entries when the limit is exceeded.
+---@internal
 ---@return nil
 local function cleanup_if_needed()
   local count = 0

@@ -8,6 +8,7 @@
 
 local M = {}
 
+---@internal
 ---@param map function
 ---@param key string
 ---@param mode string

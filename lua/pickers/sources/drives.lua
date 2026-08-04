@@ -19,6 +19,9 @@ local _cache = nil ---@type string[]|nil
 
 -- ── Platform detection ────────────────────────────────────────────────────────
 
+---@internal
+---Detect Windows via lib.nvim.cross platform helpers, falling back to `vim.fn.has`.
+---@return boolean
 local function is_windows()
   local ok, m = pcall(require, "lib.nvim.cross.platform.is_windows")
   if ok and type(m) == "function" then return m() end
@@ -26,6 +29,10 @@ local function is_windows()
   return vim.fn.has("win32") == 1 or vim.fn.has("win64") == 1
 end
 
+---@internal
+---Detect WSL via lib.nvim.cross platform helpers, falling back to `$WSLENV` /
+---`/proc/version`.
+---@return boolean
 local function is_wsl()
   local ok, m = pcall(require, "lib.nvim.cross.platform.is_wsl")
   if ok and type(m) == "function" then return m() end
@@ -37,6 +44,9 @@ end
 
 -- ── Root discovery ────────────────────────────────────────────────────────────
 
+---@internal
+---Windows mount points via `Get-PSDrive`, falling back to an A-Z drive-letter scan.
+---@return string[]
 local function windows_roots()
   local roots = {}
   local _, out = require("lib.nvim.cross.run_argv").run_blocking_captured({
@@ -60,6 +70,9 @@ local function windows_roots()
   return roots
 end
 
+---@internal
+---WSL mount points: existing `/mnt/<letter>` directories.
+---@return string[]
 local function wsl_roots()
   local dirs = {}
   for letter in ("abcdefghijklmnopqrstuvwxyz"):gmatch(".") do
@@ -69,6 +82,10 @@ local function wsl_roots()
   return dirs
 end
 
+---@internal
+---POSIX mount points via `df -P --output=target`, falling back to a fixed
+---candidate list (/, /Volumes, /media, /mnt).
+---@return string[]
 local function posix_roots()
   local dirs = {}
   local _, out = require("lib.nvim.cross.run_argv").run_blocking_captured({ "df", "-P", "--output=target" })
@@ -86,6 +103,10 @@ local function posix_roots()
   return dirs
 end
 
+---@internal
+---Resolve and cache the current platform's mount-point/drive roots.
+---@see M.get
+---@return string[]
 local function get_roots()
   if _cache then return _cache end
 

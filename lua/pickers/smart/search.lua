@@ -27,6 +27,7 @@ local M = {}
 local uv = vim.uv or vim.loop
 
 ---First executable found among `names`, or nil.
+---@internal
 ---@param names string[]
 ---@return string|nil
 local function first_exe(names)

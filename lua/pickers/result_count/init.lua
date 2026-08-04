@@ -10,12 +10,14 @@ local M = {}
 ---until the results buffer is gone. Polling (not an autocmd) because result
 ---counts can change asynchronously as a live finder (e.g. live_grep) streams
 ---in matches, with no CursorMoved/TextChanged to hang an update off of.
+---@internal
 ---@param results_bufnr integer
 ---@param base_title string
 ---@param get_picker fun():table|nil
 local function start_polling(results_bufnr, base_title, get_picker)
   local last_count = nil
 
+  ---@internal
   local function tick()
     if not vim.api.nvim_buf_is_valid(results_bufnr) then return end
 
@@ -44,6 +46,8 @@ end
 function M.attach_mappings(prompt_bufnr)
   local action_state = require("telescope.actions.state")
 
+  ---@internal
+  ---@return table|nil
   local function get_picker()
     local ok, p = pcall(action_state.get_current_picker, prompt_bufnr)
     if ok then return p end

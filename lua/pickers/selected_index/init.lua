@@ -13,6 +13,7 @@ local _cleanup_by_bufnr = {}
 local _visible_by_bufnr = {}
 
 ---Get or create the extmark namespace for a specific results buffer.
+---@internal
 ---@param results_bufnr integer
 ---@return integer
 local function get_or_create_namespace(results_bufnr)
@@ -26,6 +27,7 @@ local function get_or_create_namespace(results_bufnr)
 end
 
 ---Clear extmarks and cancel timers for a results buffer.
+---@internal
 ---@param results_bufnr integer
 local function cleanup_namespace(results_bufnr)
   local ns = _ns_by_bufnr[results_bufnr]
@@ -43,6 +45,7 @@ local function cleanup_namespace(results_bufnr)
 end
 
 ---Build the zero-argument function that (re)renders the index overlay.
+---@internal
 ---@param action_state table
 ---@param ns integer
 ---@param get_picker fun():table|nil
@@ -138,6 +141,8 @@ end
 function M.attach_mappings(prompt_bufnr, map)
   local action_state = require("telescope.actions.state")
 
+  ---@internal
+  ---@return table|nil
   local function get_picker()
     local ok, p = pcall(action_state.get_current_picker, prompt_bufnr)
     if ok then return p end

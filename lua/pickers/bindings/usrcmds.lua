@@ -32,6 +32,7 @@ local M = {}
 
 ---Run :RepoFiles/:RepoGrep, resolving `name` directly when given, falling
 ---back to the interactive repo picker otherwise.
+---@internal
 ---@param name   string|nil
 ---@param action  "files"|"grep"
 local function run_repo_action(name, action)
@@ -55,6 +56,7 @@ local function run_repo_action(name, action)
 end
 
 ---Completion for the repo-name argument of :RepoFiles / :RepoGrep.
+---@internal
 ---@param arglead string
 ---@return string[]
 local function complete_repo(arglead)
@@ -74,6 +76,7 @@ local BASE_SCOPE_DESC = {
 
 ---Print every scope :Pickers can resolve: built-ins (with a one-line
 ---description) plus every user-defined collection (with its root dir).
+---@internal
 local function list_scopes()
   local cfg = require("pickers.config").get()
   local lines = { "Built-in scopes:" }
@@ -95,6 +98,7 @@ local function list_scopes()
   notify.info(table.concat(lines, "\n"))
 end
 
+---Register all built-in compat user-commands listed in the module @description.
 function M.register()
   usercmd("DirPicker", function(opts)
     local fargs = { "dir" }

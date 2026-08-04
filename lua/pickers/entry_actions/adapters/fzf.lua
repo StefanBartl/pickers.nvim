@@ -15,6 +15,7 @@ local open_background = require("pickers.entry_actions.open_background")
 
 local M = {}
 
+---@internal
 ---@param selected table|string
 local function do_open_background(selected)
   local path = extract(selected)
@@ -34,6 +35,7 @@ local function do_open_background(selected)
   end, 50)
 end
 
+---@internal
 ---@param selected table|string
 local function do_create_file(selected)
   local path = extract(selected)

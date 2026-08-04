@@ -109,6 +109,7 @@ M.ORDER = {
 ---   string     → { string }
 ---   string[]   → filtered copy
 ---   false/nil  → {}   (nil is only reached when DEFAULTS omit the key)
+---@internal
 ---@param v string|string[]|false|nil
 ---@return string[]
 local function to_lhs_list(v)

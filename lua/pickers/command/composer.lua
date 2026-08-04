@@ -20,6 +20,7 @@ local BASE_SCOPES = { "cwd", "config", "folder", "repos", "wkdbooks", "system", 
 local ACTION_VALUES = { "files", "grep", "smart" }
 
 ---Prefix-filter a candidate list (case-sensitive, matches composer's own convention).
+---@internal
 ---@param cands string[]
 ---@param lead string
 ---@return string[]
@@ -63,6 +64,7 @@ composer.register_type("PICKERS_BUILTIN_NAME", {
   end,
 })
 
+---@internal
 ---@return Lib.UserCmd.Composer.ArgSpec
 local function action_arg()
   return { name = "action", type = "STRING", values = ACTION_VALUES, optional = true }
@@ -72,12 +74,15 @@ end
 -- search only. Only meaningful after `files`, but offered unconditionally
 -- (same trailing-optional-slot leniency as action_arg) — pickers.command
 -- silently ignores it for grep/smart.
+---@internal
 ---@return Lib.UserCmd.Composer.ArgSpec
 local function find_all_arg()
   return { name = "all", type = "STRING", values = { "all" }, optional = true }
 end
 
+---@internal
 ---@param scope string
+---@return table route
 local function scope_route(scope)
   return {
     path = { scope },
@@ -89,6 +94,9 @@ local function scope_route(scope)
   }
 end
 
+---@internal
+---Route for `:Pickers dir [nav] [action]` — directory navigation by depth/alias/path.
+---@return table route
 local function dir_route()
   return {
     path = { "dir" },
@@ -103,6 +111,9 @@ end
 -- Native pickers (git/lsp/search/…) — not a scope×action, so it does not
 -- delegate to pickers.command.handle; it dispatches straight to
 -- pickers.builtins.run, which resolves the engine itself.
+---@internal
+---Route for `:Pickers builtin <name>` — dispatches straight to pickers.builtins.run.
+---@return table route
 local function builtin_route()
   return {
     path = { "builtin" },
@@ -114,7 +125,9 @@ local function builtin_route()
   }
 end
 
+---@internal
 ---@param name string
+---@return table route
 local function collection_route(name)
   return {
     path = { name },

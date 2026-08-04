@@ -55,6 +55,7 @@ function M.match(hay, needle)
 end
 
 ---Basename of a slash/backslash path.
+---@internal
 ---@param path string
 ---@return string
 local function basename(path)

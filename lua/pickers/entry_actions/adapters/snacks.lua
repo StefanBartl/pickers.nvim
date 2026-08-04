@@ -26,6 +26,7 @@ local open_background = require("pickers.entry_actions.open_background")
 
 local M = {}
 
+---@internal
 ---@param picker any
 ---@param item any
 local function do_create_file(picker, item)
@@ -39,6 +40,7 @@ local function do_create_file(picker, item)
   create_file.run(path)
 end
 
+---@internal
 ---@param picker any
 ---@param item any
 local function do_open_background(picker, item)

@@ -24,6 +24,7 @@ local M = {}
 local store = nil
 local dirty = false
 
+---@internal
 ---@param cfg Pickers.Config
 ---@return string
 local function dir(cfg)
@@ -35,12 +36,14 @@ local function dir(cfg)
   return d
 end
 
+---@internal
 ---@param cfg Pickers.Config
 ---@return string
 local function file_path(cfg)
   return dir(cfg) .. "/frecency.json"
 end
 
+---@internal
 ---@param cfg Pickers.Config
 local function load(cfg)
   if store then return end
@@ -54,6 +57,7 @@ local function load(cfg)
   if ok and type(decoded) == "table" then store = decoded end
 end
 
+---@internal
 ---@param cfg Pickers.Config
 local function save(cfg)
   if not store then return end
@@ -69,6 +73,7 @@ end
 --- Bucketed recency weight (the same shape of heuristic telescope-frecency /
 --- browser "frecency" scores use): a visit from the last hour counts far
 --- more than one from a month ago.
+---@internal
 ---@param age_seconds number
 ---@return number
 local function recency_weight(age_seconds)
@@ -129,6 +134,7 @@ end
 function M.patch(cfg)
   if not (cfg.smart.frecency and cfg.smart.frecency.enabled) then return end
 
+  ---@internal
   local function on_buf_read()
     local bufnr = vim.api.nvim_get_current_buf()
     if vim.bo[bufnr].buftype ~= "" then return end
@@ -137,6 +143,7 @@ function M.patch(cfg)
     M.record(cfg, vim.fs.normalize(name))
   end
 
+  ---@internal
   local function on_leave()
     M.flush(cfg)
   end

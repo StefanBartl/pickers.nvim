@@ -13,6 +13,7 @@ local M = {}
 -- ── Helpers ───────────────────────────────────────────────────────────────────
 
 ---List immediate subdirectories, optionally filtered by prefix and/or .git presence.
+---@internal
 ---@param dir      string
 ---@param prefix   string|nil   nil or "" = all dirs, "xyz-" = prefix match
 ---@param only_git boolean

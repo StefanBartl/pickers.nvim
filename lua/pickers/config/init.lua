@@ -19,6 +19,7 @@ end
 
 ---Validate and normalise a single collection entry.
 ---Returns nil if the entry is invalid.
+---@internal
 ---@param raw table
 ---@return Pickers.Collection|nil
 local function normalise_collection(raw)
@@ -38,6 +39,7 @@ local function normalise_collection(raw)
 end
 
 ---Validate and normalise the `history` sub-config, merging into `current`.
+---@internal
 ---@param raw table
 ---@param current Pickers.HistoryConfig
 ---@return Pickers.HistoryConfig
@@ -77,6 +79,7 @@ local function normalise_history(raw, current)
 end
 
 ---Validate and normalise the `selected_index` sub-config, merging into `current`.
+---@internal
 ---@param raw table
 ---@param current Pickers.SelectedIndexConfig
 ---@return Pickers.SelectedIndexConfig
@@ -167,6 +170,7 @@ end
 ---Validate and normalise the `keys` sub-config, merging into `current`.
 ---Each action accepts a single lhs string, a list of lhs strings, or `false`
 ---to unbind it. Invalid values are rejected with a warning and left unchanged.
+---@internal
 ---@param raw table
 ---@param current Pickers.KeysConfig
 ---@return Pickers.KeysConfig

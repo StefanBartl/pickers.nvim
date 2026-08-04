@@ -9,6 +9,7 @@ local M = {}
 -- ── Helpers ──────────────────────────────────────────────────────────────────
 
 ---Require multiple telescope sub-modules at once.
+---@internal
 ---@return boolean ok, table builtin, table pickers, table finders, table conf, table actions, table state
 local function load_telescope()
   local ok_b, builtin = pcall(require, "telescope.builtin")
@@ -22,6 +23,7 @@ local function load_telescope()
 end
 
 ---Safely call a function; report errors via notify.
+---@internal
 ---@param fn function
 ---@param opts table
 local function safe_call(fn, opts)
@@ -32,6 +34,7 @@ end
 ---History opts for `call_opts.history`, or nil when history is disabled.
 ---Always the same value regardless of `fzf_scope` — see `pickers.history`
 ---@brief for why telescope has no per-call/per-scope history isolation.
+---@internal
 ---@return table|nil
 local function history_opts()
   local cfg = require("pickers.config").get()
@@ -42,6 +45,7 @@ end
 ---`path_display` opts for `find_files`/`live_grep`, or nil when the cosmetic
 ---"shorten long paths" toggle is off (the default). See `pickers.config`'s
 ---`Pickers.DisplayConfig`.
+---@internal
 ---@return string[]|nil
 local function path_display_opts()
   local cfg = require("pickers.config").get()

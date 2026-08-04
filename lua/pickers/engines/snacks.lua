@@ -26,6 +26,7 @@ local notify = require("lib.nvim.notify").create("[pickers.engines.snacks]")
 local M = {}
 
 ---Safely call a function; report errors via notify.
+---@internal
 ---@param fn function
 ---@param opts table
 local function safe_call(fn, opts)
