@@ -1342,6 +1342,7 @@ do
 end
 
 -- ── sources.system: fd-search prompt routes through kit.input ───────────────
+-- luacheck: push ignore 122
 do
   local orig_executable = vim.fn.executable
   vim.fn.executable = function(name)
@@ -1375,6 +1376,7 @@ do
   package.loaded["lib.nvim.ui.kit"] = nil
   package.loaded["pickers.sources.system"] = nil
 end
+-- luacheck: pop
 
 -- ── entry_actions.create_file: name prompt routes through kit.input ────────
 do
