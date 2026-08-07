@@ -4,7 +4,7 @@
 local M = {}
 
 ---@param _cfg Pickers.Config
----@param callback fun(Pickers.Source|nil)
+---@param callback fun(source: Pickers.Source|nil)
 function M.get(_cfg, callback)
   local root = vim.fs.normalize(tostring(vim.fn.stdpath("config")))
   callback({ roots = { root }, prompt = "Config> " })

@@ -62,7 +62,7 @@ end
 ---
 ---@param coll       Pickers.Collection
 ---@param _cfg       Pickers.Config   (reserved for future use)
----@param callback   fun(Pickers.Source|nil)
+---@param callback   fun(source: Pickers.Source|nil)
 ---@param engine_mod table   Engine with pick_item()
 function M.get(coll, _cfg, callback, engine_mod)
   local dir = coll.dir

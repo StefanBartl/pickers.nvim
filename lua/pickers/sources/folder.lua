@@ -6,7 +6,7 @@ local notify = require("lib.nvim.notify").create("[pickers.sources.folder]")
 local M = {}
 
 ---@param _cfg  Pickers.Config
----@param callback fun(Pickers.Source|nil)
+---@param callback fun(source: Pickers.Source|nil)
 ---@param engine_mod table   Engine module providing pick_dir()
 function M.get(_cfg, callback, engine_mod)
   if type(engine_mod) ~= "table" or type(engine_mod.pick_dir) ~= "function" then
