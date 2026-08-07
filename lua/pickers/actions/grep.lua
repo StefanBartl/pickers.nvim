@@ -18,9 +18,7 @@ function M.run(source, engine_mod, extra_args)
   if extra_args then vim.list_extend(args, extra_args) end
 
   local find = require("pickers.config").get().find
-  if type(source.find) == "table" then
-    find = vim.tbl_deep_extend("force", find, source.find)
-  end
+  if type(source.find) == "table" then find = vim.tbl_deep_extend("force", find, source.find) end
 
   engine_mod.live_grep({
     roots = source.roots,

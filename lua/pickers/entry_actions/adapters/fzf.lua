@@ -53,9 +53,7 @@ end
 ---Build the fzf-lua `actions` table fragment for create_file/open_background.
 ---@return table<string, function> actions
 function M.get_actions()
-  if require("pickers.config").get().keys.enable == false then
-    return {}
-  end
+  if require("pickers.config").get().keys.enable == false then return {} end
 
   return {
     ["ctrl-a"] = do_create_file,

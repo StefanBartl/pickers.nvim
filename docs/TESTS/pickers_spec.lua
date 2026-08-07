@@ -283,7 +283,10 @@ do
   -- Without the "all" token, plain configured defaults apply unforced.
   captured = nil
   cmd.handle({ fargs = { "cwd", "files" } })
-  check("command.handle: plain 'files' keeps configured hidden=false", captured.find.hidden == false)
+  check(
+    "command.handle: plain 'files' keeps configured hidden=false",
+    captured.find.hidden == false
+  )
 
   -- "all" is a no-op for grep (files-only escape hatch).
   captured = nil
@@ -404,7 +407,11 @@ do
   -- engine entry's config() calls the engine's own setup() with engine_opts
   -- (stubbed via package.loaded so this doesn't require snacks installed).
   local captured_engine_opts
-  package.loaded["snacks"] = { setup = function(o) captured_engine_opts = o end }
+  package.loaded["snacks"] = {
+    setup = function(o)
+      captured_engine_opts = o
+    end,
+  }
   snacks_spec[1].config()
   check(
     "plugin_spec: engine config() calls Snacks.setup(engine_opts)",
@@ -791,9 +798,15 @@ do
   -- fzf-lua ships ctrl-s/ctrl-v/ctrl-t natively/fixed -- must not appear in
   -- keymap.builtin or fzf_skipped() (not a capability gap).
   local fk = keys.fzf_keymap(cfg0)
-  check("keys.fzf: excludes split/vsplit/tab", fk["<C-s>"] == nil and fk["<C-v>"] == nil and fk["<C-t>"] == nil)
+  check(
+    "keys.fzf: excludes split/vsplit/tab",
+    fk["<C-s>"] == nil and fk["<C-v>"] == nil and fk["<C-t>"] == nil
+  )
   local skipped = keys.fzf_skipped(cfg0)
-  check("keys.fzf_skipped: excludes split/vsplit/tab", not has(skipped, "split") and not has(skipped, "vsplit"))
+  check(
+    "keys.fzf_skipped: excludes split/vsplit/tab",
+    not has(skipped, "split") and not has(skipped, "vsplit")
+  )
 
   -- snacks adapter: action names match 1:1, so they pass through the default
   -- (non-history, non-skip) branch onto input+list+preview.
@@ -1331,7 +1344,10 @@ end
 -- ── sources.system: fd-search prompt routes through kit.input ───────────────
 do
   local orig_executable = vim.fn.executable
-  vim.fn.executable = function(name) if name == "fd" then return 1 end return 0 end
+  vim.fn.executable = function(name)
+    if name == "fd" then return 1 end
+    return 0
+  end
 
   local captured_title
   package.loaded["lib.nvim.ui.kit"] = {
@@ -1344,12 +1360,16 @@ do
   local system = require("pickers.sources.system")
 
   local got_source
-  system.get({}, function(source) got_source = source end)
+  system.get({}, function(source)
+    got_source = source
+  end)
 
   check("sources.system: kit.input was asked", captured_title ~= nil, tostring(captured_title))
-  check("sources.system: fd argv built from the submitted input",
+  check(
+    "sources.system: fd argv built from the submitted input",
     got_source ~= nil and vim.tbl_contains(got_source.find_command, "/home/user"),
-    got_source and vim.inspect(got_source.find_command))
+    got_source and vim.inspect(got_source.find_command)
+  )
 
   vim.fn.executable = orig_executable
   package.loaded["lib.nvim.ui.kit"] = nil
@@ -1374,9 +1394,15 @@ do
   create_file.run(dir)
   vim.wait(50) -- M.run schedules the prompt
 
-  check("entry_actions.create_file: kit.input was asked", captured_title ~= nil, tostring(captured_title))
-  check("entry_actions.create_file: file created from the submitted name",
-    vim.fn.filereadable(dir .. "/newfile.txt") == 1)
+  check(
+    "entry_actions.create_file: kit.input was asked",
+    captured_title ~= nil,
+    tostring(captured_title)
+  )
+  check(
+    "entry_actions.create_file: file created from the submitted name",
+    vim.fn.filereadable(dir .. "/newfile.txt") == 1
+  )
 
   package.loaded["lib.nvim.ui.kit"] = nil
   package.loaded["pickers.entry_actions.create_file"] = nil
@@ -1386,7 +1412,9 @@ end
 do
   local captured_title
   package.loaded["lib.nvim.ui.kit"] = {
-    select = function(opts) opts.on_select("path=…") end,
+    select = function(opts)
+      opts.on_select("path=…")
+    end,
     input = function(opts)
       captured_title = opts.title
       opts.on_submit("/some/dir")
@@ -1396,10 +1424,20 @@ do
   local dir_nav_picker = require("pickers.ui.dir_nav_picker")
 
   local got_result
-  dir_nav_picker.open({ depth_aliases = {} }, function(result) got_result = result end)
+  dir_nav_picker.open({ depth_aliases = {} }, function(result)
+    got_result = result
+  end)
 
-  check("dir_nav_picker: kit.input was asked for the explicit path", captured_title ~= nil, tostring(captured_title))
-  check("dir_nav_picker: submitted path is prefixed with 'path='", got_result == "path=/some/dir", tostring(got_result))
+  check(
+    "dir_nav_picker: kit.input was asked for the explicit path",
+    captured_title ~= nil,
+    tostring(captured_title)
+  )
+  check(
+    "dir_nav_picker: submitted path is prefixed with 'path='",
+    got_result == "path=/some/dir",
+    tostring(got_result)
+  )
 
   package.loaded["lib.nvim.ui.kit"] = nil
   package.loaded["pickers.ui.dir_nav_picker"] = nil
@@ -1441,23 +1479,35 @@ do
       }
     end,
   }
-  package.loaded["telescope.finders"] = { new_table = function(o) return o end }
+  package.loaded["telescope.finders"] = {
+    new_table = function(o)
+      return o
+    end,
+  }
   package.loaded["telescope.config"] = {
     values = {
-      generic_sorter = function() return "sorter" end,
-      file_previewer = function() return "file_previewer" end,
+      generic_sorter = function()
+        return "sorter"
+      end,
+      file_previewer = function()
+        return "file_previewer"
+      end,
     },
   }
   package.loaded["telescope.actions"] = {
     select_default = {
       replace = function(_self, fn)
-        _G.__pickers_test_telescope_select_default = function() fn(0) end
+        _G.__pickers_test_telescope_select_default = function()
+          fn(0)
+        end
       end,
     },
     close = function() end,
   }
   package.loaded["telescope.actions.state"] = {
-    get_selected_entry = function() return _G.__pickers_test_telescope_entry end,
+    get_selected_entry = function()
+      return _G.__pickers_test_telescope_entry
+    end,
   }
   package.loaded["pickers.engines.telescope"] = nil
   local telescope_engine = require("pickers.engines.telescope")
@@ -1466,7 +1516,9 @@ do
   telescope_engine.pick_item({
     items = { "alpha", "beta" },
     prompt = "Test",
-    on_select = function(item) got = item end,
+    on_select = function(item)
+      got = item
+    end,
   })
   check("pick_item/telescope: plain strings — on_select gets the string back", got == "alpha")
   check("pick_item/telescope: plain strings — no previewer attached", captured.previewer == false)
@@ -1476,16 +1528,22 @@ do
   telescope_engine.pick_item({
     items = items,
     prompt = "Templates",
-    on_select = function(item) got_item = item end,
+    on_select = function(item)
+      got_item = item
+    end,
   })
-  check("pick_item/telescope: file-carrying items — previewer attached",
-    captured.previewer == "file_previewer")
+  check(
+    "pick_item/telescope: file-carrying items — previewer attached",
+    captured.previewer == "file_previewer"
+  )
   check("pick_item/telescope: on_select gets back the EXACT original table", got_item == items[1])
 
   _G.__pickers_test_telescope_entry = nil
   _G.__pickers_test_telescope_select_default = nil
   package.loaded["pickers.engines.telescope"] = nil
-  for k, v in pairs(prev) do package.loaded[k] = v end
+  for k, v in pairs(prev) do
+    package.loaded[k] = v
+  end
 end
 
 -- fzf-lua ─────────────────────────────────────────────────────────────────
@@ -1493,7 +1551,9 @@ do
   local prev_fzf = package.loaded["fzf-lua"]
   local captured
   package.loaded["fzf-lua"] = {
-    fzf_exec = function(items, opts) captured = { items = items, opts = opts } end,
+    fzf_exec = function(items, opts)
+      captured = { items = items, opts = opts }
+    end,
   }
   package.loaded["pickers.engines.fzf"] = nil
   local fzf_engine = require("pickers.engines.fzf")
@@ -1502,43 +1562,67 @@ do
   fzf_engine.pick_item({
     items = { "alpha", "beta" },
     prompt = "Test",
-    on_select = function(item) got = item end,
+    on_select = function(item)
+      got = item
+    end,
   })
-  check("pick_item/fzf: plain strings — items passed through untouched", captured.items[1] == "alpha")
-  check("pick_item/fzf: plain strings — no --delimiter set", captured.opts.fzf_opts["--delimiter"] == nil)
+  check(
+    "pick_item/fzf: plain strings — items passed through untouched",
+    captured.items[1] == "alpha"
+  )
+  check(
+    "pick_item/fzf: plain strings — no --delimiter set",
+    captured.opts.fzf_opts["--delimiter"] == nil
+  )
   check("pick_item/fzf: plain strings — no preview function set", captured.opts.preview == nil)
   captured.opts.actions["default"]({ "alpha" })
   check("pick_item/fzf: plain strings — on_select gets the raw string", got == "alpha")
 
   local items = { { text = "Tmpl A", file = "/tmp/a.lua" }, { text = "Tmpl B" } }
   fzf_engine.pick_item({ items = items, prompt = "Templates", on_select = function() end })
-  check("pick_item/fzf: file item — hidden tab-delimited file field",
-    captured.items[1] == "Tmpl A\t/tmp/a.lua")
-  check("pick_item/fzf: file item — item without `file` has no tab field",
-    captured.items[2] == "Tmpl B")
-  check("pick_item/fzf: file item — --with-nth hides the hidden field",
-    captured.opts.fzf_opts["--with-nth"] == "1")
-  check("pick_item/fzf: file item — preview is a Lua function (no shell `cat` dependency)",
-    type(captured.opts.preview) == "function")
+  check(
+    "pick_item/fzf: file item — hidden tab-delimited file field",
+    captured.items[1] == "Tmpl A\t/tmp/a.lua"
+  )
+  check(
+    "pick_item/fzf: file item — item without `file` has no tab field",
+    captured.items[2] == "Tmpl B"
+  )
+  check(
+    "pick_item/fzf: file item — --with-nth hides the hidden field",
+    captured.opts.fzf_opts["--with-nth"] == "1"
+  )
+  check(
+    "pick_item/fzf: file item — preview is a Lua function (no shell `cat` dependency)",
+    type(captured.opts.preview) == "function"
+  )
 
   local tmpfile = vim.fn.tempname()
   vim.fn.writefile({ "line one", "line two" }, tmpfile)
   local preview_text = captured.opts.preview({ "Tmpl A\t" .. tmpfile })
-  check("pick_item/fzf: preview function reads the real file content",
-    preview_text == "line one\nline two")
-  check("pick_item/fzf: preview function returns empty for a no-file item",
-    captured.opts.preview({ "Tmpl B" }) == "")
+  check(
+    "pick_item/fzf: preview function reads the real file content",
+    preview_text == "line one\nline two"
+  )
+  check(
+    "pick_item/fzf: preview function returns empty for a no-file item",
+    captured.opts.preview({ "Tmpl B" }) == ""
+  )
   vim.fn.delete(tmpfile)
 
   local got_item
   fzf_engine.pick_item({
     items = items,
     prompt = "Templates",
-    on_select = function(item) got_item = item end,
+    on_select = function(item)
+      got_item = item
+    end,
   })
   captured.opts.actions["default"]({ "Tmpl A\t/tmp/a.lua" })
-  check("pick_item/fzf: on_select gets back the EXACT original table via by_line",
-    got_item == items[1])
+  check(
+    "pick_item/fzf: on_select gets back the EXACT original table via by_line",
+    got_item == items[1]
+  )
 
   package.loaded["pickers.engines.fzf"] = nil
   package.loaded["fzf-lua"] = prev_fzf
@@ -1549,24 +1633,32 @@ do
   local prev_snacks = package.loaded["snacks.picker"]
   local captured
   package.loaded["snacks.picker"] = {
-    select = function(items, opts, on_choice) captured = { items = items, opts = opts, on_choice = on_choice } end,
+    select = function(items, opts, on_choice)
+      captured = { items = items, opts = opts, on_choice = on_choice }
+    end,
   }
   package.loaded["pickers.engines.snacks"] = nil
   local snacks_engine = require("pickers.engines.snacks")
 
   snacks_engine.pick_item({ items = { "alpha" }, prompt = "Test", on_select = function() end })
-  check("pick_item/snacks: plain string — format_item uses tostring",
-    captured.opts.format_item("alpha") == "alpha")
+  check(
+    "pick_item/snacks: plain string — format_item uses tostring",
+    captured.opts.format_item("alpha") == "alpha"
+  )
 
   local items = { { text = "Tmpl A", file = "/tmp/a.lua" } }
   local got_item
   snacks_engine.pick_item({
     items = items,
     prompt = "Templates",
-    on_select = function(item) got_item = item end,
+    on_select = function(item)
+      got_item = item
+    end,
   })
-  check("pick_item/snacks: table item — format_item reads .text",
-    captured.opts.format_item(items[1]) == "Tmpl A")
+  check(
+    "pick_item/snacks: table item — format_item reads .text",
+    captured.opts.format_item(items[1]) == "Tmpl A"
+  )
   captured.on_choice(items[1])
   check("pick_item/snacks: on_select receives the exact original table", got_item == items[1])
 

@@ -28,6 +28,13 @@ instead of showing as two separate blocks. See [docs/COMMANDS.md](docs/COMMANDS.
 
 ---
 
+## Table of content
+
+- [Quickstart](#quickstart)
+- [Documentation](#documentation)
+
+---
+
 ## Quickstart
 
 Requires [lib.nvim](https://github.com/StefanBartl/lib.nvim) and one of telescope.nvim / fzf-lua / snacks.nvim (auto-detected).

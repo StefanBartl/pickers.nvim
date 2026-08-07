@@ -11,12 +11,8 @@ local M = {}
 ---                                        carries its own flags already).
 function M.run(source, engine_mod, override)
   local find = require("pickers.config").get().find
-  if type(source.find) == "table" then
-    find = vim.tbl_deep_extend("force", find, source.find)
-  end
-  if type(override) == "table" then
-    find = vim.tbl_deep_extend("force", find, override)
-  end
+  if type(source.find) == "table" then find = vim.tbl_deep_extend("force", find, source.find) end
+  if type(override) == "table" then find = vim.tbl_deep_extend("force", find, override) end
 
   engine_mod.pick_files({
     roots = source.roots,

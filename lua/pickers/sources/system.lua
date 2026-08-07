@@ -94,7 +94,9 @@ function M.get(_cfg, callback)
         find_command = cmd,
       })
     end,
-    on_cancel = function() callback(nil) end,
+    on_cancel = function()
+      callback(nil)
+    end,
   })
 end
 
