@@ -10,6 +10,8 @@ A single, machine-readable reference of every keymap, user-command and autocomma
   - [2. User Commands (`usercmds`)](#2-user-commands-usercmds)
   - [3. Collection-Generated Commands (`collection_commands`)](#3-collection-generated-commands-collection_commands)
   - [4. Autocommands (`autocmds`)](#4-autocommands-autocmds)
+  - [5. In-picker keys (`keys`)](#5-in-picker-keys-keys)
+  - [6. Selected-index overlay toggle (`experimental.selected_index.toggle_key`)](#6-selected-index-overlay-toggle-experimentalselected_indextoggle_key)
 
 ---
 
@@ -79,6 +81,56 @@ Additionally, optional `keys.files` / `keys.grep` / `keys.smart` keymaps are bou
 | Event | Source File | Description |
 | --- | --- | --- |
 | `VimEnter` | `plugin/pickers.lua` | Register default keymaps/usercmds at startup when the user did *not* call `setup()` (guarded by `vim.g.pickers_nvim_setup_called`). |
+
+**`experimental.selected_index` overlay** (telescope-only, only created when `cfg.experimental.selected_index.enabled == true` or `.toggle_key` is set; augroup `PickersSelectedIndexAUG_<results_bufnr>`, unique per picker instance):
+
+| Event(s) | Buffer (pattern) | Source File | Description |
+| --- | --- | --- | --- |
+| `CursorMoved` | results buffer | `lua/pickers/selected_index/init.lua` | Debounced (30ms) recompute + redraw of the selected-index overlay |
+| `TextChangedI`, `TextChanged` | prompt buffer | `lua/pickers/selected_index/init.lua` | Same debounced recompute (typing re-sorts results without firing `CursorMoved`) |
+| `BufDelete` (once) | results buffer | `lua/pickers/selected_index/init.lua` | Cleans up the extmark namespace and cancels the debounce timer |
+
+**`smart.frecency`** (opt-in, only registered when `cfg.smart.frecency.enabled == true`; augroup `"pickers.nvim"`, shared with the `VimEnter` fallback above):
+
+| Event(s) | Buffer (pattern) | Source File | Description |
+| --- | --- | --- | --- |
+| `BufReadPost` | any real, listed file buffer (`buftype == ""`, readable path) | `lua/pickers/smart/frecency.lua` | Records a visit — increments count + updates last-visited timestamp for that abspath |
+| `VimLeavePre` | none | `lua/pickers/smart/frecency.lua` | Flushes the in-memory frecency store to `stdpath("data")/pickers.nvim/frecency.json` |
+
+---
+
+## 5. In-picker keys (`keys`)
+
+> **Note:** Registered when `keys.enable = true` (default on). Separate from the normal-mode keymaps in §1 — these act **inside** an already-open picker, translated per engine. See [docs/KEYMAPS.md](KEYMAPS.md#in-picker-keys-preview-scroll--history--entry-actions) for the full writeup (capability gaps, `open_background_show`, etc.).
+
+| Action (`config`) | Default | telescope | fzf-lua | snacks |
+| --- | --- | --- | --- | --- |
+| `preview_scroll_down` | `<PageDown>` | patched | patched | export only¹ |
+| `preview_scroll_up` | `<PageUp>` | patched | patched | export only¹ |
+| `preview_scroll_left` | `<C-Left>` | patched | — (fzf gap) | export only¹ |
+| `preview_scroll_right` | `<C-Right>` | patched | — (fzf gap) | export only¹ |
+| `history_back` | `<C-p>` | patched | — (fzf-native, fixed) | export only¹ |
+| `history_forward` | `<C-n>` | patched | — (fzf-native, fixed) | export only¹ |
+| `create_file` | `<C-a>` | patched | fixed (`ctrl-a`) | export only¹ |
+| `open_background` | `<S-CR>`, `<C-o>` | patched | fixed (`ctrl-o`/`shift-enter`) | export only¹ |
+| `preview_toggle` | *(off, opt-in)* | patched | native `<F4>`, not ours | native `<A-p>`, not ours |
+| `split` | `<C-s>` | patched | native `ctrl-s`, not ours | export only¹ |
+| `vsplit` | `<C-v>` | patched | native `ctrl-v`, not ours | export only¹ |
+| `tab` | `<C-t>` | patched | native `ctrl-t`, not ours | export only¹ |
+
+¹ snacks: pickers.nvim doesn't own `Snacks.setup()`, so nothing is auto-registered there — merge `require("pickers.keys").snacks_win()` into your own `snacks.setup({ picker = { win = ... } })`.
+
+`create_file`/`open_background` run pickers.nvim-specific logic (`lua/pickers/entry_actions/`), not a built-in engine action — merge them into your own engine `setup()` manually via `entry_actions/adapters/{telescope,fzf,snacks}.lua`'s `get_mappings()`/`get_actions()`/`get_keys()`.
+
+---
+
+## 6. Selected-index overlay toggle (`experimental.selected_index.toggle_key`)
+
+> **Note:** Telescope-only. Registered (insert + normal mode, inside the picker) only when `cfg.experimental.selected_index.toggle_key` is set — `nil` by default, keeping `enabled = false` fully inert.
+
+| lhs (`config`) | mode | action |
+| --- | --- | --- |
+| `experimental.selected_index.toggle_key` (default `nil`) | i, n | Toggle the selected-index overlay's visibility + redraw |
 
 ---
 
