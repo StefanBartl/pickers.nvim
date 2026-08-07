@@ -1,0 +1,52 @@
+{
+  "tools": [
+    {
+      "bin": "rg",
+      "required": false,
+      "why": "Fast content search backend for the grep/live-grep sources.",
+      "pkg": {
+        "apt": "ripgrep",
+        "dnf": "ripgrep",
+        "pacman": "ripgrep",
+        "zypper": "ripgrep",
+        "apk": "ripgrep",
+        "brew": "ripgrep",
+        "winget": "BurntSushi.ripgrep.MSVC",
+        "scoop": "ripgrep",
+        "choco": "ripgrep"
+      }
+    },
+    {
+      "bin": "fd",
+      "required": false,
+      "why": "Fast file-listing backend for the file-picker source (falls back to fdfind on Debian/Ubuntu, or a slower built-in walk if neither is present).",
+      "pkg": {
+        "apt": "fd-find",
+        "dnf": "fd-find",
+        "pacman": "fd",
+        "zypper": "fd",
+        "apk": "fd",
+        "brew": "fd",
+        "winget": "sharkdp.fd",
+        "scoop": "fd",
+        "choco": "fd"
+      }
+    },
+    {
+      "bin": "fzf",
+      "required": false,
+      "why": "Enables the fzf engine (an alternative matching/UI backend to the built-in picker engine).",
+      "pkg": {
+        "apt": "fzf",
+        "dnf": "fzf",
+        "pacman": "fzf",
+        "zypper": "fzf",
+        "apk": "fzf",
+        "brew": "fzf",
+        "winget": "junegunn.fzf",
+        "scoop": "fzf",
+        "choco": "fzf"
+      }
+    }
+  ]
+}
