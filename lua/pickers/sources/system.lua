@@ -70,7 +70,7 @@ end
 
 ---Interactive fd search.  Calls engine_mod.pick_files() directly after user input.
 ---@param _cfg       Pickers.Config
----@param callback   fun(Pickers.Source|nil)   Called with nil on cancel, source on success.
+---@param callback   fun(source: Pickers.Source|nil)   Called with nil on cancel, source on success.
 function M.get(_cfg, callback)
   local fd = find_fd()
   if not fd then

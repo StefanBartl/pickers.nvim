@@ -10,7 +10,7 @@ local notify = require("lib.nvim.notify").create("[pickers.sources.wkdbooks]")
 local M = {}
 
 ---@param cfg        Pickers.Config
----@param callback   fun(Pickers.Source|nil)
+---@param callback   fun(source: Pickers.Source|nil)
 ---@param engine_mod table   Engine providing pick_item()
 function M.get(cfg, callback, engine_mod)
   -- Prefer the "wkdbooks" entry from cfg.collections

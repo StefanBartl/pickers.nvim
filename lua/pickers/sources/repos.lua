@@ -9,7 +9,7 @@ local notify = require("lib.nvim.notify").create("[pickers.sources.repos]")
 local M = {}
 
 ---@param cfg        Pickers.Config
----@param callback   fun(Pickers.Source|nil)
+---@param callback   fun(source: Pickers.Source|nil)
 ---@param engine_mod table   Engine providing pick_item()
 function M.get(cfg, callback, engine_mod)
   if not cfg.repos_dir then

@@ -131,7 +131,7 @@ end
 -- ── Public API ────────────────────────────────────────────────────────────────
 
 ---@param _cfg    Pickers.Config
----@param callback fun(Pickers.Source|nil)
+---@param callback fun(source: Pickers.Source|nil)
 function M.get(_cfg, callback)
   local roots = get_roots()
   if #roots == 0 then
