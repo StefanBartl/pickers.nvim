@@ -136,13 +136,25 @@ function M.register()
     require("pickers.command").handle({ fargs = { "system", "files" } })
   end, "[pickers compat] :FindOnSystem → :Pickers system files", "?")
 
-  usercmd("RepoFiles", function(opts)
-    run_repo_action(opts.fargs[1], "files")
-  end, "[pickers] :RepoFiles [repo] — pick repo (or jump to [repo]), then find files", "?", complete_repo)
+  usercmd(
+    "RepoFiles",
+    function(opts)
+      run_repo_action(opts.fargs[1], "files")
+    end,
+    "[pickers] :RepoFiles [repo] — pick repo (or jump to [repo]), then find files",
+    "?",
+    complete_repo
+  )
 
-  usercmd("RepoGrep", function(opts)
-    run_repo_action(opts.fargs[1], "grep")
-  end, "[pickers] :RepoGrep [repo] — pick repo (or jump to [repo]), then live grep", "?", complete_repo)
+  usercmd(
+    "RepoGrep",
+    function(opts)
+      run_repo_action(opts.fargs[1], "grep")
+    end,
+    "[pickers] :RepoGrep [repo] — pick repo (or jump to [repo]), then live grep",
+    "?",
+    complete_repo
+  )
 
   usercmd("WkdBookFiles", function(_)
     require("pickers.command").handle({ fargs = { "wkdbooks", "files" } })

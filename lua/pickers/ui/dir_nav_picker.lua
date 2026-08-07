@@ -61,7 +61,13 @@ function M.open(cfg, callback)
         end
       end
       if kit_ok and kit and type(kit.input) == "function" then
-        kit.input({ title = "path= ", on_submit = handle_input, on_cancel = function() callback(nil) end })
+        kit.input({
+          title = "path= ",
+          on_submit = handle_input,
+          on_cancel = function()
+            callback(nil)
+          end,
+        })
       else
         vim.ui.input({ prompt = "path= " }, handle_input)
       end

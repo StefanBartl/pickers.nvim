@@ -10,17 +10,13 @@
 ---@param item table|nil
 ---@return string|nil path
 return function(item)
-  if not item then
-    return nil
-  end
+  if not item then return nil end
 
   if item.file then
     local ok, util = pcall(require, "snacks.picker.util")
     if ok then
       local path = util.path(item)
-      if path then
-        return path
-      end
+      if path then return path end
     end
   end
 

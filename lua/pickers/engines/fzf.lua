@@ -333,9 +333,7 @@ function M.pick_item(opts)
     winopts = { on_create = setup_double_esc },
     actions = {
       ["default"] = function(selected)
-        if selected and selected[1] then
-          opts.on_select(by_line[selected[1]] or selected[1])
-        end
+        if selected and selected[1] then opts.on_select(by_line[selected[1]] or selected[1]) end
       end,
     },
   })

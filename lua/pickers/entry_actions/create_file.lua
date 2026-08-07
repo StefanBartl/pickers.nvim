@@ -41,9 +41,7 @@ end
 ---@param path string
 ---@return string parent_dir
 local function parent_dir_of(path)
-  if fn.isdirectory(path) == 1 then
-    return path
-  end
+  if fn.isdirectory(path) == 1 then return path end
   return fn.fnamemodify(path, ":h")
 end
 
@@ -73,9 +71,7 @@ function M.run(path)
       title = "Create in " .. fn.fnamemodify(parent_dir, ":~:.") .. " (/ for folder): ",
       default = "",
       on_submit = function(input)
-        if not input or input == "" then
-          return
-        end
+        if not input or input == "" then return end
         create_entry(parent_dir, input)
       end,
     })

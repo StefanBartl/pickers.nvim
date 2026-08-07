@@ -59,9 +59,7 @@ end
 ---Named actions table for `Snacks.picker` `opts.actions`.
 ---@return table<string, function> actions
 function M.get_actions()
-  if require("pickers.config").get().keys.enable == false then
-    return {}
-  end
+  if require("pickers.config").get().keys.enable == false then return {} end
 
   return {
     create_file = do_create_file,

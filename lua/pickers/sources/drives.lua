@@ -50,7 +50,11 @@ end
 local function windows_roots()
   local roots = {}
   local _, out = require("lib.nvim.cross.run_argv").run_blocking_captured({
-    "powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command",
+    "powershell",
+    "-NoProfile",
+    "-ExecutionPolicy",
+    "Bypass",
+    "-Command",
     "Get-PSDrive -PSProvider FileSystem | Select -ExpandProperty Root",
   })
   for line in (out or ""):gmatch("[^\r\n]+") do
@@ -88,7 +92,8 @@ end
 ---@return string[]
 local function posix_roots()
   local dirs = {}
-  local _, out = require("lib.nvim.cross.run_argv").run_blocking_captured({ "df", "-P", "--output=target" })
+  local _, out =
+    require("lib.nvim.cross.run_argv").run_blocking_captured({ "df", "-P", "--output=target" })
   local lines = vim.split(out or "", "\r?\n")
   -- Drop the header line ("Mounted on") that `tail -n +2` used to strip.
   for i = 2, #lines do

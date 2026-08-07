@@ -28,9 +28,7 @@ return function(selected)
     end
   end
 
-  if not path or path == "" then
-    return nil
-  end
+  if not path or path == "" then return nil end
 
   if needs_strip then
     -- Remove fzf formatting (ANSI colors, leading icon/prefix).
