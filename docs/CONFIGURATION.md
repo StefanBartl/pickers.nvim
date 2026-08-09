@@ -122,9 +122,11 @@ require("pickers").setup({
     split                = "<C-s>", -- open selected entry in a horizontal split
     vsplit               = "<C-v>", -- open selected entry in a vertical split
     tab                  = "<C-t>", -- open selected entry in a new tab
+    mouse_confirm        = "<2-LeftMouse>", -- double-click a result to open it
     -- fzf-lua only binds the vertical preview scroll and the fixed ctrl-a/
     -- ctrl-o/shift-enter entry actions -- everything else is fzf-native/fixed.
-    -- split/vsplit/tab are fzf-native too (fixed ctrl-s/ctrl-v/ctrl-t).
+    -- split/vsplit/tab are fzf-native too (fixed ctrl-s/ctrl-v/ctrl-t), and
+    -- mouse clicks are handled by the fzf binary itself.
   },
 })
 ```

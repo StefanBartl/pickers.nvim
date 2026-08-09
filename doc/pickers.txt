@@ -422,6 +422,15 @@ In-picker keys (preview scroll + history + entry actions)~
       keys = { split = "<C-x>", vsplit = false },  -- rebind / unbind
     })
 <
+  `mouse_confirm` double-clicks a result open, same as <CR>, default
+  <2-LeftMouse>.  Telescope has no default mouse mapping at all — this is
+  the actual gap it closes there (actions.select_default, patched into
+  mappings.n, results-window/normal-mode only).  Snacks already ships
+  <2-LeftMouse> = "confirm" as its own default; it is translated here too so
+  a custom lhs or `false` (unbind) is still honored by
+  |pickers.keys|.snacks_win().  fzf-lua's own fzf binary handles mouse
+  clicks itself, outside keymap.builtin — same capability-gap class as its
+  history keys.
 
 ==============================================================================
 8. COMPAT COMMANDS                                               *pickers-compat*
@@ -575,6 +584,8 @@ All keys are optional.  Unset keys retain their default values.
                              vertical split
       tab                  (string|string[]|false, default "<C-t>") — open in
                              new tab
+      mouse_confirm        (string|string[]|false, default "<2-LeftMouse>")
+                             — double-click a result to open it
     fzf-lua only binds the vertical preview scroll and the fixed ctrl-a/
     ctrl-o/shift-enter entry actions — horizontal scroll, history, and
     remapping the entry-action keys are all fzf-native/fixed there.

@@ -12,6 +12,8 @@
 ---   split                 → actions.select_horizontal
 ---   vsplit                → actions.select_vertical
 ---   tab                   → actions.select_tab
+---   mouse_confirm         → actions.select_default (telescope has no default
+---                           mouse mapping at all)
 ---
 --- `mappings()` builds a `defaults.mappings` table (`{ i = {...}, n = {...} }`);
 --- `patch()` installs it via `telescope.setup()`. Telescope deep-merges
@@ -31,6 +33,7 @@ local ACTION_TO_TS = {
   split = "select_horizontal",
   vsplit = "select_vertical",
   tab = "select_tab",
+  mouse_confirm = "select_default",
 }
 
 --- action name → telescope.actions.layout field name. A separate table

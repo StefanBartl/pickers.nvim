@@ -823,6 +823,52 @@ do
   config.apply({ keys = { split = "<C-s>", vsplit = "<C-v>", tab = "<C-t>" } })
 end
 
+-- ── pickers.keys — mouse_confirm: double-click opens, on by default ─────────
+do
+  local config = require("pickers.config")
+  local keys = require("pickers.keys")
+
+  local cfg0 = config.get()
+  check("keys: default mouse_confirm lhs", cfg0.keys.mouse_confirm == "<2-LeftMouse>")
+
+  local r = keys.resolve(cfg0)
+  check("keys.resolve: mouse_confirm lhs", has(r.mouse_confirm.lhs, "<2-LeftMouse>"))
+  check(
+    "keys.resolve: mouse_confirm mode n only",
+    has(r.mouse_confirm.modes, "n") and not has(r.mouse_confirm.modes, "i")
+  )
+
+  -- telescope adapter: actions.select_default, bound in mappings.n only
+  -- (telescope has no default mouse mapping at all -- the actual gap).
+  local tm = keys.telescope_mappings(cfg0)
+  if pcall(require, "telescope.actions") then
+    check("keys.telescope: mouse_confirm bound (n)", tm.n["<2-LeftMouse>"] ~= nil)
+    check("keys.telescope: mouse_confirm not in insert map", tm.i["<2-LeftMouse>"] == nil)
+  else
+    check("keys.telescope: mouse_confirm unbound (telescope absent)", tm.n["<2-LeftMouse>"] == nil)
+  end
+
+  -- fzf-lua: real fzf binary handles mouse clicks itself -- capability gap,
+  -- same class as history; must be reported by fzf_skipped().
+  local fk = keys.fzf_keymap(cfg0)
+  check("keys.fzf: excludes mouse_confirm", fk["<2-LeftMouse>"] == nil)
+  local skipped = keys.fzf_skipped(cfg0)
+  check("keys.fzf_skipped: lists mouse_confirm", has(skipped, "mouse_confirm"))
+
+  -- snacks adapter: translates to its own "confirm" action, list window only.
+  local win = keys.snacks_win(cfg0)
+  check("keys.snacks: list mouse_confirm → confirm", win.list.keys["<2-LeftMouse>"] == "confirm")
+  check("keys.snacks: input excludes mouse_confirm", win.input.keys["<2-LeftMouse>"] == nil)
+  check("keys.snacks: preview excludes mouse_confirm", win.preview.keys["<2-LeftMouse>"] == nil)
+
+  -- Unbinding via false
+  config.apply({ keys = { mouse_confirm = false } })
+  check("keys: mouse_confirm unbind", #keys.resolve(config.get()).mouse_confirm.lhs == 0)
+
+  -- Restore default for any later blocks relying on it.
+  config.apply({ keys = { mouse_confirm = "<2-LeftMouse>" } })
+end
+
 -- ── pickers.entry_actions — absorbed into pickers.keys, adapters read resolve() ─
 do
   local config = require("pickers.config")

@@ -132,14 +132,24 @@ snacks. See `lua/pickers/keys/`.
 | `split` | `<C-s>` | ✓ | native (`ctrl-s`) | ✓ |
 | `vsplit` | `<C-v>` | ✓ | native (`ctrl-v`) | ✓ |
 | `tab` | `<C-t>` | ✓ | native (`ctrl-t`) | ✓ |
+| `mouse_confirm` | `<2-LeftMouse>` | ✓ | native (fzf's own mouse handling) | native + patched |
 
 fzf-lua is the capability gap: its builtin previewer has no horizontal preview
 scroll, its history is fzf's own `--history` bound to `ctrl-p`/`ctrl-n`
-natively, and its entry-action bindings are fixed to `ctrl-a`/`ctrl-o`/
+natively, its entry-action bindings are fixed to `ctrl-a`/`ctrl-o`/
 `shift-enter` (fzf's own bind syntax, not translatable from Neovim keymap
-syntax) — none of these four are remappable there. Unmappable actions are
-skipped and reported once via `notify.debug` (or surfaced in `:checkhealth
-pickers` for the static, always-true gaps).
+syntax), and mouse clicks are handled by the fzf binary itself, outside
+`keymap.builtin` — none of these five are remappable there. Unmappable
+actions are skipped and reported once via `notify.debug` (or surfaced in
+`:checkhealth pickers` for the static, always-true gaps).
+
+**`mouse_confirm`** double-clicks a result open, same as `<CR>`. Telescope has
+no default mouse mapping at all — this is the actual gap it closes there
+(`actions.select_default`, patched into `mappings.n`, results-window/normal
+mode only — a click always focuses that buffer first, which is never in
+insert mode). Snacks already ships `<2-LeftMouse>` = `"confirm"` as its own
+default; it's translated here too so a custom lhs or `false` (unbind) in your
+own config is still honored by `keys.snacks_win()`.
 
 **`split`/`vsplit`/`tab`** open the selected entry in a horizontal/vertical
 split or a new tab instead of the current window. All three engines already

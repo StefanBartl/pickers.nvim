@@ -119,6 +119,12 @@ local M = {
     split = "<C-s>",
     vsplit = "<C-v>",
     tab = "<C-t>",
+    -- Double-click a result to open it, same as <CR>. snacks already binds
+    -- this natively; telescope has no default mouse mapping at all, so this
+    -- is the actual gap it closes. fzf-lua's own fzf binary handles mouse
+    -- clicks itself, outside keymap.builtin -- same capability-gap class as
+    -- its history keys (see pickers.keys.adapters.fzf).
+    mouse_confirm = "<2-LeftMouse>",
   },
 
   -- Native picker-history file(s) under stdpath("data")/pickers.nvim/history.
