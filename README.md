@@ -67,7 +67,7 @@ Then open the picker with:
 - [Commands](docs/COMMANDS.md) — the `:Pickers` command syntax, scopes, and compat command aliases.
 - [Collections](docs/COLLECTIONS.md) — defining user scopes over your own directories.
 - [Keymaps](docs/KEYMAPS.md) — default keymaps and how to change or disable them.
-- [Configuration](docs/CONFIGURATION.md) — full `setup()` reference, picker history, and the selected-index overlay.
+- [Configuration](docs/CONFIGURATION.md) — full `setup()` reference and picker history.
 - [Bindings cheatsheet](docs/BINDINGS.md) — machine-readable reference of every keymap, user command, and autocommand.
 - [Cheatsheet](docs/CHEATSHEET.md) — condensed single-page command/scope/keymap reference.
 - [Roadmap](docs/ROADMAP.md) — planned and potential features.

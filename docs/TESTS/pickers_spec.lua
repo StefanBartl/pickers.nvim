@@ -459,118 +459,15 @@ do
   )
 end
 
--- ── config.apply — experimental.selected_index normalisation ────────────────
+-- ── config.apply — removed selected_index shape is ignored, not applied ─────
 do
   local config = require("pickers.config")
-  local cfg0 = config.get()
-  check("selected_index: default disabled", cfg0.experimental.selected_index.enabled == false)
-  check(
-    "selected_index: default position",
-    cfg0.experimental.selected_index.position == "right_align"
-  )
-  check(
-    "selected_index: default preset",
-    cfg0.experimental.selected_index.highlight.preset == "default"
-  )
-
-  config.apply({
-    experimental = {
-      selected_index = {
-        enabled = true,
-        position = "right",
-        highlight = { preset = "accent" },
-      },
-    },
-  })
-  local cfg1 = config.get()
-  check("selected_index: enabled overridden", cfg1.experimental.selected_index.enabled == true)
-  check(
-    "selected_index: 'right' normalised to 'right_align'",
-    cfg1.experimental.selected_index.position == "right_align",
-    tostring(cfg1.experimental.selected_index.position)
-  )
-  check(
-    "selected_index: preset overridden",
-    cfg1.experimental.selected_index.highlight.preset == "accent"
-  )
-
-  config.apply({
-    experimental = {
-      selected_index = {
-        position = "not_a_real_position",
-        highlight = { preset = "not_a_real_preset" },
-      },
-    },
-  })
-  local cfg2 = config.get()
-  check(
-    "selected_index: invalid position falls back to previous",
-    cfg2.experimental.selected_index.position == "right_align",
-    tostring(cfg2.experimental.selected_index.position)
-  )
-  check(
-    "selected_index: invalid preset falls back to default",
-    cfg2.experimental.selected_index.highlight.preset == "default",
-    tostring(cfg2.experimental.selected_index.highlight.preset)
-  )
-
-  config.apply({
-    experimental = {
-      selected_index = {
-        highlight = {
-          preset = "custom",
-          custom = { fg = "#ff0000", bold = true, not_a_field = 1 },
-        },
-      },
-    },
-  })
-  local cfg3 = config.get()
-  check(
-    "selected_index: custom fg kept",
-    cfg3.experimental.selected_index.highlight.custom.fg == "#ff0000"
-  )
-  check(
-    "selected_index: custom bold kept",
-    cfg3.experimental.selected_index.highlight.custom.bold == true
-  )
-  check(
-    "selected_index: unknown custom field dropped",
-    cfg3.experimental.selected_index.highlight.custom.not_a_field == nil
-  )
-
-  check(
-    "selected_index: toggle_key default nil",
-    cfg3.experimental.selected_index.toggle_key == nil
-  )
-
-  config.apply({ experimental = { selected_index = { toggle_key = "<M-i>" } } })
-  local cfg4 = config.get()
-  check("selected_index: toggle_key set", cfg4.experimental.selected_index.toggle_key == "<M-i>")
-
-  config.apply({ experimental = { selected_index = { toggle_key = 42 } } })
-  local cfg5 = config.get()
-  check(
-    "selected_index: invalid toggle_key type keeps previous",
-    cfg5.experimental.selected_index.toggle_key == "<M-i>",
-    tostring(cfg5.experimental.selected_index.toggle_key)
-  )
-
-  config.apply({ experimental = { selected_index = { toggle_key = false } } })
-  local cfg6 = config.get()
-  check(
-    "selected_index: toggle_key = false clears it",
-    cfg6.experimental.selected_index.toggle_key == nil
-  )
-
-  -- Back-compat guard: the OLD top-level opts.selected_index shape (pre-move)
-  -- must be ignored, not silently applied to the wrong place.
-  config.apply({ experimental = { selected_index = { enabled = false } } }) -- reset
   ---@diagnostic disable-next-line: assign-type-mismatch
-  config.apply({ selected_index = { enabled = true } })
-  check(
-    "selected_index: old top-level shape is ignored",
-    config.get().experimental.selected_index.enabled == false
-  )
+  local ok = pcall(config.apply, { selected_index = { enabled = true } })
+  check("removed selected_index opts: apply() does not throw", ok)
+  ---@diagnostic disable-next-line: assign-type-mismatch
+  local ok2 = pcall(config.apply, { experimental = { selected_index = { enabled = true } } })
+  check("removed experimental opts: apply() does not throw", ok2)
 end
 
 -- ── config.apply — result_count normalisation; wrap_attach_mappings contract ─
@@ -581,8 +478,8 @@ do
   local cfg0 = config.get()
   check("result_count: default disabled", cfg0.result_count.enabled == false)
 
-  -- Fully inert contract (same as selected_index): disabled → wrap returns
-  -- `orig` completely unchanged, including nil.
+  -- Fully inert contract: disabled → wrap returns `orig` completely
+  -- unchanged, including nil.
   check(
     "result_count.wrap: disabled → nil stays nil",
     result_count.wrap_attach_mappings(nil) == nil
@@ -1189,30 +1086,6 @@ do
   check("history.fzf_opts: unified history file", fopts["--history"] == dir .. "/fzf_global.txt")
 
   vim.fn.delete(base, "rf")
-end
-
--- ── selected_index.debounce — thin adapter over lib.nvim.debounce ───────────
-do
-  local ok, debounce = pcall(require, "pickers.selected_index.debounce")
-  if not ok then
-    print("  skip selected_index.debounce tests (lib.nvim not on runtimepath)")
-  else
-    local calls = {}
-    local fn, cleanup = debounce.debounce(function(v)
-      calls[#calls + 1] = v
-    end, 20)
-
-    fn("a")
-    fn("b") -- resets the timer; only "b" should fire
-    vim.wait(200, function()
-      return #calls > 0
-    end)
-
-    check("debounce: fires exactly once", #calls == 1, "#=" .. #calls)
-    check("debounce: fires with the most recent args", calls[1] == "b", tostring(calls[1]))
-    check("debounce: cleanup is callable", type(cleanup) == "function")
-    cleanup() -- must not error when idle
-  end
 end
 
 -- ── pickers.smart.search — fd_args/rg_args exclude-glob wiring ──────────────

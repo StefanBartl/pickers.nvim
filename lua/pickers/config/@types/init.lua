@@ -60,15 +60,6 @@
 ---@field path_shorten boolean  Default: false
 
 -- ###########################################################################
--- Experimental (not-yet-stable) features
-
---- Namespaced separately from the stable top-level options so their config
---- surface can keep changing shape without a compat promise. See
---- docs/CONFIGURATION.md and ROADMAP.md's "Checklist audit" section.
----@class Pickers.ExperimentalConfig
----@field selected_index Pickers.SelectedIndexConfig
-
--- ###########################################################################
 -- Top-level configuration
 
 ---@class Pickers.Config
@@ -85,6 +76,5 @@
 ---@field result_count   Pickers.ResultCountConfig
 ---@field smart          Pickers.SmartConfig
 ---@field display        Pickers.DisplayConfig
----@field experimental   Pickers.ExperimentalConfig
 
 return {}
