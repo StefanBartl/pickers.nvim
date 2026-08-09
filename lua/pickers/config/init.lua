@@ -116,6 +116,7 @@ function M.apply(opts)
 
   if type(opts.engine) == "string" then cfg.engine = opts.engine end
   if type(opts.repos_dir) == "string" then cfg.repos_dir = expand_path(opts.repos_dir) end
+  if type(opts.deps_popup) == "boolean" then cfg.deps_popup = opts.deps_popup end
 
   if type(opts.collections) == "table" then
     cfg.collections = {}
