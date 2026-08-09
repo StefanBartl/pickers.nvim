@@ -10,6 +10,10 @@
 ---   preview_scroll_down → "preview-page-down"
 ---   preview_scroll_up   → "preview-page-up"
 ---
+--- `mouse_confirm` is also skipped: fzf-lua shells out to the real fzf
+--- binary, which handles mouse clicks itself (outside `keymap.builtin`) --
+--- not a remappable Neovim-side action, same as history.
+---
 --- Everything else (horizontal scroll, history) is silently skipped here — it's
 --- a static, unconditional fzf-lua limitation, not a runtime problem, so it does
 --- not belong in a startup notification (that would repeat on every launch with
@@ -33,6 +37,7 @@ local ACTION_TO_FZF = {
   preview_scroll_right = false,
   history_back = false,
   history_forward = false,
+  mouse_confirm = false,
 }
 
 --- Build the `keymap.builtin` table.

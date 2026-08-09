@@ -31,11 +31,21 @@
 --- engine-neutral names 1:1 (same trick as preview-scroll/history), so they
 --- fall through the default branch below and get bound on input+list+preview
 --- with no dedicated handling needed.
+---
+--- `mouse_confirm` → snacks' own `"confirm"` action, list window only (a
+--- click always focuses that buffer first, which is never in insert mode).
+--- Snacks already ships `<2-LeftMouse>` = "confirm" as its own default, so
+--- this is mostly a no-op at the default lhs -- it exists so a user's
+--- `cfg.keys.mouse_confirm` override (custom lhs, or `false` to unbind) is
+--- still honored by `keys.snacks_win()`.
 
 local M = {}
 
 --- Snacks treats these as history navigation → input window, insert mode only.
 local HISTORY = { history_back = true, history_forward = true }
+
+--- action name → snacks action name, list window (normal mode) only.
+local CONFIRM = { mouse_confirm = "confirm" }
 
 --- Handled elsewhere (pickers.entry_actions, or not applicable to snacks) --
 --- see @description.
@@ -51,6 +61,8 @@ function M.win(resolved)
       for _, lhs in ipairs(spec.lhs) do
         if HISTORY[action] then
           input[lhs] = { action, mode = { "i" } }
+        elseif CONFIRM[action] then
+          list[lhs] = CONFIRM[action]
         else
           -- Preview scroll: reachable from every window.
           input[lhs] = { action, mode = { "i", "n" } }

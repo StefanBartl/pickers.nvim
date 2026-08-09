@@ -117,6 +117,7 @@ Additionally, optional `keys.files` / `keys.grep` / `keys.smart` keymaps are bou
 | `split` | `<C-s>` | patched | native `ctrl-s`, not ours | export only¹ |
 | `vsplit` | `<C-v>` | patched | native `ctrl-v`, not ours | export only¹ |
 | `tab` | `<C-t>` | patched | native `ctrl-t`, not ours | export only¹ |
+| `mouse_confirm` | `<2-LeftMouse>` | patched (telescope's only gap) | native (fzf's own mouse handling) | export only¹ (native default too) |
 
 ¹ snacks: pickers.nvim doesn't own `Snacks.setup()`, so nothing is auto-registered there — merge `require("pickers.keys").snacks_win()` into your own `snacks.setup({ picker = { win = ... } })`.
 

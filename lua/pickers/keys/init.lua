@@ -12,6 +12,7 @@
 ---   create_file           open_background
 ---   preview_toggle
 ---   split   vsplit   tab
+---   mouse_confirm
 ---
 --- Installation mirrors `pickers.history`: rather than injecting per-call into
 --- every engine adapter, preview-scroll/history are patched onto each engine's
@@ -57,6 +58,17 @@
 --- (same class as its history keys) and simply not patched; snacks' action
 --- names happen to equal pickers.nvim's (`split`/`vsplit`/`tab`), so they pass
 --- straight through like preview-scroll/history do.
+---
+--- `mouse_confirm` double-clicks a result open (same as `<CR>`), results-
+--- window/normal-mode only:
+---   telescope → `actions.select_default`, bound in `mappings.n` (telescope
+---               has no default mouse mapping at all -- the actual gap).
+---   snacks    → its own `list.keys["<2-LeftMouse>"] = "confirm"` default;
+---               patched here too so a custom lhs/unbind in `cfg.keys` is
+---               still honored by `keys.snacks_win()`.
+---   fzf-lua   → not exposed via `keymap.builtin`; the underlying fzf binary
+---               handles mouse clicks itself, same capability-gap class as
+---               its history keys (see `pickers.keys.adapters.fzf`).
 
 local M = {}
 
@@ -85,6 +97,10 @@ M.ACTIONS = {
   split = { default = "<C-s>", modes = { "i", "n" } },
   vsplit = { default = "<C-v>", modes = { "i", "n" } },
   tab = { default = "<C-t>", modes = { "i", "n" } },
+  -- Results-window only: a click always focuses that buffer first, which is
+  -- never in insert mode (only the prompt buffer is), so "n" is the only
+  -- mode that can ever see this lhs.
+  mouse_confirm = { default = "<2-LeftMouse>", modes = { "n" } },
 }
 
 --- Stable iteration order (pairs() is unordered; adapters and tests want
@@ -103,6 +119,7 @@ M.ORDER = {
   "split",
   "vsplit",
   "tab",
+  "mouse_confirm",
 }
 
 --- Normalise one raw config value into a list of lhs strings.
