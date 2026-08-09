@@ -5,6 +5,11 @@
 ---@type Pickers.Config
 local M = {
   engine = "auto",
+  -- One-time "which CLI tools does this plugin want, and why" popup on
+  -- first setup() after install (via lib.nvim.deps). false disables it for
+  -- this plugin specifically, right here in the spec passed to setup() —
+  -- no vim.g needed. See README.
+  deps_popup = true,
   repos_dir = vim.env.REPOS_DIR or nil,
   collections = {},
 

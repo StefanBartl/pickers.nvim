@@ -65,10 +65,11 @@ Then open the picker with:
 [`deps` module](https://github.com/StefanBartl/lib.nvim/blob/main/lua/lib/nvim/deps/README.md).
 A popup explains what's missing the first time `setup()` runs after
 installing pickers.nvim; `:Lib deps show pickers.nvim` repeats it any time,
-and it's also folded into `:checkhealth pickers`. Opt out with
-`vim.g.lib_nvim_deps_disable_first_run = true` (every plugin) or
-`vim.g.lib_nvim_deps_disabled_plugins = { "pickers.nvim" }` (just this
-one), set anywhere in your config.
+and it's also folded into `:checkhealth pickers`. Disable it **right in
+this plugin's own spec**: `require("pickers").setup({ deps_popup = false })`.
+`vim.g.lib_nvim_deps_disable_first_run = true` (every plugin) /
+`vim.g.lib_nvim_deps_disabled_plugins = { "pickers.nvim" }` also still
+work, for turning it off without touching any plugin's config.
 
 ---
 
