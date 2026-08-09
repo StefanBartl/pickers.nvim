@@ -164,6 +164,16 @@ function M.check()
     end
   end
 
+  -- ── Declared tools (lib.nvim.deps) ──────────────────────────────────────
+  -- pickers.nvim's own docs/install.json — the same rg/fd checks above, but
+  -- with their declared `why` and a pointer to `:Lib deps show`. Does
+  -- nothing if lib.nvim.deps is unavailable (older lib.nvim).
+  local ok_deps, deps_health = pcall(require, "lib.nvim.deps.health")
+  if ok_deps then
+    vim.health.start("pickers.nvim — declared tools (lib.nvim.deps)")
+    deps_health.report_for("pickers.nvim")
+  end
+
   require("lib.nvim.usercmd.composer").checkhealth("Pickers")
 end
 

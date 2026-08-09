@@ -50,6 +50,14 @@ function M.setup(opts)
   if cfg.smart.frecency and cfg.smart.frecency.enabled then
     require("pickers.smart.frecency").patch(cfg)
   end
+
+  -- One-time (persisted across restarts) popup on the first setup() after
+  -- installing this plugin: which CLI tools it wants and why
+  -- (docs/install.json). `:Lib deps show pickers.nvim` thereafter. pcall'd:
+  -- an older lib.nvim without lib.nvim.deps mustn't break setup() over an
+  -- informational popup.
+  local ok_deps, deps = pcall(require, "lib.nvim.deps")
+  if ok_deps then deps.show_once("pickers.nvim") end
 end
 
 return M

@@ -59,6 +59,14 @@ Then open the picker with:
 :Pickers
 ```
 
+`rg`/`fd`/`fzf` are optional CLI tools that unlock specific sources
+(live-grep, the file/dir source, the fzf engine) — declared in
+[`docs/install.json`](docs/install.json), parsed by lib.nvim's
+[`deps` module](https://github.com/StefanBartl/lib.nvim/blob/main/lua/lib/nvim/deps/README.md).
+A popup explains what's missing the first time `setup()` runs after
+installing pickers.nvim; `:Lib deps show pickers.nvim` repeats it any time,
+and it's also folded into `:checkhealth pickers`.
+
 ---
 
 ## Documentation
