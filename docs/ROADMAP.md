@@ -175,36 +175,12 @@ a promise; it is a backlog of ideas ordered roughly by usefulness.
   used to bypass it with its own inline files/grep branch, now delegates to
   `pickers.command.dispatch` instead. See `lua/pickers/last.lua` and
   [docs/COMMANDS.md](COMMANDS.md#pickersrepeat).
-- [x] **Selected-index overlay.** `experimental.selected_index = { enabled,
-  position, highlight, toggle_key }` in `setup()` (moved under `experimental`,
-  see below) — shows the index of the selected entry in the results buffer.
-  Telescope-only, disabled by default. Native port of the (now retired)
-  `telescope-selected-index.nvim` companion plugin — see `lua/pickers/selected_index/`.
-  `toggle_key` registers an in-picker keymap to switch it on/off live for an
-  already-open results list, independent of the `enabled` default.
-  - [x] **Moved config under `experimental = { selected_index = {...} }`**
-    (opt-in namespace, signals it's not yet stable). The old top-level
-    `selected_index` opt is now ignored with a `notify.warn` pointing at the
-    new location, rather than silently applying to the wrong place — see
-    `lua/pickers/config/init.lua`.
-  - [x] **Indexing bug fixed** — root-caused, not just patched. It was wrong
-    on EVERY render (not intermittently): the code fell back to a plain
-    `row + 1`, which is only correct under telescope's non-default
-    `sorting_strategy = "ascending"`; under the default `"descending"`
-    strategy (best match closest to the prompt) `row + 1` is off by an
-    amount depending on `row`/`max_results`. Root cause, confirmed by
-    reading telescope's own source (`telescope/pickers.lua`): `entry.index`
-    (the primary lookup) is never actually set by telescope's builtins or
-    this plugin's own entry_makers, and the `compute_index_from_picker`
-    fallback's `picker.results`/`picker.manager.results`/`picker._results`
-    checks don't exist on a modern telescope `Picker`/`EntryManager`
-    (results live in a linked list, not a flat array) — so both old paths
-    always silently fell through to `row + 1`. Fixed by using
-    `picker:get_index(row)`, telescope's own authoritative row↔index
-    mapping (already accounts for `sorting_strategy`, no caching or timing
-    involved). `pickers.selected_index.compute`/`.cache` are kept as a
-    defensive last-resort fallback only. See
-    `lua/pickers/selected_index/init.lua`.
+- [x] ~~**Selected-index overlay.**~~ **Removed.** The `experimental.selected_index`
+  overlay (telescope-only) never worked reliably even after the row↔index
+  fix, so the whole feature was pulled — code, config surface (`experimental`
+  namespace and all), health check, docs, and tests. Passing
+  `selected_index`/`experimental.selected_index` to `setup()` is now silently
+  ignored (with a one-time `notify.warn`) rather than erroring.
 - [x] **Native picker history.** `history = { enabled, fzf_scope, dir, limit }` in
   `setup()` — file-based history under `stdpath("data")/pickers.nvim/history`,
   disabled by default. See `lua/pickers/history/`. `fzf_scope` (`"plugin"` |

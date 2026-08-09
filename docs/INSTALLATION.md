@@ -138,4 +138,4 @@ use {
 :checkhealth pickers
 ```
 
-Verifies: lib.nvim · telescope/fzf-lua/snacks.nvim · rg · fd/fdfind · repos_dir · registered aliases · selected_index status · each collection directory.
+Verifies: lib.nvim · telescope/fzf-lua/snacks.nvim · rg · fd/fdfind · repos_dir · registered aliases · each collection directory.

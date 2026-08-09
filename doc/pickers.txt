@@ -16,11 +16,10 @@ CONTENTS                                                      *pickers-contents*
   8. Compat commands .................. |pickers-compat|
   9. Configuration reference .......... |pickers-config|
  10. History .......................... |pickers-history|
- 11. Selected index display .......... |pickers-selected-index|
- 12. Result count ..................... |pickers-result-count|
- 13. Smart action ..................... |pickers-smart|
- 14. Display .......................... |pickers-display|
- 15. Health check ..................... |pickers-health|
+ 11. Result count ..................... |pickers-result-count|
+ 12. Smart action ..................... |pickers-smart|
+ 13. Display .......................... |pickers-display|
+ 14. Health check ..................... |pickers-health|
 
 ==============================================================================
 1. INTRODUCTION                                                  *pickers-intro*
@@ -113,14 +112,6 @@ Full options: >lua
       limit     = 200,
     },
     display = { path_shorten = false }, -- cosmetic, off by default (see |pickers-display|)
-    experimental = {                  -- not-yet-stable features
-      selected_index = {
-        enabled    = false,           -- telescope-only, off by default
-        position   = "right_align",   -- "overlay"|"right_align"|"eol"|"top"|"down"
-        highlight  = { preset = "default" },
-        toggle_key = nil,              -- e.g. "<M-i>" to toggle live in an open picker
-      },
-    },
   })
 <
 
@@ -543,17 +534,6 @@ All keys are optional.  Unset keys retain their default values.
     dir       (string|nil, default nil) — override history dir
     limit     (integer, default 200)  — max entries kept per history file
 
-  experimental (table)~
-    Not-yet-stable features, namespaced so their shape can keep changing
-    without a compat promise on the rest of setup(). Currently just
-    selected_index; an old top-level `selected_index` opt is ignored with a
-    warning pointing here.
-      selected_index (table)~
-        enabled    (bool, default false)          — master toggle, telescope-only
-        position   (string, default "right_align") — see |pickers-selected-index|
-        highlight  (table, default { preset = "default" })
-        toggle_key (string|nil, default nil)      — in-picker live toggle keymap
-
   result_count (table)~
     enabled (bool, default false) — master toggle, telescope-only, see
                                      |pickers-result-count|
@@ -634,78 +614,7 @@ fzf_scope (fzf-lua only)~
               change needed on your end.
 
 ==============================================================================
-11. SELECTED INDEX DISPLAY                              *pickers-selected-index*
-
-EXPERIMENTAL — lives under experimental.selected_index (moved there from a
-top-level selected_index; the old shape is now ignored with a warning
-pointing at the new location).  See "Experimental features" note below.
-
-An optional overlay showing the index of the currently selected entry
-(e.g. "12. ") directly in the results buffer, kept in sync as the selection
-moves.  Telescope-only — fzf-lua already shows a position/total counter
-natively, so the overlay is skipped there.  Disabled by default.
-
-Enable: >lua
-  require("pickers").setup({
-    experimental = {
-      selected_index = {
-        enabled   = true,
-        position  = "right_align",
-        highlight = { preset = "accent" },
-      },
-    },
-  })
-<
-
-position (one of)~
-  "overlay"      drawn over the start of the line
-  "right_align"  right-aligned virtual text (default)
-  "eol"          appended at end of line
-  "top"          virtual line above the entry
-  "down"         virtual line below the entry
-
-highlight.preset (one of)~
-  "default"  inherits TelescopeResultsFunction
-  "subtle" | "bold" | "accent" | "minimal" | "error" | "success"
-  "custom"   provide your own spec via highlight.custom
-
-highlight.custom (used when preset = "custom")~
-  { fg?, bg?, bold?, italic?, underline?, undercurl?, strikethrough?, blend? } >lua
-  highlight = { preset = "custom", custom = { fg = "#89dceb", bold = true } },
-<
-
-The highlight group is named `PickersSelectedIndex` — link or override it
-directly via `vim.api.nvim_set_hl` if preferred over the preset system.
-
-Live toggle~
-  toggle_key registers an in-picker keymap (insert + normal mode) that
-  switches the overlay on/off for the currently open results list, e.g.: >lua
-  require("pickers").setup({
-    experimental = {
-      selected_index = {
-        enabled    = false,     -- starts hidden
-        toggle_key = "<M-i>",   -- press inside any Telescope picker to show/hide
-      },
-    },
-  })
-<
-  toggle_key works independently of enabled: with enabled = true the overlay
-  starts visible and toggle_key hides it; with enabled = false it starts
-  hidden and toggle_key shows it. Leaving toggle_key unset (the default)
-  registers no extra keymap, so enabled = false alone stays fully inert.
-
-Indexing fix~
-  The overlay used to show the wrong number on every render (not just
-  intermittently): it fell back to a plain "row + 1", correct only under
-  telescope's non-default sorting_strategy = "ascending". Under the default
-  "descending" strategy (best match closest to the prompt), row + 1 is wrong
-  by an amount depending on row and max_results. It now uses
-  picker:get_index(row) -- telescope's own authoritative row<->index
-  mapping, which already accounts for sorting_strategy -- so the overlay is
-  correct regardless of strategy, with no caching or timing involved.
-
-==============================================================================
-12. RESULT COUNT                                          *pickers-result-count*
+11. RESULT COUNT                                          *pickers-result-count*
 
 Shows the live result count in the prompt window's title, e.g. "Find Files
 (128)".  Telescope-only — fzf-lua and snacks.nvim both already show a
@@ -723,7 +632,7 @@ live finder (e.g. live_grep) streams in matches, with no CursorMoved or
 TextChanged event to hang the update off of.
 
 ==============================================================================
-13. SMART ACTION                                                 *pickers-smart*
+12. SMART ACTION                                                 *pickers-smart*
 
 The smart action runs rg (content) AND fd (filenames) for the same live query
 and merges both result sets into ONE list ranked by relevance — a filename hit
@@ -791,7 +700,7 @@ Opt-in keymaps: cwd_smart, config_smart, folder_smart (nil by default; see
 compat command (see |pickers-collections|).
 
 ==============================================================================
-14. DISPLAY                                                    *pickers-display*
+13. DISPLAY                                                    *pickers-display*
 
 Cosmetic only, disabled by default.  `display.path_shorten = true` visually
 shortens long paths in the results list, via each engine's own native
@@ -806,15 +715,15 @@ mechanism -- no pickers.nvim-side logic: >lua
               by default, nothing to opt into
 
 ==============================================================================
-15. HEALTH CHECK                                                *pickers-health*
+14. HEALTH CHECK                                                *pickers-health*
 
 Run: >
   :checkhealth pickers
 <
 
 Checks: lib.nvim availability, telescope / fzf-lua / snacks.nvim presence,
-rg / fd in PATH, repos_dir existence, registered aliases count, selected_index
-status, and each collection directory.
+rg / fd in PATH, repos_dir existence, registered aliases count, and each
+collection directory.
 
 ==============================================================================
 vim:ft=help:tw=78:ts=2:et:

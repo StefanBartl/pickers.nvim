@@ -78,95 +78,6 @@ local function normalise_history(raw, current)
   return result
 end
 
----Validate and normalise the `selected_index` sub-config, merging into `current`.
----@internal
----@param raw table
----@param current Pickers.SelectedIndexConfig
----@return Pickers.SelectedIndexConfig
-local function normalise_selected_index(raw, current)
-  local result = vim.deepcopy(current)
-
-  if type(raw.enabled) == "boolean" then result.enabled = raw.enabled end
-
-  if type(raw.position) == "string" then
-    local allowed = {
-      overlay = true,
-      right_align = true,
-      eol = true,
-      top = true,
-      down = true,
-    }
-    local pos = raw.position == "right" and "right_align" or raw.position
-    if allowed[pos] then
-      result.position = pos
-    else
-      notify.warn(
-        string.format(
-          "Invalid selected_index.position %q, keeping %q",
-          raw.position,
-          result.position
-        )
-      )
-    end
-  end
-
-  if type(raw.highlight) == "table" then
-    local hl = { preset = result.highlight.preset }
-    local valid_presets = {
-      default = true,
-      subtle = true,
-      bold = true,
-      accent = true,
-      minimal = true,
-      error = true,
-      success = true,
-      custom = true,
-    }
-
-    if raw.highlight.preset ~= nil then
-      if valid_presets[raw.highlight.preset] then
-        hl.preset = raw.highlight.preset
-      else
-        notify.warn(
-          string.format(
-            'Invalid selected_index.highlight.preset %q, using "default"',
-            tostring(raw.highlight.preset)
-          )
-        )
-        hl.preset = "default"
-      end
-    end
-
-    if type(raw.highlight.custom) == "table" then
-      hl.custom = {}
-      local valid_attrs =
-        { "fg", "bg", "bold", "italic", "underline", "undercurl", "strikethrough", "blend" }
-      for _, attr in ipairs(valid_attrs) do
-        if raw.highlight.custom[attr] ~= nil then hl.custom[attr] = raw.highlight.custom[attr] end
-      end
-    end
-
-    result.highlight = hl
-  end
-
-  if raw.toggle_key ~= nil then
-    if type(raw.toggle_key) == "string" and raw.toggle_key ~= "" then
-      result.toggle_key = raw.toggle_key
-    elseif raw.toggle_key == false then
-      result.toggle_key = nil
-    else
-      notify.warn(
-        string.format(
-          "Invalid selected_index.toggle_key %s, keeping previous",
-          vim.inspect(raw.toggle_key)
-        )
-      )
-    end
-  end
-
-  return result
-end
-
 ---Validate and normalise the `keys` sub-config, merging into `current`.
 ---Each action accepts a single lhs string, a list of lhs strings, or `false`
 ---to unbind it. Invalid values are rejected with a warning and left unchanged.
@@ -247,18 +158,11 @@ function M.apply(opts)
     cfg.history = normalise_history(opts.history, cfg.history)
   end
 
-  if type(opts.selected_index) == "table" then
+  if type(opts.selected_index) == "table" or type(opts.experimental) == "table" then
     notify.warn(
-      "selected_index moved under experimental = { selected_index = {...} } "
-        .. "(opt-in, signals it's not yet stable) -- see docs/CONFIGURATION.md. "
-        .. "This top-level opts.selected_index was ignored."
+      "selected_index has been removed (it never worked reliably) -- "
+        .. "this opts.selected_index/opts.experimental was ignored."
     )
-  end
-
-  if type(opts.experimental) == "table" and type(opts.experimental.selected_index) == "table" then
-    cfg.experimental.selected_index =
-      normalise_selected_index(opts.experimental.selected_index, cfg.experimental.selected_index)
-    require("pickers.selected_index.highlight").apply(cfg.experimental.selected_index.highlight)
   end
 
   if type(opts.result_count) == "table" then

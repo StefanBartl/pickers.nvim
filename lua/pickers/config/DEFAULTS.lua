@@ -144,25 +144,6 @@ local M = {
     limit = 200,
   },
 
-  -- Not-yet-stable features, namespaced separately so their config surface
-  -- can keep changing shape without touching the stable top-level options.
-  experimental = {
-    -- Overlay showing the index of the currently selected entry in the
-    -- results buffer. Telescope-only, disabled by default. See
-    -- pickers.selected_index.
-    selected_index = {
-      enabled = false,
-      position = "right_align",
-      highlight = {
-        preset = "default",
-      },
-      -- In-picker keymap (insert + normal mode) that toggles the overlay
-      -- live for the currently open results list. nil (default) registers
-      -- no keymap at all, keeping enabled=false fully inert.
-      toggle_key = nil,
-    },
-  },
-
   -- Live result count shown in the prompt title (e.g. "Find Files (128)").
   -- Telescope-only, disabled by default -- fzf-lua and snacks.nvim both
   -- already show a position/total counter natively. See pickers.result_count.

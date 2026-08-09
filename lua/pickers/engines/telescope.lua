@@ -93,9 +93,7 @@ function M.pick_files(opts)
     end
   end
 
-  call_opts.attach_mappings = require("pickers.result_count").wrap_attach_mappings(
-    require("pickers.selected_index").wrap_attach_mappings(nil)
-  )
+  call_opts.attach_mappings = require("pickers.result_count").wrap_attach_mappings(nil)
   call_opts.history = history_opts()
   call_opts.path_display = path_display_opts()
 
@@ -124,9 +122,7 @@ function M.live_grep(opts)
       end
       return vim.list_extend(args, extra)
     end,
-    attach_mappings = require("pickers.result_count").wrap_attach_mappings(
-      require("pickers.selected_index").wrap_attach_mappings(nil)
-    ),
+    attach_mappings = require("pickers.result_count").wrap_attach_mappings(nil),
     history = history_opts(),
     path_display = path_display_opts(),
   })
@@ -177,9 +173,7 @@ function M.smart(opts)
       }),
       sorter = sorters.empty(),
       previewer = conf.values.grep_previewer({}),
-      attach_mappings = require("pickers.result_count").wrap_attach_mappings(
-        require("pickers.selected_index").wrap_attach_mappings(nil)
-      ),
+      attach_mappings = require("pickers.result_count").wrap_attach_mappings(nil),
       history = history_opts(),
     })
     :find()
@@ -226,16 +220,14 @@ function M.pick_item(opts)
       sorter = conf.values.generic_sorter({}),
       previewer = has_preview and conf.values.file_previewer({}) or false,
       history = history_opts(),
-      attach_mappings = require("pickers.result_count").wrap_attach_mappings(
-        require("pickers.selected_index").wrap_attach_mappings(function(_, _map)
-          actions.select_default:replace(function(bufnr)
-            actions.close(bufnr)
-            local sel = action_state.get_selected_entry()
-            if sel then opts.on_select(sel.value) end
-          end)
-          return true
+      attach_mappings = require("pickers.result_count").wrap_attach_mappings(function(_, _map)
+        actions.select_default:replace(function(bufnr)
+          actions.close(bufnr)
+          local sel = action_state.get_selected_entry()
+          if sel then opts.on_select(sel.value) end
         end)
-      ),
+        return true
+      end),
     })
     :find()
 end
@@ -271,16 +263,14 @@ function M.pick_dir(opts)
       sorter = conf.values.file_sorter({}),
       previewer = conf.values.file_previewer({}),
       history = history_opts(),
-      attach_mappings = require("pickers.result_count").wrap_attach_mappings(
-        require("pickers.selected_index").wrap_attach_mappings(function(_, _map)
-          actions.select_default:replace(function(bufnr)
-            actions.close(bufnr)
-            local sel = action_state.get_selected_entry()
-            if sel then opts.on_select(vim.fs.normalize(sel.path or sel.value or sel[1])) end
-          end)
-          return true
+      attach_mappings = require("pickers.result_count").wrap_attach_mappings(function(_, _map)
+        actions.select_default:replace(function(bufnr)
+          actions.close(bufnr)
+          local sel = action_state.get_selected_entry()
+          if sel then opts.on_select(vim.fs.normalize(sel.path or sel.value or sel[1])) end
         end)
-      ),
+        return true
+      end),
     })
     :find()
 end
