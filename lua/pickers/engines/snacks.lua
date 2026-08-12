@@ -22,6 +22,7 @@
 --- is nothing to opt into.
 
 local notify = require("lib.nvim.notify").create("[pickers.engines.snacks]")
+local spawn_env = require("lib.nvim.cross.run.env")
 
 local M = {}
 
@@ -213,7 +214,7 @@ function M.pick_dir(opts)
 
   vim.system(
     { "fd", "--type", "d", "--hidden", "--follow", "--exclude", ".git", ".", cwd },
-    { text = true },
+    spawn_env.apply({ text = true }),
     function(res)
       vim.schedule(function()
         if res.code ~= 0 then

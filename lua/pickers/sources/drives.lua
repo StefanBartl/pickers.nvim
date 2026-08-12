@@ -11,8 +11,29 @@
 --- POSIX:   df -P --output=target.
 
 local notify = require("lib.nvim.notify").create("[pickers.sources.drives]")
+local spawn_env = require("lib.nvim.cross.run.env")
 
 local M = {}
+
+-- ── Env-enriched argv runner ─────────────────────────────────────────────────
+-- `lib.nvim.cross.run_argv.run_blocking_captured` takes no opts (no env
+-- support), so `Get-PSDrive`/`df` are run through `vim.system` directly with
+-- a completed env (PATH + session vars) instead — neither binary is exotic,
+-- but a short PATH from a non-login-shell start would still miss `df` on a
+-- minimal $PATH, and Windows PowerShell least of all should be assumed to be
+-- resolvable without it. Falls back to `run_argv` (and, transitively,
+-- `vim.fn.system`) on Neovim < 0.10, matching the module's own fallback.
+---@internal
+---@param cmd string[]
+---@return string output
+local function run_captured(cmd)
+  if vim.system then
+    local obj = vim.system(cmd, spawn_env.apply({ text = true })):wait()
+    return (obj and obj.stdout) or ""
+  end
+  local _, out = require("lib.nvim.cross.run_argv").run_blocking_captured(cmd)
+  return out or ""
+end
 
 -- Module-level cache — drives don't change during a session.
 local _cache = nil ---@type string[]|nil
@@ -49,7 +70,7 @@ end
 ---@return string[]
 local function windows_roots()
   local roots = {}
-  local _, out = require("lib.nvim.cross.run_argv").run_blocking_captured({
+  local out = run_captured({
     "powershell",
     "-NoProfile",
     "-ExecutionPolicy",
@@ -92,8 +113,7 @@ end
 ---@return string[]
 local function posix_roots()
   local dirs = {}
-  local _, out =
-    require("lib.nvim.cross.run_argv").run_blocking_captured({ "df", "-P", "--output=target" })
+  local out = run_captured({ "df", "-P", "--output=target" })
   local lines = vim.split(out or "", "\r?\n")
   -- Drop the header line ("Mounted on") that `tail -n +2` used to strip.
   for i = 2, #lines do
