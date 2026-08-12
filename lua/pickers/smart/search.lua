@@ -25,6 +25,7 @@
 local M = {}
 
 local uv = vim.uv or vim.loop
+local spawn_env = require("lib.nvim.cross.run.env")
 
 ---First executable found among `names`, or nil.
 ---@internal
@@ -107,7 +108,7 @@ function M.collect(opts)
       local cmd = { fd }
       vim.list_extend(cmd, M.fd_args(find, query))
       local ok, res = pcall(function()
-        return vim.system(cmd, { cwd = root, text = true }):wait(timeout)
+        return vim.system(cmd, spawn_env.apply({ cwd = root, text = true })):wait(timeout)
       end)
       if ok and res and res.stdout then
         for line in res.stdout:gmatch("[^\r\n]+") do
@@ -128,7 +129,7 @@ function M.collect(opts)
       local cmd = { rg }
       vim.list_extend(cmd, M.rg_args(find, opts.additional_args, query))
       local ok, res = pcall(function()
-        return vim.system(cmd, { cwd = root, text = true }):wait(timeout)
+        return vim.system(cmd, spawn_env.apply({ cwd = root, text = true })):wait(timeout)
       end)
       if ok and res and res.stdout then
         for line in res.stdout:gmatch("[^\r\n]+") do
