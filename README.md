@@ -22,6 +22,12 @@ find-files (filenames) for the same live query and merges both into one list
 **ranked by relevance**, so hits interleave by score regardless of source
 instead of showing as two separate blocks. See [docs/COMMANDS.md](docs/COMMANDS.md#the-smart-action).
 
+`:Pickers builtin <name>` also gives tab-completed, engine-agnostic access to
+~40 native pickers that aren't a scope×action — git branches/log/status/diff,
+every LSP list, diagnostics, help, marks, buffers, registers, and more —
+dispatching straight into the resolved engine's own picker function. See
+[docs/BUILTINS.md](docs/BUILTINS.md) for the full name list and per-engine parity matrix.
+
 > 💡 Pairs well with [insights.nvim](https://github.com/StefanBartl/insights.nvim):
 > use `pickers.nvim` to jump into any repo, then get an instant structural
 > overview of it with `insights.nvim`.
@@ -77,6 +83,7 @@ work, for turning it off without touching any plugin's config.
 
 - [Installation](docs/INSTALLATION.md) — requirements, lazy.nvim (recommended + lazy-loading variant), packer.nvim, and health check.
 - [Commands](docs/COMMANDS.md) — the `:Pickers` command syntax, scopes, and compat command aliases.
+- [Native pickers](docs/BUILTINS.md) — `:Pickers builtin <name>`, the full name list, and the per-engine parity matrix.
 - [Collections](docs/COLLECTIONS.md) — defining user scopes over your own directories.
 - [Keymaps](docs/KEYMAPS.md) — default keymaps and how to change or disable them.
 - [Configuration](docs/CONFIGURATION.md) — full `setup()` reference and picker history.
