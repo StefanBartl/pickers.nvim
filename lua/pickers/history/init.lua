@@ -63,10 +63,12 @@ end
 ---Install pickers.nvim's history as the engines' own default, without the
 ---user touching their own `telescope.setup()`/`fzf-lua.setup()` calls.
 ---
---- Both engines are patched deferred via `vim.schedule()`, so this call runs
---- after the current synchronous startup batch (i.e. after all lazy.nvim
---- `config()` functions) instead of forcing a `require("telescope")` (or
---- fzf-lua) load on every startup even when the user never opens a picker.
+--- Each engine is patched only once it is actually loaded, via
+--- `pickers.engines.when_loaded` — so this never forces a
+--- `require("telescope")` (or fzf-lua) on a startup where the user opens no
+--- picker. This was a `vim.schedule()` with the same intent, but that only
+--- defers to the end of the current event-loop iteration, which is still
+--- startup; the engine got loaded there regardless.
 ---
 --- Telescope: call order never mattered for correctness anyway — it merges
 --- `defaults.history` with "keep" semantics (see
@@ -79,14 +81,16 @@ end
 --- regardless of plugin declaration order.
 ---@param cfg Pickers.Config
 function M.patch(cfg)
-  vim.schedule(function()
+  local when_loaded = require("pickers.engines.when_loaded")
+
+  when_loaded.run("telescope", function()
     pcall(function()
       require("telescope").setup({ defaults = { history = M.telescope_opts(cfg) } })
     end)
   end)
 
   if cfg.history.fzf_scope == "patch" then
-    vim.schedule(function()
+    when_loaded.run("fzf-lua", function()
       pcall(function()
         require("fzf-lua").setup({ fzf_opts = M.fzf_opts(cfg) }, true)
       end)

@@ -198,23 +198,27 @@ end
 --- Install the in-picker keys onto each available engine's global config, so
 --- they apply to every picker that engine opens. No-op when disabled.
 ---
---- Both telescope and fzf-lua are patched deferred via `vim.schedule` — not just
---- to land after the user's own `setup()` in the startup batch (same reasoning
---- as `pickers.history.patch`), but because `require("telescope")` alone pulls
---- in its full module tree; doing that eagerly during `pickers.nvim`'s own
---- (non-lazy) `setup()` forced telescope to fully load on every startup even
---- when the user never opens a picker. `defaults.mappings` deep-merges
---- regardless of call order, so deferring doesn't change the end result — see
---- `pickers.keys.adapters.telescope`. Snacks is not patched here — pickers.nvim
---- does not own `Snacks.setup()`; use `keys.snacks_win()`.
+--- Each engine is patched only once it is actually loaded, via
+--- `pickers.engines.when_loaded`. This used to be a `vim.schedule` with the
+--- stated intent of not forcing telescope to load on every startup — but
+--- `vim.schedule` only defers to the end of the current event-loop iteration,
+--- which is still startup, so `require("telescope")` ran there anyway and
+--- pulled in its whole module tree (measured: ~117ms, and it dragged
+--- telescope-github.nvim and pdfport.nvim along with it). `defaults.mappings`
+--- deep-merges regardless of call order, so waiting doesn't change the end
+--- result — see `pickers.keys.adapters.telescope`. Snacks is not patched
+--- here — pickers.nvim does not own `Snacks.setup()`; use `keys.snacks_win()`.
 ---@param cfg Pickers.Config|nil
 function M.patch(cfg)
   cfg = cfg or require("pickers.config").get()
   local resolved = M.resolve(cfg)
   if vim.tbl_isempty(resolved) then return end
 
-  vim.schedule(function()
+  local when_loaded = require("pickers.engines.when_loaded")
+  when_loaded.run("telescope", function()
     require("pickers.keys.adapters.telescope").patch(resolved)
+  end)
+  when_loaded.run("fzf-lua", function()
     require("pickers.keys.adapters.fzf").patch(resolved)
   end)
 end
