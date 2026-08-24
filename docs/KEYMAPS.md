@@ -6,7 +6,7 @@ They mirror the keymaps from the original individual modules exactly:
 
 | Keymap | Action | Was |
 |---|---|---|
-| `<leader>dp` | `:Pickers dir` — navigation picker | `custom.dir_picker` |
+| `<leader>dp` | `:Pickers dir` — navigation picker; **a count is the depth** (`2<leader>dp` = two levels up) | `custom.dir_picker` |
 | `<leader>.` | `:Pickers builtin explorer` — file explorer/browser (active engine) | `telescope file_browser` / `Snacks.explorer` |
 | `<leader>fb` | `:Pickers folder files` — pick folder | `custom.find_in_folder` |
 | `<leader>fc` | `:Pickers config files` — find in config | `custom.find_config` |

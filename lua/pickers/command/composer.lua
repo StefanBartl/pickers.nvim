@@ -70,14 +70,29 @@ local function action_arg()
   return { name = "action", type = "STRING", values = ACTION_VALUES, optional = true }
 end
 
--- "find all" escape hatch: forces hidden+no_ignore+follow for this one
--- search only. Only meaningful after `files`, but offered unconditionally
--- (same trailing-optional-slot leniency as action_arg) — pickers.command
--- silently ignores it for grep/smart.
+-- Search-flag escalation for one search only. `all` is the shorthand for
+-- hidden+no_ignore+follow; the three are also accepted individually and
+-- combine with `+`, since wanting one is not wanting the others. Only
+-- meaningful after `files`, but offered unconditionally (same
+-- trailing-optional-slot leniency as action_arg) — pickers.command silently
+-- ignores it for grep/smart.
 ---@internal
 ---@return Lib.UserCmd.Composer.ArgSpec
 local function find_all_arg()
-  return { name = "all", type = "STRING", values = { "all" }, optional = true }
+  return {
+    name = "all",
+    type = "STRING",
+    values = {
+      "all",
+      "hidden",
+      "no_ignore",
+      "follow",
+      "hidden+no_ignore",
+      "hidden+follow",
+      "no_ignore+follow",
+    },
+    optional = true,
+  }
 end
 
 ---@internal

@@ -20,7 +20,7 @@ A single, machine-readable reference of every keymap, user-command and autocomma
 
 | Default Key (`default`) | Config Key (`config`) | Triggers Command (`maps_to`) | Description |
 | --- | --- | --- | --- |
-| `<leader>dp` | `"dir_pick"` | `:Pickers dir` | Dir navigation picker (alias / depth / path) |
+| `<leader>dp` | `"dir_pick"` | `:Pickers dir` | Dir navigation picker (alias / depth / path). A count is the depth: `2<leader>dp` = `:Pickers dir 2` |
 | `<leader>.` | `"explorer"` | `:Pickers builtin explorer` | File explorer / browser on the active engine |
 | `<leader>fb` | `"folder_files"` | `:Pickers folder files` | Find files in an interactively picked folder |
 | `<leader>fc` | `"config_files"` | `:Pickers config files` | Find files in the Neovim config dir |

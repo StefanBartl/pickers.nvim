@@ -280,6 +280,21 @@ separately in each of 5 custom utilities, all replaced by pickers.nvim's one
   correct, not a gap. New opt-in `keymaps.cwd_find_all` (nil by default,
   same convention as `cwd_files`). See `lua/pickers/command/init.lua`,
   `lua/pickers/actions/files.lua`.
+- [x] **Selective escalation** (2026-08-24). `all` is now the shorthand:
+  `hidden`, `no_ignore` and `follow` are also accepted individually and
+  combine with `+` (`:Pickers cwd files hidden+follow`). The three do
+  different things — dotfiles, ignored files, symlinks — so all-or-nothing
+  meant walking `node_modules` just to see a `.env`, which is the
+  flag/option audit's entry. The token resolves to the same override table
+  `actions.files.run` already merged, so nothing downstream changed; an
+  unknown flag is reported and the escalation dropped rather than applied in
+  part. Covered in `docs/TESTS/pickers_spec.lua`.
+- [x] **`<leader>dp` reads a count** (2026-08-24) as the directory depth:
+  `2<leader>dp` is two levels up, the same thing `:Pickers dir 2` has always
+  meant. The concept existed on the command and nothing was passing it from
+  the keymap. Raw `vim.v.count`, not `count1` — 0 has to stay
+  distinguishable, since no count opens the interactive picker while
+  `:Pickers dir 0` is a real depth (the cwd itself).
 - [x] **Split/vsplit/tab as a unified `keys` action.** `keys = { split,
   vsplit, tab }`, default `<C-s>`/`<C-v>`/`<C-t>` across all three engines
   (matching the old fzf-lua config). Wired the same shape as

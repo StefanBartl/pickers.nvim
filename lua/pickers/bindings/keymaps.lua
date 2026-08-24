@@ -1,12 +1,12 @@
 ---@module 'pickers.bindings.keymaps'
 ---@brief Built-in normal-mode keymaps (registered when keymaps.enable = true).
 ---@description
----   <leader>dp     Dir navigation picker
+---   <leader>dp     Dir navigation picker; a count is the depth (`2<lhs>` = two levels up)
 ---   <leader>fb     Find files in picked folder
 ---   <leader>fc     Find files in nvim config
 ---   <leader>gc     Grep in nvim config
 ---   <leader>li     Live grep in CWD
----   <leader>.      File explorer / browser (active engine)
+---   <leader>.      File explorer / browser (active engine)  [keymaps.explorer]
 ---   (cwd_files)    Find files in CWD              (nil by default)
 ---   (repos_files)  Pick a repo, then find files    (nil by default)
 ---   (repos_grep)   Pick a repo, then live grep     (nil by default)
@@ -23,7 +23,17 @@ local M = {}
 ---@param km Pickers.Keymaps
 function M.register(km)
   map(km.dir_pick, function()
-    require("pickers.command").handle({ fargs = { "dir" } })
+    -- A count is the depth: `2<lhs>` is "two levels up", the same thing
+    -- `:Pickers dir 2` has always meant. The concept existed on the command
+    -- and nothing was passing it from the keymap.
+    --
+    -- Raw `vim.v.count`, not `count1`: 0 has to stay distinguishable, since
+    -- no count opens the interactive picker while `:Pickers dir 0` is a real
+    -- depth (the cwd itself).
+    local n = vim.v.count
+    require("pickers.command").handle({
+      fargs = n > 0 and { "dir", tostring(n) } or { "dir" },
+    })
   end, "[pickers] Dir: navigate (alias / depth / path)")
 
   map(km.explorer, function()

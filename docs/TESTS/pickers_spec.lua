@@ -1587,6 +1587,55 @@ do
   package.loaded["snacks.picker"] = prev_snacks
 end
 
+-- ── search-flag escalation ──────────────────────────────────────────────────
+--
+-- `all` was the only accepted token, forcing hidden+no_ignore+follow together.
+-- The three do different things — hidden reaches dotfiles, no_ignore reaches
+-- ignored ones, follow crosses symlinks — so all-or-nothing meant walking
+-- node_modules just to see a .env. What matters here is that `all` still
+-- means all three, that each name works alone, that they combine, and that a
+-- typo is reported rather than silently dropping the escalation.
+do
+  local files = require("pickers.actions.files")
+  local real_run = files.run
+  local seen
+  files.run = function(_, _, override)
+    seen = override
+  end
+
+  local function escalate(token)
+    seen = nil
+    require("pickers.command").handle({ fargs = { "cwd", "files", token } })
+    return seen
+  end
+
+  local all = escalate("all")
+  check(
+    "find_all: `all` still means all three",
+    type(all) == "table" and all.hidden and all.no_ignore and all.follow,
+    vim.inspect(all)
+  )
+
+  local hidden = escalate("hidden")
+  check(
+    "find_all: a single flag sets only itself",
+    type(hidden) == "table" and hidden.hidden and not hidden.no_ignore and not hidden.follow,
+    vim.inspect(hidden)
+  )
+
+  local combo = escalate("hidden+follow")
+  check(
+    "find_all: `+` combines without pulling in the third",
+    type(combo) == "table" and combo.hidden and combo.follow and not combo.no_ignore,
+    vim.inspect(combo)
+  )
+
+  check("find_all: no token means no override", escalate(nil) == nil)
+  check("find_all: an unknown flag yields no override", escalate("bogus") == nil)
+
+  files.run = real_run
+end
+
 -- ── Summary ─────────────────────────────────────────────────────────────────
 print(string.format("\n%d passed, %d failed", passed, failed))
 os.exit(failed == 0 and 0 or 1)

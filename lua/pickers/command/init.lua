@@ -65,16 +65,15 @@ end
 ---@param action          Pickers.Action
 ---@param source          Pickers.Source
 ---@param engine_mod      table
----@param force_find_all  boolean|nil  "find all" escape hatch (files action only)
-local function dispatch_action(action, source, engine_mod, force_find_all)
+---@param find_all  table|nil  search-flag override (files action only)
+local function dispatch_action(action, source, engine_mod, find_all)
   require("pickers.last").set(action, source)
   if action == "grep" then
     require("pickers.actions.grep").run(source, engine_mod)
   elseif action == "smart" then
     require("pickers.actions.smart").run(source, engine_mod)
   else
-    local override = force_find_all and { hidden = true, no_ignore = true, follow = true } or nil
-    require("pickers.actions.files").run(source, engine_mod, override)
+    require("pickers.actions.files").run(source, engine_mod, find_all)
   end
 end
 
@@ -91,7 +90,7 @@ end
 ---@param source          Pickers.Source|nil
 ---@param action          Pickers.Action|nil
 ---@param engine_mod      table
----@param force_find_all  boolean|nil
+---@param force_find_all  table|nil
 local function after_source(source, action, engine_mod, force_find_all)
   if not source then return end
   if action then
@@ -108,7 +107,7 @@ end
 ---@param scope           string
 ---@param action          Pickers.Action|nil
 ---@param engine_mod      table
----@param force_find_all  boolean|nil
+---@param force_find_all  table|nil
 local function run_standard_scope(scope, action, engine_mod, force_find_all)
   local cfg = require("pickers.config").get()
   local ok, src_mod = pcall(require, "pickers.sources." .. scope)
@@ -135,7 +134,7 @@ end
 ---@param coll            Pickers.Collection
 ---@param action          Pickers.Action|nil
 ---@param engine_mod      table
----@param force_find_all  boolean|nil
+---@param force_find_all  table|nil
 local function run_collection_scope(coll, action, engine_mod, force_find_all)
   local cfg = require("pickers.config").get()
   require("pickers.sources.collection").get(coll, cfg, function(source)
@@ -159,6 +158,38 @@ function M.handle(opts)
   local scope = fargs[1]
   local arg2 = fargs[2]
   local arg3 = fargs[3]
+
+  ---Resolve the search-flag escalation token into the override table
+  ---`actions.files` takes, or nil when none was given.
+  ---
+  --- `all` stays the shorthand for all three. The three names are also
+  --- accepted individually and can be combined with `+`, because the flags do
+  --- different things and wanting one is not wanting the others: `hidden`
+  --- reaches dotfiles, `no_ignore` reaches ignored ones, `follow` crosses
+  --- symlinks. All-or-nothing meant reaching into `node_modules` just to see
+  --- a `.env`.
+  ---@param token string|nil
+  ---@return table|nil override
+  local function find_all_override(token)
+    if not token or token == "" then return nil end
+    if token == "all" then return { hidden = true, no_ignore = true, follow = true } end
+
+    local override, matched = {}, false
+    for part in token:gmatch("[^+,]+") do
+      part = vim.trim(part)
+      if part == "hidden" or part == "no_ignore" or part == "follow" then
+        override[part] = true
+        matched = true
+      elseif part ~= "" then
+        notify.warn(
+          ("Unknown search flag '%s'. Valid: all, hidden, no_ignore, follow (combine with +)"):format(
+            part
+          )
+        )
+      end
+    end
+    return matched and override or nil
+  end
 
   -- :Pickers → interactive scope picker (built-ins + collections)
   if not scope or scope == "" then
@@ -203,7 +234,7 @@ function M.handle(opts)
       )
       action = nil
     end
-    run_standard_scope(scope, action, engine_mod, arg3 == "all")
+    run_standard_scope(scope, action, engine_mod, find_all_override(arg3))
     return
   end
 
@@ -217,7 +248,7 @@ function M.handle(opts)
       )
       action = nil
     end
-    run_collection_scope(coll, action, engine_mod, arg3 == "all")
+    run_collection_scope(coll, action, engine_mod, find_all_override(arg3))
     return
   end
 

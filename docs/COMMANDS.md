@@ -11,6 +11,23 @@
 `action` is one of `files`, `grep`, or `smart`. When an argument is omitted an
 interactive picker appears (`hover_select` or `vim.ui.select`).
 
+### Search-flag escalation (2026-08-24)
+
+`all` is the shorthand. The three flags are also accepted individually and
+combine with `+`:
+
+```vim
+:Pickers cwd files hidden            " dotfiles, but still respect .gitignore
+:Pickers cwd files hidden+follow     " ...and cross symlinks
+:Pickers cwd files no_ignore         " ignored files, but no dotfiles
+:Pickers cwd files all               " all three, as before
+```
+
+They do different things — `hidden` reaches dotfiles, `no_ignore` reaches
+ignored ones, `follow` crosses symlinks — so all-or-nothing meant walking
+`node_modules` just to see a `.env`. An unknown flag is reported and the
+escalation is dropped rather than silently applied in part.
+
 A trailing `all` after `files` is the **"find all" escape hatch**: it forces
 `hidden`+`no_ignore`+`follow` on for this one search only, regardless of
 configured `find.*` defaults — e.g. `:Pickers cwd files all`. It works for
