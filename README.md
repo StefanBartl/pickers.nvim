@@ -50,12 +50,10 @@ Requires [lib.nvim](https://github.com/StefanBartl/lib.nvim) and one of telescop
   "StefanBartl/pickers.nvim",
   lazy = false,                      -- required: must load at startup for keymaps
   dependencies = { "StefanBartl/lib.nvim" },
-  config = function()
-    require("pickers").setup({
-      engine    = "auto",            -- "auto" | "telescope" | "fzf" | "snacks"
-      repos_dir = vim.env.REPOS_DIR,
-    })
-  end,
+  opts = {
+    -- engine defaults to "auto" (telescope | fzf | snacks, whichever is there)
+    repos_dir = vim.env.REPOS_DIR,
+  },
 }
 ```
 
