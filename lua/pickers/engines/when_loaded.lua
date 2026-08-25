@@ -53,9 +53,7 @@ function M.run(module, fn)
   vim.api.nvim_create_autocmd("User", {
     pattern = "LazyLoad",
     callback = function(ev)
-      if ev.data ~= plugin then
-        return
-      end
+      if ev.data ~= plugin then return end
       fn()
       return true -- one-shot: delete this autocmd
     end,
