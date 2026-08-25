@@ -18,13 +18,13 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           version: v2.5.2
-          args: --check lua plugin docs/TESTS
+          args: --check lua plugin TESTS
 
       - name: Install luacheck
         run: sudo apt-get update && sudo apt-get install -y luarocks && sudo luarocks install luacheck
 
       - name: luacheck
-        run: luacheck lua plugin docs/TESTS
+        run: luacheck lua plugin TESTS
 
   # Real gate: the framework-free unit suite. lib.nvim is checked out as a
   # sibling so the command.complete tests run too (they need lib.nvim.notify).
@@ -52,4 +52,4 @@ jobs:
         working-directory: pickers.nvim
         env:
           REPOS_DIR: ${{ github.workspace }}
-        run: nvim -l docs/TESTS/pickers_spec.lua
+        run: nvim -l TESTS/pickers_spec.lua

@@ -2,7 +2,7 @@
 ---@brief Shared scorer + merger for the smart action.
 ---@description
 --- Pure, engine-independent, side-effect free (so it is unit-tested directly in
---- docs/TESTS/pickers_spec.lua). Both file candidates and grep candidates are
+--- TESTS/pickers_spec.lua). Both file candidates and grep candidates are
 --- scored on ONE comparable scale, then merged and sorted into a single ranked
 --- list — this is what makes the smart action interleave both sources by
 --- relevance instead of showing one block then the other.

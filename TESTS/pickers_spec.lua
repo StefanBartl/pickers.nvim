@@ -1,7 +1,7 @@
 -- pickers.nvim — unit tests (no framework, no network).
 --
 -- Run:
---   nvim -l docs/TESTS/pickers_spec.lua
+--   nvim -l TESTS/pickers_spec.lua
 --
 -- The script derives its own runtimepath from its location and picks up
 -- lib.nvim as a sibling repo (../lib.nvim) if present. Exits non-zero on
@@ -10,7 +10,7 @@
 -- ── Self-bootstrapping runtimepath ──────────────────────────────────────────
 local this = debug.getinfo(1, "S").source:sub(2) -- strip leading '@'
 local tests_dir = vim.fn.fnamemodify(this, ":h")
-local root = vim.fn.fnamemodify(tests_dir, ":h:h") -- docs/TESTS → repo root
+local root = vim.fn.fnamemodify(tests_dir, ":h:h") -- TESTS → repo root
 vim.opt.runtimepath:append(root)
 
 -- $LIB_NVIM_PATH is the convention shared with lib.nvim's other dependents

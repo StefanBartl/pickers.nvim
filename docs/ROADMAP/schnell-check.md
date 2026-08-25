@@ -12,7 +12,7 @@
 | ✅ | UI-Cleanup | UI delegated to hover_select/telescope/fzf, which own their cleanup. |
 | ✅ | Performance-Hotspots | None; dispatcher only. |
 | ✅ | Annotationen vollständig | `@module`/`@brief`/`@param`/`@return` + central `@types`. |
-| ✅ | Testbarkeit | Pure helpers unit-tested (`docs/TESTS`). |
+| ✅ | Testbarkeit | Pure helpers unit-tested (`TESTS`). |
 | ✅ | Import-Reihenfolge | Followed. |
 
 ## PR-Review detail

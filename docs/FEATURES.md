@@ -13,7 +13,7 @@
   (`sources/collection.lua`, `repos.lua`, `wkdbooks.lua`) are unaffected. First
   external consumer: filetree.nvim's `create_from_template` template picker.
   See `lua/pickers/engines/@types/init.lua` (`Pickers.Item`) and
-  `docs/TESTS/pickers_spec.lua`'s `pick_item/*` checks.
+  `TESTS/pickers_spec.lua`'s `pick_item/*` checks.
 
 - [x] **Smart action (combined grep + find files).** A third action alongside
   `files`/`grep`: `:Pickers <scope> smart` runs `rg` (content) and `fd`
@@ -288,7 +288,7 @@ separately in each of 5 custom utilities, all replaced by pickers.nvim's one
   flag/option audit's entry. The token resolves to the same override table
   `actions.files.run` already merged, so nothing downstream changed; an
   unknown flag is reported and the escalation dropped rather than applied in
-  part. Covered in `docs/TESTS/pickers_spec.lua`.
+  part. Covered in `TESTS/pickers_spec.lua`.
 - [x] **`<leader>dp` reads a count** (2026-08-24) as the directory depth:
   `2<leader>dp` is two levels up, the same thing `:Pickers dir 2` has always
   meant. The concept existed on the command and nothing was passing it from
@@ -353,7 +353,7 @@ POSIX path; today's plain-prompt `system` scope is simpler and isn't broken.
   there — `Program Files`, `Users\<Full Name>`); fixed.
 - [x] Fix `system` source passing the search path as fd's first positional
   (interpreted as a pattern instead of a path on Windows).
-- [x] `docs/TESTS/**` for command parsing, collection normalisation and PascalCase conversion.
+- [x] `TESTS/**` for command parsing, collection normalisation and PascalCase conversion.
 
 ## Checklist audit — open items
 
@@ -364,7 +364,7 @@ Distilled from `docs/ROADMAP/` audit files (applied Lua/Neovim checklists). Orde
 - [x] Use `lib.nvim.autocmd` + a named augroup (`pickers.nvim`) instead of raw
   `nvim_create_autocmd` (`lua/pickers/bindings/autocmds.lua`), with raw fallback.
 - [x] Add `stylua.toml` + `.luacheckrc` and a GitHub Actions CI (advisory lint +
-  `nvim -l docs/TESTS/pickers_spec.lua` as the gate).
+  `nvim -l TESTS/pickers_spec.lua` as the gate).
 - [x] Flip CI linters (stylua/luacheck) from advisory to gating — repo is
   stylua-formatted and luacheck-clean (0 warnings).
 - [x] Structured error types — `lua/pickers/error.lua` (`Pickers.Error`/`ErrorKind`

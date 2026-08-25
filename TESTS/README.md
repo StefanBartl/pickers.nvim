@@ -6,7 +6,7 @@ beyond `lib.nvim` (auto-detected as a sibling repo or via `$REPOS_DIR`).
 ## Run
 
 ```sh
-nvim -l docs/TESTS/pickers_spec.lua
+nvim -l TESTS/pickers_spec.lua
 ```
 
 The script bootstraps its own `runtimepath` from its file location, so it works
