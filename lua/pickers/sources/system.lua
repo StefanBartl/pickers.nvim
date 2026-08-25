@@ -28,10 +28,12 @@ end
 
 ---Parse user input into an fd argv table.
 ---@internal
----@param input  string
----@param fd     string   fd executable name
----@return string[]
-local function build_fd_cmd(input, fd)
+---@param input     string
+---@param fd        string     fd executable name
+---@param fallback  string[]   Roots to search when the input names no path
+---@return string[] cmd
+---@return string[] paths  The roots actually searched, for the engine's `roots`
+local function build_fd_cmd(input, fd, fallback)
   local name = nil
   local ext = nil
   local paths = {}
@@ -46,7 +48,7 @@ local function build_fd_cmd(input, fd)
     end
   end
 
-  if #paths == 0 then paths = { "/" } end
+  if #paths == 0 then paths = fallback end
 
   -- fd argv is: fd [OPTIONS] <pattern> <path...>. The pattern must always be the
   -- first positional — an empty string matches everything. Without it fd would
@@ -63,7 +65,38 @@ local function build_fd_cmd(input, fd)
   cmd[#cmd + 1] = "--hidden"
   cmd[#cmd + 1] = "--follow"
 
-  return cmd
+  return cmd, paths
+end
+
+---Whether the input already names at least one path to search.
+---@internal
+---@param input string
+---@return boolean
+local function has_path_token(input)
+  for token in input:gmatch("%S+") do
+    if token:match("^[/]") or token:match("^%a:[/]") then return true end
+  end
+  return false
+end
+
+---The roots to search when the user names no path at all.
+---
+---`"/"` is right on POSIX and inside WSL, and wrong on native Windows, where it
+---resolves to the *current drive's* root -- so "systemwide search" silently
+---became "search whatever drive Neovim happens to be on". There, every drive
+---letter is the honest answer, and `pickers.sources.drives` already knows how
+---to enumerate them.
+---@internal
+---@param cb fun(roots: string[])
+local function default_roots(cb)
+  local drives = require("pickers.sources.drives")
+  if not drives.is_windows() then
+    cb({ "/" })
+    return
+  end
+  drives.roots(function(roots)
+    cb((roots and #roots > 0) and roots or { "/" })
+  end)
 end
 
 -- ── Public API ────────────────────────────────────────────────────────────────
@@ -87,12 +120,26 @@ function M.get(_cfg, callback)
         return
       end
 
-      local cmd = build_fd_cmd(input, fd)
-      callback({
-        roots = { "/" },
-        prompt = "System> ",
-        find_command = cmd,
-      })
+      local function emit(fallback)
+        -- `roots` used to be hard-coded to `{ "/" }` even when the input did
+        -- name real paths, so the engine's cwd fallback pointed at a root that
+        -- need not exist. Report what is actually searched.
+        local cmd, paths = build_fd_cmd(input, fd, fallback)
+        callback({
+          roots = paths,
+          prompt = "System> ",
+          find_command = cmd,
+        })
+      end
+
+      -- Only ask for the default roots when the input names none: on Windows
+      -- that lookup spawns PowerShell, and an input like "foo /etc" has no use
+      -- for it.
+      if has_path_token(input) then
+        emit({})
+      else
+        default_roots(emit)
+      end
     end,
     on_cancel = function()
       callback(nil)

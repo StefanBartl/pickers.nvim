@@ -6,6 +6,18 @@ local notify = require("lib.nvim.notify").create("[pickers.engines.telescope]")
 
 local M = {}
 
+---@internal
+---fd's executable name. Debian and Ubuntu ship it as `fdfind` because `fd` is
+---taken by another package, so hard-coding `"fd"` makes the directory picker
+---fail outright there. fzf-lua's own `files()` provider auto-detects this
+---internally; these two engines shell out themselves and have to do it here.
+---@return string|nil  "fd" | "fdfind" | nil
+local function fd_exec()
+  if vim.fn.executable("fd") == 1 then return "fd" end
+  if vim.fn.executable("fdfind") == 1 then return "fdfind" end
+  return nil
+end
+
 -- ── Helpers ──────────────────────────────────────────────────────────────────
 
 ---Require multiple telescope sub-modules at once.
@@ -242,13 +254,19 @@ function M.pick_dir(opts)
     return
   end
 
+  local fd = fd_exec()
+  if not fd then
+    notify.error("Neither 'fd' nor 'fdfind' found in PATH. Install fd-find.")
+    return
+  end
+
   local cwd = opts.cwd or vim.fn.getcwd()
 
   pickers
     .new({}, {
       prompt_title = opts.prompt or "Folder",
       finder = finders.new_oneshot_job(
-        { "fd", "--type", "d", "--hidden", "--follow", "--exclude", ".git", ".", cwd },
+        { fd, "--type", "d", "--hidden", "--follow", "--exclude", ".git", ".", cwd },
         {
           entry_maker = function(entry)
             return {

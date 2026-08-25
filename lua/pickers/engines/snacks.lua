@@ -26,6 +26,18 @@ local spawn_env = require("lib.nvim.cross.run.env")
 
 local M = {}
 
+---@internal
+---fd's executable name. Debian and Ubuntu ship it as `fdfind` because `fd` is
+---taken by another package, so hard-coding `"fd"` makes the directory picker
+---fail outright there. fzf-lua's own `files()` provider auto-detects this
+---internally; these two engines shell out themselves and have to do it here.
+---@return string|nil  "fd" | "fdfind" | nil
+local function fd_exec()
+  if vim.fn.executable("fd") == 1 then return "fd" end
+  if vim.fn.executable("fdfind") == 1 then return "fdfind" end
+  return nil
+end
+
 ---Safely call a function; report errors via notify.
 ---@internal
 ---@param fn function
@@ -210,10 +222,16 @@ function M.pick_dir(opts)
     return
   end
 
+  local fd = fd_exec()
+  if not fd then
+    notify.error("Neither 'fd' nor 'fdfind' found in PATH. Install fd-find.")
+    return
+  end
+
   local cwd = opts.cwd or vim.fn.getcwd()
 
   vim.system(
-    { "fd", "--type", "d", "--hidden", "--follow", "--exclude", ".git", ".", cwd },
+    { fd, "--type", "d", "--hidden", "--follow", "--exclude", ".git", ".", cwd },
     spawn_env.apply({ text = true }),
     function(res)
       vim.schedule(function()

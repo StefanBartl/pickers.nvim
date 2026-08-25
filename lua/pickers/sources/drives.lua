@@ -175,6 +175,25 @@ end
 
 ---@param _cfg    Pickers.Config
 ---@param callback fun(source: Pickers.Source|nil)
+---Whether the current platform is native Windows (not WSL). Exported because
+---`pickers.sources.system` needs to know when `"/"` does not mean "everything":
+---on native Windows it is just the *current* drive's root, so a systemwide
+---search rooted there silently searches one drive.
+---@return boolean
+function M.is_windows()
+  return is_windows()
+end
+
+---Every mount point / drive letter for this platform, session-cached.
+---Asynchronous because discovery shells out (PowerShell on Windows, `df` on
+---POSIX) -- see `run_captured`'s note on why that must not block.
+---Exported so a source that needs a "search everything" root list does not
+---have to duplicate the platform detection.
+---@param cb fun(roots: string[])
+function M.roots(cb)
+  get_roots(cb)
+end
+
 function M.get(_cfg, callback)
   get_roots(function(roots)
     if #roots == 0 then
