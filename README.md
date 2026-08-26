@@ -79,6 +79,7 @@ work, for turning it off without touching any plugin's config.
 
 ## Documentation
 
+- [Features](docs/FEATURES/README.md) — the catalogue, by theme: engines, scopes, actions, native pickers, keys, UI, persistence.
 - [Installation](docs/INSTALLATION.md) — requirements, lazy.nvim (recommended + lazy-loading variant), packer.nvim, and health check.
 - [Commands](docs/COMMANDS.md) — the `:Pickers` command syntax, scopes, and compat command aliases.
 - [Native pickers](docs/BUILTINS.md) — `:Pickers builtin <name>`, the full name list, and the per-engine parity matrix.
@@ -88,3 +89,4 @@ work, for turning it off without touching any plugin's config.
 - [Bindings cheatsheet](docs/BINDINGS.md) — machine-readable reference of every keymap, user command, and autocommand.
 - [Cheatsheet](docs/CHEATSHEET.md) — condensed single-page command/scope/keymap reference.
 - [Roadmap](docs/ROADMAP.md) — planned and potential features.
+- [Feature log](docs/CHANGELOG.md) — what changed and when, in the order it happened.

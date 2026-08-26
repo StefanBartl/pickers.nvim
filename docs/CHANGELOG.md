@@ -1,4 +1,15 @@
-# feature Log
+# Feature log
+
+Development log: what changed, in the order it happened. This is the raw
+material the reader-facing catalogue in [`FEATURES/`](FEATURES/) was written
+from — that folder answers "what does it do", this file answers "when did it
+start doing that, and why".
+
+Kept as-is on purpose. A changelog that gets rewritten into prose stops being
+a changelog.
+
+---
+
 
 [x] **`pick_item()` preview support.** Items passed to `engine_mod.pick_item()`
   may now be `Pickers.Item` tables `{ text, file? }` instead of plain strings —

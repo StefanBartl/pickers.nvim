@@ -179,7 +179,7 @@ not imply the other.
 
 **The shared blind spot**: `dir` scope supports neither. It has no
 per-collection `find` override surface (built-in scopes are global-only —
-see [FEATURES.md](FEATURES.md)) and `mappings` explicitly doesn't resolve
+see [CHANGELOG.md](CHANGELOG.md)) and `mappings` explicitly doesn't resolve
 `dir_*` names (its nav argument doesn't fit the flat `<scope>_<action>`
 shape). If you find yourself wanting a bound, engine-pinned, custom-`find`
 search on an ad hoc directory, `dir` is the one scope that won't get you
@@ -209,7 +209,7 @@ rather than one entry per repo.
 | Enabling `history` expecting it to affect snacks | No-op for snacks — snacks' picker history is unconditional and built-in, `history.*` config simply doesn't reach it | [CONFIGURATION.md](CONFIGURATION.md#history) |
 | Setting `history.fzf_scope` expecting it to affect telescope | No-op for telescope — telescope's history is one process-wide singleton, no per-call scope knob exists | [CONFIGURATION.md](CONFIGURATION.md#history) |
 | `:Pickers <scope> files all` on `grep`/`smart` | Silently ignored — live grep already searches `--hidden --no-ignore-vcs` unconditionally, so "find all" has nothing to force there | [COMMANDS.md](COMMANDS.md#pickers) |
-| Passing `selected_index` / `experimental.selected_index` to `setup()` | Silently ignored with a one-time warning — this overlay was built, found unreliable, and fully removed (code, config surface, docs, tests) | [FEATURES.md](FEATURES.md) |
+| Passing `selected_index` / `experimental.selected_index` to `setup()` | Silently ignored with a one-time warning — this overlay was built, found unreliable, and fully removed (code, config surface, docs, tests) | [CHANGELOG.md](CHANGELOG.md) |
 | Expecting `mappings` to bind a `dir` nav | Not supported — `dir`'s nav argument doesn't fit the flat `<scope>_<action>` name shape `mappings` resolves against | [KEYMAPS.md](KEYMAPS.md#declarative-mappings-per-entry-engine-override) |
 | Naming a `mappings` entry with an engine that isn't installed | Falls back to your configured default engine — never becomes a dead keymap | [KEYMAPS.md](KEYMAPS.md#declarative-mappings-per-entry-engine-override) |
 | Assuming `result_count` shows up on fzf-lua/snacks | Telescope-only; the other two already show a native position/total counter, so it's skipped there, not broken | [CONFIGURATION.md](CONFIGURATION.md#result-count) |
