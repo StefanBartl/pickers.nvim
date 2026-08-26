@@ -370,9 +370,9 @@ POSIX path; today's plain-prompt `system` scope is simpler and isn't broken.
 
 Distilled from `docs/ROADMAP/` audit files (applied Lua/Neovim checklists). Ordered by value.
 
-- [x] Use `lib.nvim.usercmd` instead of raw `nvim_create_user_command`
+- [x] Use `lib.nvim.bindings.usercmd` instead of raw `nvim_create_user_command`
   (`plugin/pickers.lua`, `lua/pickers/bindings/util.lua`), with raw fallback.
-- [x] Use `lib.nvim.autocmd` + a named augroup (`pickers.nvim`) instead of raw
+- [x] Use `lib.nvim.bindings.autocmd` + a named augroup (`pickers.nvim`) instead of raw
   `nvim_create_autocmd` (`lua/pickers/bindings/autocmds.lua`), with raw fallback.
 - [x] Add `stylua.toml` + `.luacheckrc` and a GitHub Actions CI (advisory lint +
   `nvim -l TESTS/pickers_spec.lua` as the gate).

@@ -1,5 +1,5 @@
 ---@module 'pickers.command.composer'
----@brief Registers :Pickers via lib.nvim.usercmd.composer.
+---@brief Registers :Pickers via lib.nvim.bindings.usercmd.composer.
 ---@description
 --- Every route only supplies typed-arg schema for tab-completion + docgen;
 --- dispatch itself is always delegated to pickers.command.handle (unchanged),
@@ -12,7 +12,7 @@
 --- works for built-in scopes), and again from pickers.bindings.setup(cfg)
 --- once real collections exist, so :Pickers <Tab> can offer them.
 
-local composer = require("lib.nvim.usercmd.composer")
+local composer = require("lib.nvim.bindings.usercmd.composer")
 
 local M = {}
 

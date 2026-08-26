@@ -15,11 +15,11 @@
 | 7 | Structured error wrapping (`safe_call`) | ✅ | `lua/pickers/error.lua` defines `Pickers.Error`/`Pickers.ErrorKind` + `safe_call() → { ok, result, err }`, adopted in the command dispatcher. Engines keep their local notify-on-error `safe_call`. |
 | 8–11 | Performance / weak tables / memoisation / GC / hot-path table+string tricks | N/A | No hot paths, no large tables, no string building in loops. Micro-optimisation rules don't apply to a thin command→engine dispatcher. |
 | MISC | Cross-platform (POSIX + Windows) | ✅ | Windows-tested this session; `drives` uses `lib.nvim.cross`; the `system` fd-pattern bug was fixed. |
-| lib | Use `lib.nvim` wrappers (notify/map/cross/hover_select/usercmd/autocmd) | ✅ | notify ✅, map ✅, cross ✅, hover_select ✅, usercmd ✅ (`lib.nvim.usercmd`, raw fallback), autocmd ✅ (`lib.nvim.autocmd` + `pickers.nvim` augroup, raw fallback). |
+| lib | Use `lib.nvim` wrappers (notify/map/cross/hover_select/usercmd/autocmd) | ✅ | notify ✅, map ✅, cross ✅, hover_select ✅, usercmd ✅ (`lib.nvim.bindings.usercmd`, raw fallback), autocmd ✅ (`lib.nvim.bindings.autocmd` + `pickers.nvim` augroup, raw fallback). |
 | Import order | System → Debug/Notify → Config/Utils → State → UI → Controller → Keymaps | ✅ | `notify` is required near the top; lazy requires inside callbacks. |
 
 ## Open items (→ ROADMAP)
-- ✅ Replaced raw `nvim_create_user_command` with `lib.nvim.usercmd` (2 call sites).
-- ✅ Replaced raw `nvim_create_autocmd` with `lib.nvim.autocmd` + `pickers.nvim` augroup.
+- ✅ Replaced raw `nvim_create_user_command` with `lib.nvim.bindings.usercmd` (2 call sites).
+- ✅ Replaced raw `nvim_create_autocmd` with `lib.nvim.bindings.autocmd` + `pickers.nvim` augroup.
 - ✅ Structured error types (`lua/pickers/error.lua`), adopted in the dispatcher.
 - ✅ Per-subdirectory `@types` split (engines/sources/command/config).

@@ -21,9 +21,9 @@ function M.register()
     end
   end
 
-  -- Prefer lib.nvim.autocmd (named augroup + pcall-wrapped callback); fall back
+  -- Prefer lib.nvim.bindings.autocmd (named augroup + pcall-wrapped callback); fall back
   -- to the raw API so the fallback still fires without lib.nvim.
-  local ok, lib_autocmd = pcall(require, "lib.nvim.autocmd")
+  local ok, lib_autocmd = pcall(require, "lib.nvim.bindings.autocmd")
   if ok and type(lib_autocmd) == "table" and type(lib_autocmd.create) == "function" then
     lib_autocmd.create("VimEnter", callback, {
       group = "pickers.nvim",

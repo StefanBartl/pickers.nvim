@@ -148,7 +148,7 @@ function M.patch(cfg)
     M.flush(cfg)
   end
 
-  local ok, lib_autocmd = pcall(require, "lib.nvim.autocmd")
+  local ok, lib_autocmd = pcall(require, "lib.nvim.bindings.autocmd")
   if ok and type(lib_autocmd) == "table" and type(lib_autocmd.create) == "function" then
     lib_autocmd.create("BufReadPost", on_buf_read, {
       group = "pickers.nvim",

@@ -22,4 +22,4 @@ it CI-friendly.
 The `:Pickers` completion tests (which register the real composer-backed
 command and drive it via `getcompletion()`) are skipped automatically if
 `lib.nvim` is not on the runtimepath (`pickers.command.composer`
-hard-requires `lib.nvim.usercmd.composer`).
+hard-requires `lib.nvim.bindings.usercmd.composer`).

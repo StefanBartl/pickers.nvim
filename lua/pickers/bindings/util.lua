@@ -3,13 +3,13 @@
 
 local M = {}
 
----Register a single normal-mode keymap, preferring lib.nvim.map if available.
+---Register a single normal-mode keymap, preferring lib.nvim.bindings.keymap if available.
 ---@param lhs  string|nil
 ---@param rhs  function
 ---@param desc string
 function M.map(lhs, rhs, desc)
   if not lhs then return end
-  local ok, lib_map = pcall(require, "lib.nvim.map")
+  local ok, lib_map = pcall(require, "lib.nvim.bindings.keymap")
   if ok and type(lib_map) == "function" then
     lib_map("n", lhs, rhs, { desc = desc })
   else
@@ -17,7 +17,7 @@ function M.map(lhs, rhs, desc)
   end
 end
 
----Create a user command with consistent defaults, preferring lib.nvim.usercmd
+---Create a user command with consistent defaults, preferring lib.nvim.bindings.usercmd
 ---(which wraps the callback in pcall + notify). Falls back to the raw API when
 ---lib.nvim is unavailable so pickers still works standalone.
 ---@param name     string
@@ -28,7 +28,7 @@ end
 function M.usercmd(name, fn, desc, nargs, complete)
   local opts = { desc = desc, nargs = nargs or "*" }
   if complete then opts.complete = complete end
-  local ok, lib_usercmd = pcall(require, "lib.nvim.usercmd")
+  local ok, lib_usercmd = pcall(require, "lib.nvim.bindings.usercmd")
   if ok and type(lib_usercmd) == "table" and type(lib_usercmd.create) == "function" then
     lib_usercmd.create(name, fn, opts)
   else

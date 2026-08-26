@@ -186,7 +186,7 @@ Examples: >
 
 Tab-completion is supported for all arguments.
 
-Built via `lib.nvim.usercmd.composer` — a route tree drives dispatch,
+Built via `lib.nvim.bindings.usercmd.composer` — a route tree drives dispatch,
 `<Tab>` completion, and this doc's own command list from one source. An
 unknown {scope} now reports composer's own "unknown subcommand" usage block
 (every registered scope, one per line) instead of a plain error string.
