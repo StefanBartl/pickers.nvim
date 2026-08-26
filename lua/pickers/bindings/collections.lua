@@ -55,7 +55,11 @@ function M.register(coll)
         require("pickers.command").handle({ fargs = { name, "smart" } })
       end, "[pickers] " .. name .. ": smart (grep + find)")
     end
-    require("pickers.bindings.whichkey").register_collection(coll)
+    -- No which-key registration here: these mappings carry their own `desc`,
+    -- which which-key reads by itself. The call that used to sit here
+    -- registered a *second*, differently worded label for the same keys
+    -- ("Pickers[notes]: files" against this "[pickers] notes: find files"),
+    -- so which-key showed whichever arrived last.
   end
 end
 
