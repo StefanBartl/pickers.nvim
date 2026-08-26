@@ -10,7 +10,7 @@ local M = {}
 function M.map(lhs, rhs, desc)
   if not lhs then return end
   local ok, lib_map = pcall(require, "lib.nvim.bindings.keymap")
-  if ok and type(lib_map) == "function" then
+  if ok and vim.is_callable(lib_map) then
     lib_map("n", lhs, rhs, { desc = desc })
   else
     vim.keymap.set("n", lhs, rhs, { desc = desc, silent = true })
