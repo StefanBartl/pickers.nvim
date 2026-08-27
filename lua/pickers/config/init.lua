@@ -170,6 +170,9 @@ function M.apply(opts)
     if type(opts.result_count.enabled) == "boolean" then
       cfg.result_count.enabled = opts.result_count.enabled
     end
+    if type(opts.result_count.interval_ms) == "number" and opts.result_count.interval_ms > 0 then
+      cfg.result_count.interval_ms = math.floor(opts.result_count.interval_ms)
+    end
   end
 
   -- Deep-merge smart over defaults (weights/limit/timeout); same leniency as

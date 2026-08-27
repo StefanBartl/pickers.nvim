@@ -154,6 +154,10 @@ local M = {
   -- already show a position/total counter natively. See pickers.result_count.
   result_count = {
     enabled = false,
+    -- How often the count is re-read, in ms. A poll rather than an event:
+    -- telescope has no hook that fires when the match count changes. Only
+    -- runs while a picker is open, and only when `enabled`.
+    interval_ms = 150,
   },
 
   -- Smart action: runs rg (content) and fd (filenames) for the same live query

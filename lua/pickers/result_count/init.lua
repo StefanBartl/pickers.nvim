@@ -17,6 +17,16 @@ local M = {}
 local function start_polling(results_bufnr, base_title, get_picker)
   local last_count = nil
 
+  -- Read once, not per tick: the interval cannot change while one picker is
+  -- open, and re-reading the config on every tick is the cost this poll
+  -- exists to keep small.
+  local interval = 150
+  do
+    local ok, config = pcall(require, "pickers.config")
+    local n = ok and (config.get() or {}).result_count and config.get().result_count.interval_ms
+    if type(n) == "number" and n > 0 then interval = n end
+  end
+
   ---@internal
   local function tick()
     if not vim.api.nvim_buf_is_valid(results_bufnr) then return end
@@ -34,7 +44,7 @@ local function start_polling(results_bufnr, base_title, get_picker)
       end
     end
 
-    vim.defer_fn(tick, 150)
+    vim.defer_fn(tick, interval)
   end
 
   tick()
