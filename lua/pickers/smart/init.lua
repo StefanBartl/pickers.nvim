@@ -9,15 +9,24 @@
 local M = {}
 
 ---Default smart config, used when cfg.smart (or a field of it) is absent.
+---
+---Read out of `config.DEFAULTS` rather than restated here. It used to be a
+---second copy of the same six values, which is one edit away from the two
+---disagreeing with nobody noticing -- and the copy was the one that lost,
+---since `M.config()` merges the *config* over it.
+---
+---`DEFAULTS` is plain data with no side effects, so requiring it is safe even
+---on the path this function exists for: the one where `config.get()` itself
+---is unavailable.
 ---@return Pickers.SmartConfig
 function M.defaults()
-  return {
-    weights = { filename = 1.0, content = 1.0, both = 25 },
-    limit = 2000,
-    timeout = 3000,
-    frecency = { enabled = false, weight = 1.0, dir = nil },
-    dedup_grep_rows = false,
-  }
+  local ok, defaults = pcall(require, "pickers.config.DEFAULTS")
+  local smart = ok and type(defaults) == "table" and defaults.smart or nil
+  if type(smart) == "table" then return vim.deepcopy(smart) end
+  -- Last resort: DEFAULTS itself could not be loaded. Keeping the search
+  -- runnable beats returning nothing, and these are the two values it cannot
+  -- work without.
+  return { limit = 2000, timeout = 3000 }
 end
 
 ---Resolve the active smart config, merged over defaults.
