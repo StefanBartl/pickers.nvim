@@ -135,7 +135,10 @@ do
   local rg = vim.fn.maparg("<leader>zrg", "n", false, true)
   local sf = vim.fn.maparg("<leader>zsf", "n", false, true)
   check("keymaps: repos_files registered", not vim.tbl_isempty(rf))
-  check("keymaps: repos_files desc", rf.desc == "[pickers] Pick a repo, then find files")
+  -- `pickers: `, not `[pickers] `: the desc prefix comes from
+  -- lib.nvim's keymap registry since the migration to it, and it writes
+  -- `<plugin>: <desc>`.
+  check("keymaps: repos_files desc", rf.desc == "pickers: Pick a repo, then find files")
   check("keymaps: repos_grep registered", not vim.tbl_isempty(rg))
   check("keymaps: system_files registered", not vim.tbl_isempty(sf))
 
