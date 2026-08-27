@@ -159,7 +159,9 @@ function M.patch(cfg)
       desc = "pickers.nvim: flush smart-action frecency store",
     })
   else
+    -- lib-docs: fallback
     vim.api.nvim_create_autocmd("BufReadPost", { callback = on_buf_read })
+    -- lib-docs: fallback
     vim.api.nvim_create_autocmd("VimLeavePre", { callback = on_leave })
   end
 end

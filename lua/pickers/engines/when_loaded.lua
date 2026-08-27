@@ -50,14 +50,30 @@ function M.run(module, fn)
   end
 
   local plugin = PLUGIN_NAMES[module]
-  vim.api.nvim_create_autocmd("User", {
-    pattern = "LazyLoad",
-    callback = function(ev)
-      if ev.data ~= plugin then return end
-      fn()
-      return true -- one-shot: delete this autocmd
-    end,
-  })
+
+  -- One-shot, but not via a `true` return: that only works for an unwrapped
+  -- callback, and lib.nvim's create() pcalls callbacks by default, which
+  -- discards the return value and would leave this firing on every LazyLoad
+  -- forever. Deleting by id works either way -- and before fn(), so a plugin
+  -- that loads another one during the patch cannot re-enter this.
+  local id
+  local function on_lazy_load(ev)
+    if ev.data ~= plugin then return end
+    if id then pcall(vim.api.nvim_del_autocmd, id) end
+    fn()
+  end
+
+  local ok, lib_autocmd = pcall(require, "lib.nvim.bindings.autocmd")
+  if ok and type(lib_autocmd) == "table" and type(lib_autocmd.create) == "function" then
+    id = lib_autocmd.create("User", on_lazy_load, {
+      group = "pickers.nvim",
+      pattern = "LazyLoad",
+      desc = "pickers.nvim: patch " .. module .. " once lazy.nvim loads it",
+    })
+  else
+    -- lib-docs: fallback
+    id = vim.api.nvim_create_autocmd("User", { pattern = "LazyLoad", callback = on_lazy_load })
+  end
 end
 
 return M

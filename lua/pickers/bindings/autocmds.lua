@@ -31,6 +31,7 @@ function M.register()
       desc = "pickers.nvim: register default bindings when setup() was not called",
     })
   else
+    -- lib-docs: fallback
     vim.api.nvim_create_autocmd("VimEnter", { once = true, callback = callback })
   end
 end
