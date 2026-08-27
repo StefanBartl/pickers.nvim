@@ -180,12 +180,13 @@ skipped. **Disabled by default.**
 require("pickers").setup({
   result_count = {
     enabled = true,
+    interval_ms = 150,   -- how often the count is re-read, in ms
   },
 })
 ```
 
-Updates by polling the entry manager every 150ms while the results buffer
-is open (not event-driven) — result counts can change asynchronously as a
+Updates by polling the entry manager every `interval_ms` (default 150) while
+the results buffer is open (not event-driven) — result counts can change asynchronously as a
 live finder (e.g. `live_grep`) streams in matches, with no `CursorMoved` or
 `TextChanged` event to hang the update off of.
 
