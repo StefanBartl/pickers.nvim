@@ -63,19 +63,19 @@
 -- Top-level configuration
 
 ---@class Pickers.Config
----@field engine?         Pickers.Engine
----@field repos_dir?      string|nil
+---@field engine?        Pickers.Engine
+---@field repos_dir?     string|nil
 ---@field deps_popup?    boolean  # lib.nvim.deps "declared tools" popup once, ever, on first setup() after install (default true; needs lib.nvim.deps — a no-op without it)
----@field collections?    Pickers.Collection[]
----@field depth_aliases?  table<string, fun():string>
----@field find?           Pickers.FindOpts
----@field keymaps?        Pickers.Keymaps
----@field mappings?       Pickers.MappingsConfig
----@field usercmds?       Pickers.Usercmds
----@field keys?           Pickers.KeysConfig
----@field history?        Pickers.HistoryConfig
----@field result_count?   Pickers.ResultCountConfig
----@field smart?          Pickers.SmartConfig
----@field display?        Pickers.DisplayConfig
+---@field collections?   Pickers.Collection[]
+---@field depth_aliases? table<string, fun():string>
+---@field find?          Pickers.FindOpts
+---@field keymaps?       Pickers.Keymaps
+---@field mappings?      Pickers.MappingsConfig
+---@field usercmds?      Pickers.Usercmds
+---@field keys?          Pickers.KeysConfig
+---@field history?       Pickers.HistoryConfig
+---@field result_count?  Pickers.ResultCountConfig
+---@field smart?         Pickers.SmartConfig
+---@field display?       Pickers.DisplayConfig
 
 return {}
