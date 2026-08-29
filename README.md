@@ -88,5 +88,4 @@ work, for turning it off without touching any plugin's config.
 - [Configuration](docs/CONFIGURATION.md) — full `setup()` reference and picker history.
 - [Bindings cheatsheet](docs/BINDINGS.md) — machine-readable reference of every keymap, user command, and autocommand.
 - [Cheatsheet](docs/CHEATSHEET.md) — condensed single-page command/scope/keymap reference.
-- [Roadmap](docs/ROADMAP.md) — planned and potential features.
 - [Feature log](docs/CHANGELOG.md) — what changed and when, in the order it happened.

@@ -368,7 +368,7 @@ POSIX path; today's plain-prompt `system` scope is simpler and isn't broken.
 
 ## Checklist audit — open items
 
-Distilled from `docs/ROADMAP/` audit files (applied Lua/Neovim checklists). Ordered by value.
+Distilled from the applied Lua/Neovim checklist audits. Ordered by value.
 
 - [x] Use `lib.nvim.bindings.usercmd` instead of raw `nvim_create_user_command`
   (`plugin/pickers.lua`, `lua/pickers/bindings/util.lua`), with raw fallback.

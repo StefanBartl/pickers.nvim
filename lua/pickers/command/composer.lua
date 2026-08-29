@@ -34,8 +34,7 @@ local function prefix(cands, lead)
 end
 
 -- dir's nav slot accepts aliases, numeric depth, "path=...", or (when the nav
--- is omitted) an action word — smarter than any built-in type, see
--- docs/ROADMAP/personal/lib_nvim/usrcmd_composer.md step 2.
+-- is omitted) an action word — smarter than any built-in type.
 composer.register_type("PICKERS_DIR_NAV", {
   validate = function(raw)
     return true, raw, nil

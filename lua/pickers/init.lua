@@ -25,7 +25,7 @@
 --- engine = "snacks", own_engine = true })` returns a ready lazy.nvim spec
 --- list that installs AND configures the chosen engine too, called from
 --- your OWN plugin list at spec-build time (not from setup()) — see
---- `pickers.plugin_spec` for why, and ROADMAP.md. Off by default; the
+--- `pickers.plugin_spec` for why. Off by default; the
 --- example above (bring-your-own-engine) remains the default model.
 
 local M = {}
