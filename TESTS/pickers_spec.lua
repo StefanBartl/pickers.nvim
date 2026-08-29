@@ -54,6 +54,7 @@ do
     collections = {
       { name = "notes", dir = "/tmp/notes" },
       { name = "", dir = "/x" }, -- invalid: empty name → dropped
+      ---@diagnostic disable-next-line: missing-fields -- being invalid is the point
       { dir = "/y" }, -- invalid: no name    → dropped
       { name = "proj", dir = "/tmp/proj", prefix = "", only_git = true, find = { hidden = false } },
     },

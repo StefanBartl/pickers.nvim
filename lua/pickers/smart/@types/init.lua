@@ -12,26 +12,26 @@
 -- Scoring weights
 
 ---@class Pickers.Smart.Weights
----@field filename number  Multiplier for the filename-match component (default 1.0)
----@field content  number  Multiplier for the grep content-match component (default 1.0)
----@field both     number  Flat bonus added to a file whose path ALSO has grep hits (default 25)
+---@field filename? number  Multiplier for the filename-match component (default 1.0)
+---@field content?  number  Multiplier for the grep content-match component (default 1.0)
+---@field both?     number  Flat bonus added to a file whose path ALSO has grep hits (default 25)
 
 -- ###########################################################################
 -- Config (setup surface)
 
 ---@class Pickers.SmartConfig
----@field weights          Pickers.Smart.Weights        Relative weighting of the score components
----@field limit            integer                      Max merged results kept after ranking (default 2000)
----@field timeout          integer                      Per-command wait timeout in ms (default 3000)
----@field frecency         Pickers.Smart.FrecencyConfig  Opt-in recency/frequency ranking boost
----@field dedup_grep_rows  boolean                      Collapse multiple grep hits per file to the best-scoring line (default false)
+---@field weights?          Pickers.Smart.Weights        Relative weighting of the score components
+---@field limit?            integer                      Max merged results kept after ranking (default 2000)
+---@field timeout?          integer                      Per-command wait timeout in ms (default 3000)
+---@field frecency?         Pickers.Smart.FrecencyConfig  Opt-in recency/frequency ranking boost
+---@field dedup_grep_rows?  boolean                      Collapse multiple grep hits per file to the best-scoring line (default false)
 
 --- Opt-in (off by default): boosts a file's smart-action score by how often
 --- and how recently it was opened, via `pickers.smart.frecency`.
 ---@class Pickers.Smart.FrecencyConfig
----@field enabled boolean      Default: false
----@field weight  number       Multiplier applied to the raw frecency score (default 1.0)
----@field dir     string|nil   Override storage dir (default: stdpath("data")/pickers.nvim)
+---@field enabled? boolean      Default: false
+---@field weight?  number       Multiplier applied to the raw frecency score (default 1.0)
+---@field dir?     string|nil   Override storage dir (default: stdpath("data")/pickers.nvim)
 
 -- ###########################################################################
 -- Raw candidates (produced by pickers.smart.search)
@@ -62,6 +62,6 @@
 ---@field text    string|nil   grep only (matched line)
 ---@field score   number       Higher = more relevant
 ---@field display string       Human-readable line for the picker
----@field _rank   integer      1-based position in the ranked list (order key for engines)
+---@field _rank?  integer      1-based position in the ranked list (order key for engines). Optional because `score.rank` stamps it onto items that are built without it -- an unranked item is a legal intermediate state, not a malformed one.
 
 return {}
