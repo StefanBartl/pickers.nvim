@@ -39,8 +39,20 @@ real listed file buffers only, persisted as JSON. Opt-in and off by default,
 and documented in full where it is used —
 [ACTIONS.md](ACTIONS.md#frecency-boost).
 
-- **Module:** [`smart/frecency.lua`](../../lua/pickers/smart/frecency.lua)
+- **Module:** [`smart/frecency.lua`](../../lua/pickers/smart/frecency.lua) —
+  the config shape, the `BufReadPost` definition of "a visit", and the
+  enabled-gate. The heuristic itself (bucketed recency, log-dampened counts,
+  the JSON store) is
+  [`lib.nvim.frecency`](https://github.com/StefanBartl/lib.nvim/blob/main/lua/lib/nvim/frecency/README.md),
+  extracted from this file so `gopath.nvim` could rank its alternate-file
+  candidates the same way instead of growing a second copy of the same
+  buckets.
 - **Config:** `smart.frecency = { enabled, weight, dir }`
+- **Storage:** `stdpath("data")/pickers.nvim/frecency.json`, unchanged in
+  place. The file's *shape* is `lib.nvim.cache.disk`'s since the extraction,
+  so a store written before it starts over — deliberate rather than migrated:
+  the feature is off by default, so a store only exists where someone turned
+  it on, and a few days of visits are re-earned by using the editor.
 
 ## Repeat and resume
 

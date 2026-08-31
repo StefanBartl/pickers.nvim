@@ -7,87 +7,46 @@
 --- action's merged results — see `pickers.smart.score.rank`'s `frecency`
 --- param.
 ---
---- Persisted as JSON, one entry per absolute path (`{ count, last }`), under
---- `stdpath("data")/pickers.nvim/frecency.json` by default (override with
---- `smart.frecency.dir`, same convention as `pickers.history`'s `dir`).
---- Loaded lazily on first use, written back on `VimLeavePre` and whenever
---- `M.flush()` is called explicitly (the on-disk copy is a best-effort
---- snapshot, not written on every single visit).
+--- **The heuristic itself lives in `lib.nvim.frecency` now.** It used to live
+--- here, and this file was its only home: bucketed recency weights, a
+--- log-dampened visit count, a JSON store loaded lazily and flushed on exit.
+--- `gopath.nvim` wants the same signal for a different kind of candidate, and
+--- the choice was between a second copy of those buckets in a second
+--- repository or one implementation both plugins read. Two copies of a
+--- ranking heuristic do not stay equal — they drift by one bucket boundary
+--- and then rank the same file differently in two windows of the same editor.
 ---
---- `M.score()` never touches disk after the initial load -- pure in-memory
---- table lookup -- so it is cheap to call once per candidate path while
---- ranking a `smart` query.
+--- What stays here is what is actually about *this* plugin: the config shape
+--- (`smart.frecency.{enabled,weight,dir}`), the `BufReadPost` definition of
+--- "a visit" — a real, readable file loaded into an ordinary buffer, which is
+--- a picker's notion of use and nobody else's — and the enabled-gate, so a
+--- disabled `lookup` returns an empty table without ever touching disk.
+---
+--- Storage is unchanged in place: `stdpath("data")/pickers.nvim/frecency.json`
+--- by default, `smart.frecency.dir` still overriding the directory. The
+--- on-disk *shape* is now `lib.nvim.cache.disk`'s (`{ saved_at, data }`), so
+--- a store written before this change reads back empty and starts over. That
+--- is deliberate rather than migrated: the feature is off by default, so a
+--- store only exists where someone turned it on, and the cost of starting
+--- over is a few days of visits rather than anything that cannot be re-earned.
 
 local M = {}
 
----@type table<string, { count: integer, last: integer }>|nil
-local store = nil
-local dirty = false
-
+---The one store this plugin uses. `autoflush = false` because `M.patch()`
+---registers its own `VimLeavePre` in this plugin's autocmd group — letting
+---lib.nvim add a second one would flush twice and put half of this feature's
+---autocmds under a group that has nothing to do with pickers.
 ---@internal
 ---@param cfg Pickers.Config
----@return string
-local function dir(cfg)
-  local d = (cfg.smart.frecency and cfg.smart.frecency.dir and cfg.smart.frecency.dir ~= "")
-      and cfg.smart.frecency.dir
-    or (vim.fn.stdpath("data") .. "/pickers.nvim")
-  d = vim.fs.normalize(d)
-  vim.fn.mkdir(d, "p")
-  return d
-end
-
----@internal
----@param cfg Pickers.Config
----@return string
-local function file_path(cfg)
-  return dir(cfg) .. "/frecency.json"
-end
-
----@internal
----@param cfg Pickers.Config
-local function load(cfg)
-  if store then return end
-  store = {}
-  local f = io.open(file_path(cfg), "r")
-  if not f then return end
-  local content = f:read("*a")
-  f:close()
-  if not content or content == "" then return end
-  local ok, decoded = pcall(vim.json.decode, content)
-  if ok and type(decoded) == "table" then store = decoded end
-end
-
----@internal
----@param cfg Pickers.Config
-local function save(cfg)
-  if not store then return end
-  local ok, encoded = pcall(vim.json.encode, store)
-  if not ok then return end
-  local f = io.open(file_path(cfg), "w")
-  if not f then return end
-  f:write(encoded)
-  f:close()
-  dirty = false
-end
-
---- Bucketed recency weight (the same shape of heuristic telescope-frecency /
---- browser "frecency" scores use): a visit from the last hour counts far
---- more than one from a month ago.
----@internal
----@param age_seconds number
----@return number
-local function recency_weight(age_seconds)
-  if age_seconds < 3600 then
-    return 100 -- < 1h
-  elseif age_seconds < 86400 then
-    return 80 -- < 1d
-  elseif age_seconds < 604800 then
-    return 60 -- < 1w
-  elseif age_seconds < 2592000 then
-    return 40 -- < 30d
-  else
-    return 20
-  end
+---@return Lib.Frecency.Store
+local function store(cfg)
+  local frecency = cfg.smart.frecency or {}
+  return require("lib.nvim.frecency").store({
+    namespace = "frecency",
+    dir = (type(frecency.dir) == "string" and frecency.dir ~= "") and frecency.dir
+      or (vim.fn.stdpath("data") .. "/pickers.nvim"),
+    autoflush = false,
+  })
 end
 
 ---Record a visit to `abspath`. Marks the in-memory store dirty; call
@@ -96,14 +55,7 @@ end
 ---@param cfg     Pickers.Config
 ---@param abspath string
 function M.record(cfg, abspath)
-  if not abspath or abspath == "" then return end
-  load(cfg)
-  ---@cast store table<string, { count: integer, last: integer }>
-  local entry = store[abspath] or { count = 0, last = 0 }
-  entry.count = entry.count + 1
-  entry.last = os.time()
-  store[abspath] = entry
-  dirty = true
+  store(cfg):record(abspath)
 end
 
 ---Frecency score for `abspath` -- combines visit frequency (log-dampened, so
@@ -113,19 +65,14 @@ end
 ---@param abspath string
 ---@return number
 function M.score(cfg, abspath)
-  load(cfg)
-  ---@cast store table<string, { count: integer, last: integer }>
-  local entry = store[abspath]
-  if not entry then return 0 end
-  local age = os.time() - (entry.last or 0)
-  return math.log((entry.count or 0) + 1) * recency_weight(age)
+  return store(cfg):score(abspath)
 end
 
 ---Write any pending visits to disk. No-op when nothing changed since the
 ---last save.
 ---@param cfg Pickers.Config
 function M.flush(cfg)
-  if dirty then save(cfg) end
+  store(cfg):flush()
 end
 
 ---Register the `BufReadPost` visit-recording hook + a `VimLeavePre` flush.
@@ -173,21 +120,19 @@ end
 ---@param abspaths string[]
 ---@return table<string, number>
 function M.lookup(cfg, abspaths)
-  local out = {}
-  if not (cfg.smart.frecency and cfg.smart.frecency.enabled) then return out end
-  local weight = cfg.smart.frecency.weight or 1.0
-  for _, p in ipairs(abspaths) do
-    local s = M.score(cfg, p)
-    if s > 0 then out[p] = s * weight end
-  end
-  return out
+  -- The gate stays here rather than in the store: disabled means "do not
+  -- read the file at all", and a store cannot know what a caller's config
+  -- switch means.
+  if not (cfg.smart.frecency and cfg.smart.frecency.enabled) then return {} end
+  -- The weight is passed per call, not baked into the handle: a store handle
+  -- lives for the session and `smart.frecency.weight` can change under it.
+  return store(cfg):lookup(abspaths, cfg.smart.frecency.weight or 1.0)
 end
 
 ---Test-only: drop the in-memory cache so the next call re-reads from disk
 ---(or starts fresh). Does not touch anything on disk itself.
 function M._reset_cache()
-  store = nil
-  dirty = false
+  require("lib.nvim.frecency")._reset_handles()
 end
 
 return M
