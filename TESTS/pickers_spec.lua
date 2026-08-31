@@ -1163,6 +1163,44 @@ do
 
   frecency._reset_cache()
   vim.fn.delete(tmp_dir, "rf")
+
+  -- Legacy adoption: a store written before the heuristic moved to lib.nvim
+  -- is a flat `path -> { count, last }` map at the same path, with none of
+  -- cache.disk's envelope around it. It must be adopted, not silently
+  -- restarted -- these counts are months of real use.
+  local legacy_dir = vim.fn.tempname()
+  vim.fn.mkdir(legacy_dir, "p")
+  local legacy_cfg = vim.tbl_deep_extend(
+    "force",
+    config.get(),
+    { smart = { frecency = { enabled = true, weight = 1.0, dir = legacy_dir } } }
+  )
+
+  local legacy = assert(io.open(legacy_dir .. "/frecency.json", "w"))
+  legacy:write(vim.json.encode({ ["/legacy/kept.lua"] = { count = 4, last = os.time() } }))
+  legacy:close()
+
+  frecency._reset_cache()
+  check(
+    "frecency: a pre-extraction store is adopted, not restarted",
+    frecency.score(legacy_cfg, "/legacy/kept.lua") > 0
+  )
+
+  -- Written back in the new shape, so the migration path is not reachable a
+  -- second time -- and the counts are still there when it is not.
+  frecency._reset_cache()
+  check(
+    "frecency: the adopted store persists in the new shape",
+    frecency.score(legacy_cfg, "/legacy/kept.lua") > 0
+  )
+
+  local converted = assert(io.open(legacy_dir .. "/frecency.json", "r"))
+  local decoded = vim.json.decode(converted:read("*a"))
+  converted:close()
+  check("frecency: the file was rewritten in cache.disk's shape", decoded.data ~= nil)
+
+  frecency._reset_cache()
+  vim.fn.delete(legacy_dir, "rf")
 end
 
 -- ── pickers.smart.score — pure scorer + merge/rank ──────────────────────────

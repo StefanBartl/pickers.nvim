@@ -49,10 +49,14 @@ and documented in full where it is used —
   buckets.
 - **Config:** `smart.frecency = { enabled, weight, dir }`
 - **Storage:** `stdpath("data")/pickers.nvim/frecency.json`, unchanged in
-  place. The file's *shape* is `lib.nvim.cache.disk`'s since the extraction,
-  so a store written before it starts over — deliberate rather than migrated:
-  the feature is off by default, so a store only exists where someone turned
-  it on, and a few days of visits are re-earned by using the editor.
+  place. The file's *shape* is `lib.nvim.cache.disk`'s since the extraction
+  (a flat `path -> { count, last }` map became a `{ saved_at, data }`
+  envelope), and a store written before it is **adopted on first use**: the
+  old shape is read once, seeded into the new store and written back. Nothing
+  is lost and nothing has to be done by hand. The migration path cannot run
+  twice — after the write the old shape is no longer there — and seeding
+  refuses a store that already holds anything, so it cannot overwrite real
+  history either.
 
 ## Repeat and resume
 
