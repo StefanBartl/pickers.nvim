@@ -21,8 +21,11 @@ local M = {}
 ---@param name string Name of file/folder to create
 local function create_entry(parent_dir, name)
   local ok, kind, path_or_err = create_entry_core(parent_dir, name)
-  if not ok then
-    notify.error(path_or_err)
+  -- The path and the error share one slot, so the guard has to cover both: a
+  -- failure that comes back without a message would otherwise hand `nil` to
+  -- `notify.error`, which is the one call that must not fail here.
+  if not ok or not path_or_err then
+    notify.error(path_or_err or ("Could not create '" .. name .. "'"))
     return
   end
 

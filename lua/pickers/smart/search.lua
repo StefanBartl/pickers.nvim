@@ -141,8 +141,10 @@ function M.collect(opts)
               path = rel,
               root = root,
               abspath = vim.fs.normalize(root .. "/" .. rel),
-              lnum = tonumber(l),
-              col = tonumber(c),
+              -- `(%d+)` guarantees digits, so neither conversion can fail and
+              -- neither result is fractional.
+              lnum = tonumber(l) --[[@as integer]],
+              col = tonumber(c) --[[@as integer]],
               text = text,
             }
           end

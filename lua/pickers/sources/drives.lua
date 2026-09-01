@@ -173,8 +173,6 @@ end
 
 -- ── Public API ────────────────────────────────────────────────────────────────
 
----@param _cfg    Pickers.Config
----@param callback fun(source: Pickers.Source|nil)
 ---Whether the current platform is native Windows (not WSL). Exported because
 ---`pickers.sources.system` needs to know when `"/"` does not mean "everything":
 ---on native Windows it is just the *current* drive's root, so a systemwide
@@ -194,6 +192,9 @@ function M.roots(cb)
   get_roots(cb)
 end
 
+---The drive/mount-point source, as `pickers.sources` expects it.
+---@param _cfg    Pickers.Config
+---@param callback fun(source: Pickers.Source|nil)
 function M.get(_cfg, callback)
   get_roots(function(roots)
     if #roots == 0 then

@@ -36,9 +36,12 @@ function M.run(path, opts)
 
   local ok, bufnr_or_err = open_background_core(path)
   if not ok then
-    notify.error(bufnr_or_err)
+    notify.error(type(bufnr_or_err) == "string" and bufnr_or_err or ("Could not open " .. path))
     return false
   end
+  -- Past the guard the slot carries the buffer handle; the string half of its
+  -- type is the error branch above.
+  ---@cast bufnr_or_err integer
 
   local shown = false
   local show_enabled = require("pickers.config").get().keys.open_background_show

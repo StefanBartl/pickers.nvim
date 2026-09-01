@@ -215,7 +215,9 @@ function M.handle(opts)
 
   -- dir scope — special: arg2 can be nav OR action
   if scope == "dir" then
+    ---@type string?
     local nav_arg = arg2
+    ---@type string?
     local action = arg3
     if arg2 and ACTIONS_SET[arg2] then
       nav_arg = nil
@@ -227,6 +229,7 @@ function M.handle(opts)
 
   -- Built-in scopes
   if BASE_SCOPES_SET[scope] then
+    ---@type string?
     local action = arg2
     if action and not ACTIONS_SET[action] then
       notify.warn(
@@ -241,6 +244,7 @@ function M.handle(opts)
   -- Collection scopes (user-defined)
   local coll = find_collection(scope)
   if coll then
+    ---@type string?
     local action = arg2
     if action and not ACTIONS_SET[action] then
       notify.warn(

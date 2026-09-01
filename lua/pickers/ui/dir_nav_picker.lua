@@ -12,7 +12,7 @@
 local M = {}
 
 ---@param cfg      Pickers.Config
----@param callback fun(string|nil)
+---@param callback fun(choice: string|nil) Alias name, `"1"`..`"5"`, `"path=<typed>"`, or nil when cancelled.
 function M.open(cfg, callback)
   local kit_ok, kit = pcall(require, "lib.nvim.ui.kit")
 

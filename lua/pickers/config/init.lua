@@ -159,6 +159,10 @@ function M.apply(opts)
     cfg.history = normalise_history(opts.history, cfg.history)
   end
 
+  -- Both keys were removed and are read here for one purpose: to say so. They
+  -- are deliberately absent from `Pickers.Opts` -- naming them there would
+  -- claim they are supported.
+  ---@diagnostic disable-next-line: undefined-field
   if type(opts.selected_index) == "table" or type(opts.experimental) == "table" then
     notify.warn(
       "selected_index has been removed (it never worked reliably) -- "

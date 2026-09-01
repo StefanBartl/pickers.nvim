@@ -272,6 +272,9 @@ do
     end,
   }
   local real_load = engines.load
+  -- A test double over a typed module surface: replacing the field is the
+  -- point of the case, not a second definition of it.
+  ---@diagnostic disable-next-line: duplicate-set-field
   engines.load = function()
     return fake_engine
   end
@@ -281,6 +284,7 @@ do
     "command.handle: 'files all' forces hidden",
     captured and captured.find and captured.find.hidden == true
   )
+  ---@cast captured table
   check("command.handle: 'files all' forces no_ignore", captured.find.no_ignore == true)
   check("command.handle: 'files all' forces follow", captured.find.follow == true)
   check(
@@ -291,6 +295,7 @@ do
   -- Without the "all" token, plain configured defaults apply unforced.
   captured = nil
   cmd.handle({ fargs = { "cwd", "files" } })
+  ---@cast captured table
   check(
     "command.handle: plain 'files' keeps configured hidden=false",
     captured.find.hidden == false
@@ -303,6 +308,9 @@ do
 
   -- opts.engine threads straight into pickers.engines.load(requested).
   local seen_requested
+  -- A test double over a typed module surface: replacing the field is the
+  -- point of the case, not a second definition of it.
+  ---@diagnostic disable-next-line: duplicate-set-field
   engines.load = function(requested)
     seen_requested = requested
     return fake_engine
@@ -385,6 +393,9 @@ do
 
   local real_setup = pickers.setup
   local captured_opts
+  -- A test double over a typed module surface: replacing the field is the
+  -- point of the case, not a second definition of it.
+  ---@diagnostic disable-next-line: duplicate-set-field
   pickers.setup = function(o)
     captured_opts = o
   end
@@ -428,6 +439,9 @@ do
   package.loaded["snacks"] = nil
 
   -- pickers entry's config() calls pickers.setup() with engine filled in.
+  -- A test double over a typed module surface: replacing the field is the
+  -- point of the case, not a second definition of it.
+  ---@diagnostic disable-next-line: duplicate-set-field
   pickers.setup = function(o)
     captured_opts = o
   end
@@ -1310,6 +1324,9 @@ end
 -- luacheck: push ignore 122
 do
   local orig_executable = vim.fn.executable
+  -- A test double over a typed module surface: replacing the field is the
+  -- point of the case, not a second definition of it.
+  ---@diagnostic disable-next-line: duplicate-set-field
   vim.fn.executable = function(name)
     if name == "fd" then return 1 end
     return 0

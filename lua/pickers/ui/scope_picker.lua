@@ -31,7 +31,7 @@ function M.list()
 end
 
 ---Open the scope picker and call callback with the chosen scope (or nil on cancel).
----@param callback fun(string|nil)
+---@param callback fun(scope: string|nil) Called with the chosen scope, or nil when the picker is cancelled.
 function M.open(callback)
   local scopes = M.list()
   local ok, kit = pcall(require, "lib.nvim.ui.kit")
