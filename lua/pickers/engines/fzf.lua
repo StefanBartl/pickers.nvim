@@ -184,8 +184,20 @@ function M.live_grep(opts)
   end
   vim.list_extend(rg_opts_list, extra)
 
+  -- `search_paths`, NOT `search_dirs`. `search_dirs` is telescope's spelling;
+  -- fzf-lua has never read it (its `defaults.lua` documents `search_paths?
+  -- string[]`, and `make_entry.lua` is the only consumer), and an unknown
+  -- option is dropped without a word -- so every scoped grep through this
+  -- engine silently ran over the CWD instead of over `roots`. Nothing errored,
+  -- results appeared, and only their paths gave it away.
+  --
+  -- `search_paths` takes FILES where it takes directories (fzf-lua adds rg's
+  -- `-r` for exactly that reason), which is what lets a caller narrow a grep
+  -- to a handful of files rather than a tree. Paths are made relative to the
+  -- cwd by fzf-lua itself, and an absolute path outside it survives unchanged
+  -- (`path.relative_to` falls back to its input).
   safe_call(fzf.live_grep, {
-    search_dirs = opts.roots,
+    search_paths = opts.roots,
     prompt = opts.prompt,
     rg_opts = table.concat(rg_opts_list, " "),
     query = opts.query,

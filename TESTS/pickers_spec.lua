@@ -2109,6 +2109,77 @@ do
   package.loaded["images.integrations.picker"] = prev_api
 end
 
+-- ── live_grep: each engine gets the option key ITS library reads ────────────
+-- The bug this pins: the fzf-lua adapter passed `search_dirs` -- telescope's
+-- spelling. fzf-lua never read it, and an unknown option is dropped in
+-- silence, so every scoped grep through that engine ran over the CWD instead
+-- of over `roots`. Nothing errored and results appeared; only their paths gave
+-- it away. Three libraries, three names for the same idea (`search_dirs`,
+-- `search_paths`, `dirs`), and no way to notice a wrong one at runtime -- so
+-- the mapping is asserted here rather than trusted.
+--
+-- Needs lib.nvim: the engine modules require `lib.nvim.notify` at load.
+do
+  local ok = pcall(require, "lib.nvim.notify")
+  if not ok then
+    print("  skip engine live_grep option tests (lib.nvim not on runtimepath)")
+  else
+    local prev = {
+      ["fzf-lua"] = package.loaded["fzf-lua"],
+      ["telescope.builtin"] = package.loaded["telescope.builtin"],
+      ["snacks.picker"] = package.loaded["snacks.picker"],
+    }
+    -- A directory and a single file: narrowing to a handful of files is what
+    -- all three options support, and what a caller scoping a grep needs.
+    local roots = { "/x/docs", "/x/notes/one.md" }
+    local got
+
+    package.loaded["fzf-lua"] = {
+      live_grep = function(o)
+        got = o
+      end,
+    }
+    got = nil
+    require("pickers.engines.fzf").live_grep({ roots = roots, prompt = "P" })
+    check(
+      "fzf live_grep: roots go to search_paths",
+      got ~= nil and vim.deep_equal(got.search_paths, roots),
+      got and vim.inspect(got.search_paths)
+    )
+    check("fzf live_grep: no search_dirs, which fzf-lua would ignore", got.search_dirs == nil)
+
+    package.loaded["telescope.builtin"] = {
+      live_grep = function(o)
+        got = o
+      end,
+    }
+    got = nil
+    require("pickers.engines.telescope").live_grep({ roots = roots, prompt = "P" })
+    check(
+      "telescope live_grep: roots go to search_dirs",
+      got ~= nil and vim.deep_equal(got.search_dirs, roots),
+      got and vim.inspect(got.search_dirs)
+    )
+
+    package.loaded["snacks.picker"] = {
+      grep = function(o)
+        got = o
+      end,
+    }
+    got = nil
+    require("pickers.engines.snacks").live_grep({ roots = roots, prompt = "P" })
+    check(
+      "snacks live_grep: roots go to dirs",
+      got ~= nil and vim.deep_equal(got.dirs, roots),
+      got and vim.inspect(got.dirs)
+    )
+
+    for k, v in pairs(prev) do
+      package.loaded[k] = v
+    end
+  end
+end
+
 -- ── Summary ─────────────────────────────────────────────────────────────────
 print(string.format("\n%d passed, %d failed", passed, failed))
 os.exit(failed == 0 and 0 or 1)

@@ -11,6 +11,23 @@ a changelog.
 ---
 
 
+[x] **A scoped grep on fzf-lua searched the CWD, not the roots it was given.**
+  The adapter passed `search_dirs`, which is telescope's spelling; fzf-lua
+  reads `search_paths` and drops an option it does not know without a word. So
+  `:Pickers <collection> grep`, every `dir=`/`root=` caller, and every external
+  caller handing `engine.live_grep({ roots = … })` a path list got a grep over
+  the current directory — no error, results on screen, and only their paths
+  saying anything was wrong. Found from outside, by a caller whose roots were
+  two files rather than a tree.
+  Fixed by the one word, and pinned by a test per engine: the three libraries
+  spell the same idea `search_dirs` / `search_paths` / `dirs`, and a wrong one
+  is invisible at runtime, so the mapping is now asserted against a stub of
+  each library instead of trusted. Verified additionally against fzf-lua's own
+  command builder (`make_entry.get_grep_cmd`): with `search_paths` the paths
+  appear in the `rg` argv, with `search_dirs` they are simply absent.
+  `search_paths` also accepts files, which is what a caller narrowing a grep to
+  a handful of files needs — see [FEATURES/ENGINES.md](FEATURES/ENGINES.md).
+
 [x] **PDF entries preview as their first page.** The same feature as the image
   previews below, reaching the entries that were the other half of the
   disappointment: a `.pdf` in a result list previewed as bytes for exactly the

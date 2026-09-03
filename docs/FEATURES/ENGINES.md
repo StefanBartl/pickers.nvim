@@ -31,6 +31,28 @@ API, deliberately not exposed as a `:Pickers` argument: it exists so a single
 - **Module:** [`command/init.lua`](../../lua/pickers/command/init.lua)
 - **Keymaps:** see [KEYS.md](KEYS.md#declarative-mappings)
 
+## One idea, three option names
+
+A picker call carries its `roots` — the directories, or single files, a grep is
+restricted to. Each backend spells that differently, and none of them complains
+about a name it does not know:
+
+| Engine | Option the library reads |
+|---|---|
+| telescope | `search_dirs` |
+| fzf-lua | `search_paths` |
+| snacks | `dirs` |
+
+The fzf-lua adapter passed `search_dirs` until 2026-09-03 — telescope's
+spelling. fzf-lua dropped it in silence, so every scoped grep on that engine
+ran over the CWD and returned plausible results from the wrong place; only
+their paths gave it away. Since the failure is invisible at runtime, the
+mapping is asserted in `TESTS/pickers_spec.lua` (one stub per library, one
+check per engine) rather than trusted.
+
+All three take **files** where they take directories, which is what lets a
+caller narrow a grep to a handful of files rather than a whole tree.
+
 ## Deferred engine wiring
 
 Engine setup that must happen *after* the engine loads — patching in the
