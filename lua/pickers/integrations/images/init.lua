@@ -19,6 +19,13 @@
 --- On a machine without a rasterizer the answer is simply no and the entry
 --- stays the engine's to preview.
 ---
+--- What a page does add is a *wait*, and with it the two callbacks on
+--- `M.preview`: something has to fill the moment before the picture exists,
+--- and something has to take it away again at the right tick. A drawn image
+--- covers the box it was given and no more — a portrait page in a wide preview
+--- window leaves most of that window uncovered — so a placeholder that is not
+--- removed stays on screen beside the picture.
+---
 --- **The dependency is one-directional and soft.** images.nvim exposes a
 --- three-function surface for exactly this (`images.integrations.picker`:
 --- `available()` / `is_previewable()` / `preview(winid, file)`), pickers.nvim
@@ -149,36 +156,47 @@ local generation = 0
 ---usually filled in the same tick it is drawn into) — or, for a PDF page that
 ---has not been rasterized before, in a few hundred milliseconds.
 ---
----`on_done` is how an accepted draw that then fails still reaches the caller:
----an unreadable image, a page that will not rasterize. It runs at most once,
----and **only while this is still the preview on screen** — a later selection
----(or a `M.clear()`) silences it, because by then the window belongs to
----another entry and writing this one's fallback into it would replace what the
----engine has just correctly put there. That guard is why the parameter exists
----at all rather than callers passing images.nvim's `opts.on_done` themselves.
+---`opts.on_done` is how an accepted draw that then fails still reaches the
+---caller: an unreadable image, a page that will not rasterize.
+---`opts.on_ready` is the opposite moment — the picture exists and is about to
+---be drawn, which is when a placeholder put there to fill the wait has to come
+---down. It cannot wait for `on_done`: the drawn image covers only the box it
+---was given (shaped like the picture, not like the window), so a line left
+---beside it stays visible, and editing the buffer after the draw makes Neovim
+---repaint over the picture instead.
+---
+---Both run at most once, and **only while this is still the preview on
+---screen** — a later selection (or a `M.clear()`) silences them, because by
+---then the window belongs to another entry and writing this one's fallback or
+---placeholder removal into it would replace what the engine has just correctly
+---put there. That guard is why these go through here at all rather than
+---callers passing images.nvim's own callbacks straight through.
 ---@param winid integer preview window
 ---@param file string absolute path
----@param on_done fun(ok: boolean, err: string|nil)|nil
+---@param opts { on_done?: fun(ok: boolean, err: string|nil), on_ready?: fun() }|nil
 ---@return boolean ok
-function M.preview(winid, file, on_done)
+function M.preview(winid, file, opts)
   local images = api()
   if not images then return false end
 
+  opts = opts or {}
   generation = generation + 1
   local ticket = generation
 
-  ---@type Images.Picker.PreviewOpts|nil
-  local opts = nil
-  if on_done then
-    opts = {
-      on_done = function(ok, err)
-        if ticket ~= generation then return end
-        on_done(ok, err)
-      end,
-    }
+  ---@param fn function|nil
+  ---@return function|nil
+  local function while_current(fn)
+    if not fn then return nil end
+    return function(...)
+      if ticket ~= generation then return end
+      fn(...)
+    end
   end
 
-  return images.preview(winid, file, opts) == true
+  return images.preview(winid, file, {
+    on_done = while_current(opts.on_done),
+    on_ready = while_current(opts.on_ready),
+  }) == true
 end
 
 ---Repaint the drawn image away, and disown any preview still in flight.

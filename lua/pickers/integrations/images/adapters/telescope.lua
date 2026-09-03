@@ -16,12 +16,14 @@
 ---
 --- **A PDF entry waits for its page, once.** It is rasterized on first sight
 --- and cached on disk from then on, so the branch says what the wait is for in
---- the buffer it just emptied (the page is drawn *over* the window and covers
---- it), and passes the same fall-through as `on_done` so an accepted draw that
---- then fails still ends up at telescope's own previewer instead of leaving
---- that line on screen. The callback is silenced once the selection has moved
---- on — see `pickers.integrations.images.preview` — which is what makes it
---- safe to hold `self.state` past the return.
+--- the buffer it just emptied, empties it again in `on_ready` the tick before
+--- the draw (the picture's box is shaped like the picture, so a line left
+--- behind would sit *beside* the page rather than under it), and passes the
+--- same fall-through as `on_done` so an accepted draw that then fails still
+--- ends up at telescope's own previewer instead of leaving that line on
+--- screen. Both callbacks are silenced once the selection has moved on — see
+--- `pickers.integrations.images.preview` — which is what makes it safe to hold
+--- `self.state` past the return.
 ---
 --- **Why not telescope's own `filetype_hook` instead.** That hook exists and
 --- would need no previewer of ours — but it only fires once a filetype was
@@ -90,12 +92,22 @@ function M.previewer()
         -- The image is drawn OVER the window, so whatever the buffer holds
         -- would show through it -- including this same buffer's own contents
         -- from an earlier preview, since telescope caches one buffer per file.
-        local lines = images.is_pdf(path) and { "", "  rendering the page…" } or {}
+        -- For a PDF the buffer says what the wait is for instead of nothing,
+        -- and `on_ready` empties it again the tick before the draw: the box the
+        -- picture is drawn in is shaped like the picture, so a line left in the
+        -- buffer would stay visible beside it rather than under it.
+        local waiting = images.is_pdf(path)
+        local lines = waiting and { "", "  rendering the page…" } or {}
         pcall(vim.api.nvim_buf_set_lines, self.state.bufnr, 0, -1, false, lines)
 
-        local accepted = images.preview(self.state.winid, path, function(ok)
-          if not ok then fallback() end
-        end)
+        local accepted = images.preview(self.state.winid, path, {
+          on_ready = waiting and function()
+            pcall(vim.api.nvim_buf_set_lines, self.state.bufnr, 0, -1, false, {})
+          end or nil,
+          on_done = function(ok)
+            if not ok then fallback() end
+          end,
+        })
         if accepted then return end
         -- Refused (unreadable file, window already gone): fall through to the
         -- text preview rather than leaving the window empty.

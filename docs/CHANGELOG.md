@@ -24,10 +24,15 @@ a changelog.
   with nothing said about it.
   Two things follow from a page not existing yet when its entry is selected,
   and neither is left to the engines. The preview window says `rendering the
-  page…` for the ~250 ms a first rasterization takes (images.nvim caches the
-  page on disk afterwards, so every later sight of it is immediate); and the
-  fall-through to the engine's own previewer is passed as a completion
-  callback, so a page that will not rasterize still ends at a working preview.
+  page…` for the ~250 ms a first rasterization takes, and takes that line back
+  out in `on_ready`, the tick before the draw — a drawn image covers the box it
+  was given and that box is shaped like the picture, so a portrait page leaves
+  most of a wide preview window uncovered and a line left behind would sit
+  beside it rather than under it; `on_done` is too late, because a buffer edit
+  after the draw repaints over the picture. (images.nvim caches the page on disk
+  afterwards, so every later sight of it is immediate.) And the fall-through to
+  the engine's own previewer is passed as a completion callback, so a page that
+  will not rasterize still ends at a working preview.
   `pickers.integrations.images.preview()` silences that callback as soon as a
   newer preview or a `clear()` has replaced it — otherwise a failure from two
   entries ago would overwrite what the engine has just correctly put in the

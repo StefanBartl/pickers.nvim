@@ -26,14 +26,21 @@
 ---
 --- **A PDF entry waits, once.** An image is already a picture; a page has to
 --- be rasterized first, which is a few hundred milliseconds the first time and
---- nothing at all afterwards (images.nvim caches the page on disk). Two things
---- follow, and both are in the branch below. A line goes into the preview
---- window to say what the wait is for — it costs nothing, and the image is
---- drawn *over* the window, so the page covers it when it arrives. And the
---- fall-through to snacks' own previewer has to survive the wait: a draw that
---- is accepted and then fails would otherwise leave the window with that line
---- and nothing else, so the same fallback is passed as `on_done`. It is
---- silenced automatically once the selection has moved on (see
+--- nothing at all afterwards (images.nvim caches the page on disk). Three
+--- things follow, and all three are in the branch below.
+---
+--- * A line goes into the preview window to say what the wait is for.
+--- * It is taken out again in `on_ready`, the tick before the draw. The image
+---   does **not** cover the whole window — its box is shaped like the picture,
+---   so a portrait page leaves most of a wide preview window untouched and the
+---   line would simply sit there next to it. `on_done` cannot be used for
+---   this: it runs after the draw, and a buffer edit then repaints over the
+---   picture.
+--- * The fall-through to snacks' own previewer has to survive the wait — a
+---   draw that is accepted and then fails would otherwise leave the window
+---   empty — so the same fallback is passed as `on_done`.
+---
+--- Both callbacks are silenced once the selection has moved on (see
 --- `pickers.integrations.images.preview`), which is what makes it safe to hold
 --- `ctx` in a callback at all.
 ---
@@ -70,11 +77,21 @@ function M.preview_fn()
     if images.is_previewable(file) then
       ctx.preview:reset()
       ctx.preview:set_title(vim.fn.fnamemodify(file, ":t"))
-      if images.is_pdf(file) then ctx.preview:set_lines({ "", "  rendering the page…" }) end
 
-      local accepted = images.preview(ctx.win, file, function(ok)
-        if not ok then fallback() end
-      end)
+      -- Only for a PDF, and only until the page exists: the picture covers the
+      -- box it was given and no more, so a line still in the buffer when the
+      -- draw lands stays visible beside it.
+      local waiting = images.is_pdf(file)
+      if waiting then ctx.preview:set_lines({ "", "  rendering the page…" }) end
+
+      local accepted = images.preview(ctx.win, file, {
+        on_ready = waiting and function()
+          ctx.preview:set_lines({})
+        end or nil,
+        on_done = function(ok)
+          if not ok then fallback() end
+        end,
+      })
       if accepted then return end
       -- The draw was refused (an unreadable file, a window that went away
       -- between selection and preview): fall through to the text preview

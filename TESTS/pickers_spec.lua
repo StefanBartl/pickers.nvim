@@ -1876,8 +1876,10 @@ do
   local prev_api = package.loaded["images.integrations.picker"]
 
   local drawn, cleared = {}, 0
-  ---@type fun(ok: boolean, err: string|nil)|nil the last accepted draw's callback, held back
+  ---@type fun(ok: boolean, err: string|nil)|nil the last accepted draw's on_done, held back
   local pending
+  ---@type fun()|nil …and its on_ready, so both can be fired out of turn
+  local pending_ready
   local function matches(path, pattern)
     return type(path) == "string" and path:lower():match(pattern) ~= nil
   end
@@ -1897,6 +1899,7 @@ do
     preview = function(winid, file, opts)
       drawn[#drawn + 1] = { winid = winid, file = file }
       pending = opts and opts.on_done or nil
+      pending_ready = opts and opts.on_ready or nil
       return true
     end,
     clear = function()
@@ -1917,9 +1920,11 @@ do
 
   -- ── on_done: reaches the caller, but only while it is still the preview ───
   local reported = {}
-  images.preview(3, "/x/doc.pdf", function(ok, err)
-    reported[#reported + 1] = { ok = ok, err = err }
-  end)
+  images.preview(3, "/x/doc.pdf", {
+    on_done = function(ok, err)
+      reported[#reported + 1] = { ok = ok, err = err }
+    end,
+  })
   assert(pending)
   pending(false, "pdftoppm exited 1")
   check(
@@ -1928,24 +1933,53 @@ do
   )
 
   reported = {}
-  images.preview(3, "/x/doc.pdf", function(ok)
-    reported[#reported + 1] = ok
-  end)
+  images.preview(3, "/x/doc.pdf", {
+    on_done = function(ok)
+      reported[#reported + 1] = ok
+    end,
+  })
   local stale = pending
-  images.preview(3, "/x/other.pdf", function() end)
+  images.preview(3, "/x/other.pdf", { on_done = function() end })
   assert(stale)
   stale(false, "too late")
   check("integrations.images: a newer preview silences the older on_done", #reported == 0)
 
   reported = {}
-  images.preview(3, "/x/doc.pdf", function(ok)
-    reported[#reported + 1] = ok
-  end)
+  images.preview(3, "/x/doc.pdf", {
+    on_done = function(ok)
+      reported[#reported + 1] = ok
+    end,
+  })
   stale = pending
   images.clear()
   assert(stale)
   stale(false, "too late")
   check("integrations.images: clear() silences a pending on_done", #reported == 0)
+
+  -- ── on_ready: forwarded, and under the same guard ─────────────────────────
+  -- The placeholder removal rides on it, so a stale one firing would empty a
+  -- buffer that already belongs to another entry.
+  local readied = 0
+  images.preview(3, "/x/doc.pdf", {
+    on_ready = function()
+      readied = readied + 1
+    end,
+  })
+  assert(pending_ready)
+  pending_ready()
+  check("integrations.images: on_ready reaches the caller", readied == 1)
+
+  readied = 0
+  images.preview(3, "/x/doc.pdf", {
+    on_ready = function()
+      readied = readied + 1
+    end,
+  })
+  local stale_ready = pending_ready
+  images.preview(3, "/x/other.pdf", {})
+  assert(stale_ready)
+  stale_ready()
+  check("integrations.images: a newer preview silences the older on_ready", readied == 0)
 
   -- ── snacks adapter ───────────────────────────────────────────────────────
   local prev_snacks = package.loaded["snacks.picker.preview"]
@@ -1982,6 +2016,15 @@ do
   check(
     "images/snacks: and the window says what the wait is for",
     type(lines_set) == "table" and table.concat(lines_set, " "):match("rendering") ~= nil
+  )
+
+  -- …and stops saying it the moment the page exists. Left in place it would
+  -- stay on screen BESIDE the picture, which covers only its own box.
+  assert(pending_ready)
+  pending_ready()
+  check(
+    "images/snacks: on_ready empties the window again before the draw",
+    type(lines_set) == "table" and next(lines_set) == nil
   )
 
   assert(pending)
@@ -2037,6 +2080,13 @@ do
   check(
     "images/telescope: and the emptied buffer says what the wait is for",
     table.concat(vim.api.nvim_buf_get_lines(bufnr, 0, -1, false), " "):match("rendering") ~= nil
+  )
+
+  assert(pending_ready)
+  pending_ready()
+  check(
+    "images/telescope: on_ready empties the buffer again before the draw",
+    table.concat(vim.api.nvim_buf_get_lines(bufnr, 0, -1, false), "") == ""
   )
 
   assert(pending)

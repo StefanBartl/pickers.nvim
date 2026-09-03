@@ -38,8 +38,10 @@ engine's to preview — as before, and without a word about it.
 
 One visible difference: a page has to be *made* before it can be drawn. The
 first sight of a given page costs a `pdftoppm` run (~250 ms for an A4 page),
-during which the preview window says `rendering the page…`; after that the
-page is cached on disk by images.nvim and the draw is immediate, in this
+during which the preview window says `rendering the page…` — a line that is
+taken back out the tick before the page is drawn, because the picture covers
+only its own box and anything left beside it would stay on screen. After that
+the page is cached on disk by images.nvim and the draw is immediate, in this
 session and every later one. A page that will not rasterize — an encrypted or
 damaged file — falls back to the engine's own text preview rather than leaving
 that line on screen.

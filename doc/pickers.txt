@@ -754,7 +754,9 @@ Which page and at what resolution is images.nvim's own setting: >lua
   })
 <
 The first sight of a page costs a pdftoppm run (~250 ms for A4), during which
-the preview window says "rendering the page..."; afterwards the page is cached
+the preview window says "rendering the page..." -- a line taken back out the
+tick before the page is drawn, since the picture covers only its own box and
+anything left beside it would stay on screen.  Afterwards the page is cached
 on disk by images.nvim and the draw is immediate.  A page that will not
 rasterize falls back to the engine's own text preview.
 
