@@ -6,7 +6,8 @@
 --- pickers here that preview plain files -- pick_files and pick_item -- by
 --- swapping in the previewer from
 --- `pickers.integrations.images.adapters.telescope`, which falls back to
---- telescope's own buffer previewer for everything that is not an image.
+--- telescope's own buffer previewer for everything that is not an image (or a
+--- PDF page, which rides the same previewer).
 --- `image_previewer()` returns nil whenever the integration does not apply, so
 --- the previous previewer choice stands unchanged.
 ---

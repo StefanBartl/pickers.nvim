@@ -27,6 +27,8 @@
 --- whenever the integration does not apply, and nil is the right value to
 --- pass: an unset `preview` is what makes snacks use its own default.
 --- pick_dir is left out on purpose (a directory is never an image entry).
+--- PDF entries ride the same function; see the adapter for what changes when
+--- the picture has to be made before it can be drawn.
 
 local notify = require("lib.nvim.notify").create("[pickers.engines.snacks]")
 local spawn_env = require("lib.nvim.cross.run.env")

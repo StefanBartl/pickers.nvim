@@ -1,6 +1,6 @@
 ---@module 'pickers.integrations.images.adapters.telescope'
----@brief telescope.nvim: a file previewer that draws image entries and hands
----everything else to telescope's own.
+---@brief telescope.nvim: a file previewer that draws image and PDF entries and
+---hands everything else to telescope's own.
 ---@description
 --- Telescope attaches ONE previewer object per picker, and a previewer's
 --- `define_preview` sees every entry — so unlike snacks (a `preview` function
@@ -8,11 +8,20 @@
 --- a previewer of our own. It is deliberately telescope's own
 --- `previewers.cat` with one extra branch in front:
 ---
----   image entry     → empty the preview buffer, draw over the window
+---   image or PDF    → empty the preview buffer, draw over the window
 ---   everything else → `conf.values.buffer_previewer_maker(...)`, i.e. exactly
 ---                     what `previewers.cat` calls, with the user's own
 ---                     `defaults.preview` settings (timeout, filesize_limit,
 ---                     the {filetype,mime,filesize,timeout}_hook family)
+---
+--- **A PDF entry waits for its page, once.** It is rasterized on first sight
+--- and cached on disk from then on, so the branch says what the wait is for in
+--- the buffer it just emptied (the page is drawn *over* the window and covers
+--- it), and passes the same fall-through as `on_done` so an accepted draw that
+--- then fails still ends up at telescope's own previewer instead of leaving
+--- that line on screen. The callback is silenced once the selection has moved
+--- on — see `pickers.integrations.images.preview` — which is what makes it
+--- safe to hold `self.state` past the return.
 ---
 --- **Why not telescope's own `filetype_hook` instead.** That hook exists and
 --- would need no previewer of ours — but it only fires once a filetype was
@@ -63,22 +72,36 @@ function M.previewer()
       local path = from_entry.path(entry, true, false)
       if path == nil or path == "" then return end
 
-      if images.is_image(path) then
+      -- Guarded: an entry can reach it both ways -- refused synchronously, and
+      -- reported through `on_done` after an accepted draw failed.
+      local fell_back = false
+      local function fallback()
+        if fell_back then return end
+        fell_back = true
+        images.clear()
+        conf.buffer_previewer_maker(path, self.state.bufnr, {
+          bufname = self.state.bufname,
+          winid = self.state.winid,
+          preview = preview_opts,
+        })
+      end
+
+      if images.is_previewable(path) then
         -- The image is drawn OVER the window, so whatever the buffer holds
         -- would show through it -- including this same buffer's own contents
         -- from an earlier preview, since telescope caches one buffer per file.
-        pcall(vim.api.nvim_buf_set_lines, self.state.bufnr, 0, -1, false, {})
-        if images.preview(self.state.winid, path) then return end
+        local lines = images.is_pdf(path) and { "", "  rendering the page…" } or {}
+        pcall(vim.api.nvim_buf_set_lines, self.state.bufnr, 0, -1, false, lines)
+
+        local accepted = images.preview(self.state.winid, path, function(ok)
+          if not ok then fallback() end
+        end)
+        if accepted then return end
         -- Refused (unreadable file, window already gone): fall through to the
         -- text preview rather than leaving the window empty.
       end
 
-      images.clear()
-      conf.buffer_previewer_maker(path, self.state.bufnr, {
-        bufname = self.state.bufname,
-        winid = self.state.winid,
-        preview = preview_opts,
-      })
+      fallback()
     end,
     teardown = function()
       images.clear()

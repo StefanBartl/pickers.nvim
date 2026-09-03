@@ -23,7 +23,7 @@ appears once, where a reader would look for it.
 - **[PERSISTENCE](PERSISTENCE.md)** — history, frecency, and reopening what you
   just had.
 - **[IMAGES](IMAGES.md)** — png/jpg entries drawn as pictures in the preview
-  window, via images.nvim.
+  window, and PDFs as their first page, via images.nvim.
 
 Reference documentation lives one level up and is not repeated here:
 [`COMMANDS.md`](../COMMANDS.md) for the full argument grammar,

@@ -147,6 +147,11 @@ function M.check()
   -- Three separate answers, because the three causes need three different
   -- fixes: a switched-off integration, a missing plugin, and a terminal that
   -- cannot draw are not the same problem. See pickers.integrations.images.
+  --
+  -- The PDF half is reported as a fourth line under an active integration
+  -- rather than as a state of its own: it needs everything above it PLUS a
+  -- rasterizer, so it can only ever narrow the answer already given, and
+  -- ":checkhealth images" is where the reason for a missing one lives.
   vim.health.start("pickers.nvim — image previews (images.nvim)")
 
   local ok_images, images = pcall(require, "pickers.integrations.images")
@@ -164,6 +169,17 @@ function M.check()
       "active on snacks and telescope (fzf-lua previews images through its own "
         .. "previewers.builtin.extensions — chafa/viu/ueberzug)"
     )
+    -- A name, not a file: `is_pdf` judges the extension and asks images.nvim
+    -- whether it has a rasterizer, and never touches the disk -- which makes
+    -- it the capability probe as well as the per-entry question.
+    if images.is_pdf("health.pdf") then
+      vim.health.ok("PDF entries preview as their first page (images.nvim + pdfport.nvim)")
+    else
+      vim.health.info(
+        "PDF entries still preview as text — a page needs pdfport.nvim and poppler's "
+          .. "`pdftoppm`; run :checkhealth images for which of the two is missing"
+      )
+    end
   else
     vim.health.warn(
       "images.nvim is installed but reports that this terminal cannot draw — "

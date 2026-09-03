@@ -11,6 +11,32 @@ a changelog.
 ---
 
 
+[x] **PDF entries preview as their first page.** The same feature as the image
+  previews below, reaching the entries that were the other half of the
+  disappointment: a `.pdf` in a result list previewed as bytes for exactly the
+  reason a `.png` did. images.nvim answers for it on the surface it already
+  exposes — it rasterizes page 1 through `pdfport.nvim` (poppler's `pdftoppm`)
+  and draws the PNG like any other picture — so nothing here reads a PDF or
+  knows what a page is. The adapters changed by one word: `is_previewable()`
+  where they asked `is_image()`. An images.nvim without it falls back to
+  `is_image()` rather than going dark, so the two plugins update in either
+  order, and a machine without a rasterizer keeps the engine's text preview
+  with nothing said about it.
+  Two things follow from a page not existing yet when its entry is selected,
+  and neither is left to the engines. The preview window says `rendering the
+  page…` for the ~250 ms a first rasterization takes (images.nvim caches the
+  page on disk afterwards, so every later sight of it is immediate); and the
+  fall-through to the engine's own previewer is passed as a completion
+  callback, so a page that will not rasterize still ends at a working preview.
+  `pickers.integrations.images.preview()` silences that callback as soon as a
+  newer preview or a `clear()` has replaced it — otherwise a failure from two
+  entries ago would overwrite what the engine has just correctly put in the
+  window. `:checkhealth pickers` reports the PDF half as a line of its own
+  under the image previews, because it needs everything they need *plus* a
+  rasterizer. Which page and at what dpi is images.nvim's `pdf = { … }`, not a
+  setting here. See [docs/FEATURES/IMAGES.md](FEATURES/IMAGES.md) and
+  [docs/CONFIGURATION.md](CONFIGURATION.md#image-previews).
+
 [x] **Image previews in the preview window (images.nvim).** An entry whose file
   is an image (`.png`/`.jpg`/… — images.nvim's own `extensions` list) is drawn
   as a picture instead of previewed as bytes. New `pickers.integrations.images`

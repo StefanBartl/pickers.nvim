@@ -1,6 +1,6 @@
 ---@module 'pickers.integrations.images'
----@brief Draw image entries in the preview window, via images.nvim (a soft,
----opt-in integration).
+---@brief Draw image entries — and the first page of a PDF — in the preview
+---window, via images.nvim (a soft, opt-in integration).
 ---@description
 --- Every file picker here already *lists* `.png`/`.jpg`/… — a result list is
 --- a result list, and `fd` does not care what a file contains. What used to
@@ -10,15 +10,25 @@
 --- [images.nvim](https://github.com/StefanBartl/images.nvim) installed, the
 --- preview window shows the actual picture instead.
 ---
+--- **A PDF entry is the same feature.** `.pdf` is a result like any other and
+--- previewed as bytes for the same reason, and images.nvim answers for it
+--- through the same surface: it rasterizes the first page (pdfport.nvim, and
+--- poppler's `pdftoppm` underneath) and draws the result. Nothing in this
+--- module reads a PDF or knows what a page is — `is_previewable()` replaces
+--- `is_image()` in the two adapters, and that is the whole of the difference.
+--- On a machine without a rasterizer the answer is simply no and the entry
+--- stays the engine's to preview.
+---
 --- **The dependency is one-directional and soft.** images.nvim exposes a
 --- three-function surface for exactly this (`images.integrations.picker`:
---- `available()` / `is_image()` / `preview(winid, file)`), pickers.nvim calls
---- it, and nothing here fails when images.nvim is absent — `available()` is
---- then simply false and every engine keeps its own previewer. That is why the
---- OSC 1337 details (which terminal can draw, where a bordered window's
---- content actually starts, when an overlay has to be repainted away) live
---- over there and not here: this module knows *which window* to draw into,
---- images.nvim knows *how*.
+--- `available()` / `is_previewable()` / `preview(winid, file)`), pickers.nvim
+--- calls it, and nothing here fails when images.nvim is absent —
+--- `available()` is then simply false and every engine keeps its own
+--- previewer. That is why the OSC 1337 details (which terminal can draw, where
+--- a bordered window's content actually starts, when an overlay has to be
+--- repainted away) live over there and not here — together with the
+--- rasterizing, for the same reason: this module knows *which window* to draw
+--- into, images.nvim knows *how*.
 ---
 --- **Three checks, in this order, before any preview is taken over:**
 ---   1. `cfg.images.enabled` — the user's opt-out, honoured even when
@@ -98,29 +108,87 @@ function M.is_image(path)
   return images ~= nil and images.is_image(path) == true
 end
 
+---Whether an entry is one images.nvim would draw: an image, or a PDF page it
+---can rasterize. The question the adapters ask per entry.
+---
+---Falls back to `is_image()` against an images.nvim that predates the PDF half
+---of the surface — the integration then behaves exactly as it did before, for
+---images, instead of going dark. Checked by shape rather than by version, the
+---same way `api()` checks the surface itself.
+---@param path string|nil
+---@return boolean
+function M.is_previewable(path)
+  if type(path) ~= "string" or path == "" then return false end
+  local images = api()
+  if not images then return false end
+  if type(images.is_previewable) == "function" then return images.is_previewable(path) == true end
+  return images.is_image(path) == true
+end
+
+---Whether an entry is a PDF images.nvim would rasterize. Narrower than
+---`is_previewable` and asked for one reason only: a page that is not cached
+---yet takes a moment to produce, and an adapter that knows a wait is coming
+---can put a line in the preview window to say so. See the adapters.
+---@param path string|nil
+---@return boolean
+function M.is_pdf(path)
+  if type(path) ~= "string" or path == "" then return false end
+  local images = api()
+  return images ~= nil and type(images.is_pdf) == "function" and images.is_pdf(path) == true
+end
+
+---@type integer Which preview is the current one; see `M.preview`.
+local generation = 0
+
 ---Draw `file` into the preview window `winid`.
 ---
 ---`false` means "not drawn — show your own preview instead", and comes back
 ---before anything has been painted, so a caller can fall through to the
 ---engine's previewer without a flicker. `true` means the draw was accepted;
 ---it lands in the next tick (images.nvim defers, because a preview window is
----usually filled in the same tick it is drawn into).
+---usually filled in the same tick it is drawn into) — or, for a PDF page that
+---has not been rasterized before, in a few hundred milliseconds.
+---
+---`on_done` is how an accepted draw that then fails still reaches the caller:
+---an unreadable image, a page that will not rasterize. It runs at most once,
+---and **only while this is still the preview on screen** — a later selection
+---(or a `M.clear()`) silences it, because by then the window belongs to
+---another entry and writing this one's fallback into it would replace what the
+---engine has just correctly put there. That guard is why the parameter exists
+---at all rather than callers passing images.nvim's `opts.on_done` themselves.
 ---@param winid integer preview window
 ---@param file string absolute path
+---@param on_done fun(ok: boolean, err: string|nil)|nil
 ---@return boolean ok
-function M.preview(winid, file)
+function M.preview(winid, file, on_done)
   local images = api()
   if not images then return false end
-  return images.preview(winid, file) == true
+
+  generation = generation + 1
+  local ticket = generation
+
+  ---@type Images.Picker.PreviewOpts|nil
+  local opts = nil
+  if on_done then
+    opts = {
+      on_done = function(ok, err)
+        if ticket ~= generation then return end
+        on_done(ok, err)
+      end,
+    }
+  end
+
+  return images.preview(winid, file, opts) == true
 end
 
----Repaint the drawn image away. Callers must do this when the selection moves
----from an image to a non-image entry: the preview window stays open in that
----case, and the picture would otherwise sit on top of the text preview that
----follows it. (A *closing* preview window is images.nvim's own business — it
----arms that cleanup itself.)
+---Repaint the drawn image away, and disown any preview still in flight.
+---Callers must do this when the selection moves from an image to a non-image
+---entry: the preview window stays open in that case, and the picture would
+---otherwise sit on top of the text preview that follows it. (A *closing*
+---preview window is images.nvim's own business — it arms that cleanup itself.)
 ---@return nil
 function M.clear()
+  generation = generation + 1
   local images = api()
   if images then images.clear() end
 end

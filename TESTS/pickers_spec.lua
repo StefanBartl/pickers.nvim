@@ -1753,6 +1753,17 @@ do
   check("integrations.images: available() follows images.nvim", images.available() == true)
   check("integrations.images: is_image() delegates", images.is_image("/x/a.png") == true)
   check("integrations.images: a non-image is still a no", images.is_image("/x/a.md") == false)
+  -- This stub has no is_previewable/is_pdf -- an images.nvim that predates the
+  -- PDF half. The integration has to keep working for images rather than go
+  -- dark, which is the whole point of checking the surface by shape.
+  check(
+    "integrations.images: is_previewable() falls back to is_image() on an older images.nvim",
+    images.is_previewable("/x/a.png") == true and images.is_previewable("/x/doc.pdf") == false
+  )
+  check(
+    "integrations.images: is_pdf() is false on an older images.nvim",
+    images.is_pdf("/x/doc.pdf") == false
+  )
   check(
     "integrations.images: preview() forwards window + file",
     images.preview(7, "/x/a.png") == true and drawn[1].winid == 7 and drawn[1].file == "/x/a.png"
@@ -1844,6 +1855,203 @@ do
   -- Previews switched off in telescope's own config: stay out of the way.
   package.loaded["telescope.config"] = { values = { preview = false } }
   check("images/telescope: `preview = false` yields no previewer", tele.previewer() == nil)
+
+  for k, v in pairs(prev_tele) do
+    package.loaded[k] = v
+  end
+  package.loaded["images.integrations.picker"] = prev_api
+end
+
+-- ── pickers.integrations.images — PDF entries ───────────────────────────────
+-- The same bridge, asked the other half of its question. images.nvim is still
+-- not on the runtimepath, so the surface is stubbed again -- this time with the
+-- PDF half present, which is what lets the two adapters be checked against an
+-- entry that is ACCEPTED BEFORE ITS PICTURE EXISTS. That is the whole
+-- difference between a PDF and an image here, and everything below is one of
+-- its two consequences: the line that says what the wait is for, and the
+-- fall-through that has to survive the wait without landing on somebody else's
+-- preview.
+do
+  local images = require("pickers.integrations.images")
+  local prev_api = package.loaded["images.integrations.picker"]
+
+  local drawn, cleared = {}, 0
+  ---@type fun(ok: boolean, err: string|nil)|nil the last accepted draw's callback, held back
+  local pending
+  local function matches(path, pattern)
+    return type(path) == "string" and path:lower():match(pattern) ~= nil
+  end
+  package.loaded["images.integrations.picker"] = {
+    available = function()
+      return true
+    end,
+    is_image = function(path)
+      return matches(path, "%.png$")
+    end,
+    is_pdf = function(path)
+      return matches(path, "%.pdf$")
+    end,
+    is_previewable = function(path)
+      return matches(path, "%.png$") or matches(path, "%.pdf$")
+    end,
+    preview = function(winid, file, opts)
+      drawn[#drawn + 1] = { winid = winid, file = file }
+      pending = opts and opts.on_done or nil
+      return true
+    end,
+    clear = function()
+      cleared = cleared + 1
+    end,
+  }
+
+  check("integrations.images: is_pdf() delegates", images.is_pdf("/x/doc.pdf") == true)
+  check("integrations.images: a png is not a PDF", images.is_pdf("/x/a.png") == false)
+  check(
+    "integrations.images: is_previewable() covers both",
+    images.is_previewable("/x/doc.pdf") == true and images.is_previewable("/x/a.png") == true
+  )
+  check(
+    "integrations.images: a text file is not previewable",
+    images.is_previewable("/x/a.md") == false
+  )
+
+  -- ── on_done: reaches the caller, but only while it is still the preview ───
+  local reported = {}
+  images.preview(3, "/x/doc.pdf", function(ok, err)
+    reported[#reported + 1] = { ok = ok, err = err }
+  end)
+  assert(pending)
+  pending(false, "pdftoppm exited 1")
+  check(
+    "integrations.images: on_done reaches the caller",
+    #reported == 1 and reported[1].ok == false and reported[1].err == "pdftoppm exited 1"
+  )
+
+  reported = {}
+  images.preview(3, "/x/doc.pdf", function(ok)
+    reported[#reported + 1] = ok
+  end)
+  local stale = pending
+  images.preview(3, "/x/other.pdf", function() end)
+  assert(stale)
+  stale(false, "too late")
+  check("integrations.images: a newer preview silences the older on_done", #reported == 0)
+
+  reported = {}
+  images.preview(3, "/x/doc.pdf", function(ok)
+    reported[#reported + 1] = ok
+  end)
+  stale = pending
+  images.clear()
+  assert(stale)
+  stale(false, "too late")
+  check("integrations.images: clear() silences a pending on_done", #reported == 0)
+
+  -- ── snacks adapter ───────────────────────────────────────────────────────
+  local prev_snacks = package.loaded["snacks.picker.preview"]
+  local fell_through = 0
+  package.loaded["snacks.picker.preview"] = {
+    file = function()
+      fell_through = fell_through + 1
+    end,
+  }
+
+  local preview_fn = require("pickers.integrations.images.adapters.snacks").preview_fn()
+  local lines_set
+  local function ctx_for(file)
+    return {
+      win = 42,
+      item = { file = file },
+      preview = {
+        reset = function() end,
+        set_title = function() end,
+        set_lines = function(_, lines)
+          lines_set = lines
+        end,
+      },
+    }
+  end
+
+  lines_set = nil
+  local before = #drawn
+  preview_fn(ctx_for("/x/doc.pdf"))
+  check(
+    "images/snacks: a PDF entry is drawn into the preview window",
+    #drawn == before + 1 and drawn[#drawn].file == "/x/doc.pdf" and fell_through == 0
+  )
+  check(
+    "images/snacks: and the window says what the wait is for",
+    type(lines_set) == "table" and table.concat(lines_set, " "):match("rendering") ~= nil
+  )
+
+  assert(pending)
+  pending(false, "pdftoppm exited 1")
+  check("images/snacks: a page that will not rasterize falls through to snacks", fell_through == 1)
+
+  lines_set = nil
+  before = #drawn
+  preview_fn(ctx_for("/x/shot.png"))
+  check(
+    "images/snacks: an image entry draws without a placeholder",
+    #drawn == before + 1 and lines_set == nil
+  )
+
+  package.loaded["snacks.picker.preview"] = prev_snacks
+
+  -- ── telescope adapter ────────────────────────────────────────────────────
+  local prev_tele = {
+    ["telescope.previewers"] = package.loaded["telescope.previewers"],
+    ["telescope.from_entry"] = package.loaded["telescope.from_entry"],
+    ["telescope.config"] = package.loaded["telescope.config"],
+  }
+  local maker_calls = 0
+  package.loaded["telescope.previewers"] = {
+    new_buffer_previewer = function(o)
+      return o
+    end,
+  }
+  package.loaded["telescope.from_entry"] = {
+    path = function(entry)
+      return entry.path
+    end,
+  }
+  package.loaded["telescope.config"] = {
+    values = {
+      preview = {},
+      buffer_previewer_maker = function()
+        maker_calls = maker_calls + 1
+      end,
+    },
+  }
+
+  local previewer = require("pickers.integrations.images.adapters.telescope").previewer()
+  local bufnr = vim.api.nvim_create_buf(false, true)
+  local state = { state = { bufnr = bufnr, winid = 0 } }
+
+  before = #drawn
+  previewer.define_preview(state, { path = "/x/doc.pdf" })
+  check(
+    "images/telescope: a PDF entry is drawn, telescope's maker untouched",
+    #drawn == before + 1 and drawn[#drawn].file == "/x/doc.pdf" and maker_calls == 0
+  )
+  check(
+    "images/telescope: and the emptied buffer says what the wait is for",
+    table.concat(vim.api.nvim_buf_get_lines(bufnr, 0, -1, false), " "):match("rendering") ~= nil
+  )
+
+  assert(pending)
+  pending(false, "pdftoppm exited 1")
+  check(
+    "images/telescope: a page that will not rasterize hands over to telescope",
+    maker_calls == 1
+  )
+
+  before = #drawn
+  previewer.define_preview(state, { path = "/x/shot.png" })
+  check(
+    "images/telescope: an image entry leaves the buffer empty",
+    #drawn == before + 1 and table.concat(vim.api.nvim_buf_get_lines(bufnr, 0, -1, false), "") == ""
+  )
 
   for k, v in pairs(prev_tele) do
     package.loaded[k] = v

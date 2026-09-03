@@ -1,6 +1,6 @@
 ---@module 'pickers.integrations.images.adapters.snacks'
----@brief snacks.nvim: the per-picker `preview` function that draws image
----entries and lets everything else through.
+---@brief snacks.nvim: the per-picker `preview` function that draws image and
+---PDF entries and lets everything else through.
 ---@description
 --- Snacks resolves `opts.preview` to a single function called with a context
 --- (`{ item, win, preview, picker, … }`) whenever the selection changes, so
@@ -24,6 +24,19 @@
 ---   (A closing picker is images.nvim's own business — it arms that cleanup
 ---   itself.)
 ---
+--- **A PDF entry waits, once.** An image is already a picture; a page has to
+--- be rasterized first, which is a few hundred milliseconds the first time and
+--- nothing at all afterwards (images.nvim caches the page on disk). Two things
+--- follow, and both are in the branch below. A line goes into the preview
+--- window to say what the wait is for — it costs nothing, and the image is
+--- drawn *over* the window, so the page covers it when it arrives. And the
+--- fall-through to snacks' own previewer has to survive the wait: a draw that
+--- is accepted and then fails would otherwise leave the window with that line
+--- and nothing else, so the same fallback is passed as `on_done`. It is
+--- silenced automatically once the selection has moved on (see
+--- `pickers.integrations.images.preview`), which is what makes it safe to hold
+--- `ctx` in a callback at all.
+---
 --- Attached per call by `pickers.engines.snacks` rather than patched into
 --- `Snacks.setup()`: pickers.nvim does not own the user's snacks
 --- configuration — the same rule that makes `pickers.keys.snacks_win()` an
@@ -42,17 +55,33 @@ function M.preview_fn()
 
   return function(ctx)
     local file = ctx.item and ctx.item.file
-    if images.is_image(file) then
+
+    -- Guarded, because both routes to it can be taken for one entry: refused
+    -- synchronously *and* reported through `on_done`. Snacks would survive
+    -- previewing the same file twice; the flicker is the reason not to.
+    local fell_back = false
+    local function fallback()
+      if fell_back then return end
+      fell_back = true
+      images.clear()
+      return require("snacks.picker.preview").file(ctx)
+    end
+
+    if images.is_previewable(file) then
       ctx.preview:reset()
       ctx.preview:set_title(vim.fn.fnamemodify(file, ":t"))
-      if images.preview(ctx.win, file) then return end
+      if images.is_pdf(file) then ctx.preview:set_lines({ "", "  rendering the page…" }) end
+
+      local accepted = images.preview(ctx.win, file, function(ok)
+        if not ok then fallback() end
+      end)
+      if accepted then return end
       -- The draw was refused (an unreadable file, a window that went away
       -- between selection and preview): fall through to the text preview
       -- rather than leaving the window empty.
     end
 
-    images.clear()
-    return require("snacks.picker.preview").file(ctx)
+    return fallback()
   end
 end
 

@@ -34,7 +34,9 @@ dispatching straight into the resolved engine's own picker function. See
 With [images.nvim](https://github.com/StefanBartl/images.nvim) installed, an
 image entry in the results (`.png`, `.jpg`, …) is **drawn as a picture** in the
 preview window instead of previewed as bytes — snacks and telescope, no
-configuration, and nothing changes without it. See
+configuration, and nothing changes without it. Add
+[pdfport.nvim](https://github.com/StefanBartl/pdfport.nvim) and a `.pdf` entry
+previews as its **first page** the same way. See
 [docs/FEATURES/IMAGES.md](docs/FEATURES/IMAGES.md).
 
 > 💡 Pairs well with [insights.nvim](https://github.com/StefanBartl/insights.nvim):

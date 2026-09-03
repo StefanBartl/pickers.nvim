@@ -116,9 +116,10 @@ require("pickers").setup({
     -- mouse clicks are handled by the fzf binary itself.
   },
 
-  -- Image previews via images.nvim (soft dependency). On by default, but only
-  -- ever active when images.nvim is installed AND the terminal can draw --
-  -- otherwise every engine keeps its own previewer. See "Image previews".
+  -- Image and PDF previews via images.nvim (soft dependency). On by default,
+  -- but only ever active when images.nvim is installed AND the terminal can
+  -- draw -- otherwise every engine keeps its own previewer. A PDF additionally
+  -- needs pdfport.nvim, which images.nvim reaches. See "Image previews".
   images = {
     enabled = true,
   },
@@ -300,6 +301,13 @@ window instead of previewed as bytes. Requires
 [images.nvim](https://github.com/StefanBartl/images.nvim); **on by default**,
 and inert without it.
 
+A `.pdf` entry previews as its first page, on the same switch, when
+[pdfport.nvim](https://github.com/StefanBartl/pdfport.nvim) and poppler's
+`pdftoppm` are there as well — images.nvim reaches both, pickers.nvim never
+does. Which page and at what resolution is images.nvim's own
+`pdf = { enabled, page, dpi }`; the switch below turns the whole integration
+off, images and pages alike.
+
 ```lua
 require("pickers").setup({
   images = {
@@ -310,8 +318,8 @@ require("pickers").setup({
 
 | Engine | Effect |
 |---|---|
-| snacks | `pick_files`, `smart` and `pick_item` draw image entries; anything else falls through to snacks' own `preview.file` |
-| telescope | `pick_files` and `pick_item` draw image entries; anything else goes to telescope's own buffer previewer. `smart` keeps `grep_previewer`, which has to jump to a matched line |
+| snacks | `pick_files`, `smart` and `pick_item` draw image and PDF entries; anything else falls through to snacks' own `preview.file` |
+| telescope | `pick_files` and `pick_item` draw image and PDF entries; anything else goes to telescope's own buffer previewer. `smart` keeps `grep_previewer`, which has to jump to a matched line |
 | fzf-lua | no-op — its builtin previewer has no per-call Lua hook and ships image support of its own (`previewers.builtin.extensions` = chafa/viu/ueberzug) |
 
 Being "enabled" is not the same as being active: images.nvim must be installed
@@ -319,7 +327,8 @@ Being "enabled" is not the same as being active: images.nvim must be installed
 the answer is no and the text preview stays — deliberately, since an empty
 preview window would be worse than the one the engine already had.
 images.nvim's `display.assume_supported = true` overrides that detection.
-`:checkhealth pickers` names which of the three states applies.
+`:checkhealth pickers` names which of the three states applies, and reports
+separately whether PDF pages can be rasterized.
 
 Full details, and why each engine draws the line where it does, in
 [FEATURES/IMAGES.md](FEATURES/IMAGES.md).

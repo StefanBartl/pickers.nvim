@@ -731,25 +731,45 @@ without it: >lua
     images = { enabled = true },   -- false keeps the engine's text preview
   })
 <
-  snacks      pick_files, smart and pick_item draw image entries; everything
-              else falls through to snacks' own preview.file
-  telescope   pick_files and pick_item draw image entries; everything else
-              goes to telescope's own buffer previewer.  smart keeps
+  snacks      pick_files, smart and pick_item draw image and PDF entries;
+              everything else falls through to snacks' own preview.file
+  telescope   pick_files and pick_item draw image and PDF entries; everything
+              else goes to telescope's own buffer previewer.  smart keeps
               grep_previewer -- a grep row has to jump to its matched line.
   fzf-lua     no-op -- its builtin previewer has no per-call Lua hook and
               ships image support of its own (previewers.builtin.extensions
               = chafa/viu/ueberzug)
+
+PDF entries                                                *pickers-images-pdf*
+
+A .pdf entry previews as its FIRST PAGE, on the same switch, when
+pdfport.nvim (https://github.com/StefanBartl/pdfport.nvim) and poppler's
+`pdftoppm` are installed alongside images.nvim.  Nothing in pickers.nvim reads
+a PDF: images.nvim rasterizes the page and draws it like any other picture,
+and without a rasterizer the entry simply stays the engine's to preview.
+
+Which page and at what resolution is images.nvim's own setting: >lua
+  require("images").setup({
+    pdf = { enabled = true, page = 1, dpi = 120 },
+  })
+<
+The first sight of a page costs a pdftoppm run (~250 ms for A4), during which
+the preview window says "rendering the page..."; afterwards the page is cached
+on disk by images.nvim and the draw is immediate.  A page that will not
+rasterize falls back to the engine's own text preview.
 
 Enabled is not the same as active: images.nvim must be installed AND report
 that this terminal can draw.  On a terminal it does not recognise the answer
 is no and the text preview stays -- an empty preview window would be worse
 than the one it replaced.  images.nvim's `display.assume_supported = true`
 overrides that detection.  `:checkhealth pickers` names which of the three
-states applies.
+states applies, and reports separately whether pages can be rasterized.
 
 The dependency runs one way only: images.nvim exposes
-`images.integrations.picker` (available/is_image/preview), pickers.nvim calls
-it.  See docs/FEATURES/IMAGES.md.
+`images.integrations.picker` (available/is_previewable/preview), pickers.nvim
+calls it.  An older images.nvim without `is_previewable` falls back to
+`is_image`, so the two plugins update in either order.
+See docs/FEATURES/IMAGES.md.
 
 ==============================================================================
 15. HEALTH CHECK                                                *pickers-health*

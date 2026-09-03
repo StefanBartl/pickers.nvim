@@ -200,6 +200,11 @@ local M = {
   -- but only ever ACTIVE when images.nvim is installed and the terminal can
   -- actually draw -- otherwise every engine keeps its own previewer, exactly
   -- as before. enabled = false keeps the text preview even then.
+  --   A .pdf entry previews as its first page on this same switch, whenever
+  --   images.nvim can rasterize one (pdfport.nvim + poppler's pdftoppm, both
+  --   reached by images.nvim and never by this plugin). WHICH page and at what
+  --   resolution is images.nvim's own `pdf = { … }`; this only turns the whole
+  --   integration off.
   --   snacks/telescope: wired. fzf-lua: not -- its builtin previewer has no
   --   per-call Lua hook and ships image support of its own
   --   (previewers.builtin.extensions = chafa/viu/ueberzug).
