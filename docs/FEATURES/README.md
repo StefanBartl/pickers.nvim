@@ -22,6 +22,8 @@ appears once, where a reader would look for it.
   shortening.
 - **[PERSISTENCE](PERSISTENCE.md)** — history, frecency, and reopening what you
   just had.
+- **[IMAGES](IMAGES.md)** — png/jpg entries drawn as pictures in the preview
+  window, via images.nvim.
 
 Reference documentation lives one level up and is not repeated here:
 [`COMMANDS.md`](../COMMANDS.md) for the full argument grammar,

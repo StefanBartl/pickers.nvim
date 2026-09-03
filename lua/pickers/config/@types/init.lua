@@ -60,6 +60,16 @@
 ---@field path_shorten? boolean  Default: false
 
 -- ###########################################################################
+-- Image previews (images.nvim, soft dependency)
+
+--- Draw image entries (png/jpg/…) in the preview window instead of previewing
+--- them as bytes. Requires images.nvim; `enabled` is an opt-OUT, since the
+--- integration switches itself off anyway when images.nvim is absent or the
+--- terminal cannot draw. See `pickers.integrations.images`.
+---@class Pickers.ImagesConfig
+---@field enabled? boolean  Default: true
+
+-- ###########################################################################
 -- Top-level configuration
 
 ---@class Pickers.Config
@@ -77,5 +87,6 @@
 ---@field result_count?  Pickers.ResultCountConfig
 ---@field smart?         Pickers.SmartConfig
 ---@field display?       Pickers.DisplayConfig
+---@field images?        Pickers.ImagesConfig
 
 return {}

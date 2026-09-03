@@ -19,7 +19,8 @@ CONTENTS                                                      *pickers-contents*
  11. Result count ..................... |pickers-result-count|
  12. Smart action ..................... |pickers-smart|
  13. Display .......................... |pickers-display|
- 14. Health check ..................... |pickers-health|
+ 14. Image previews ................... |pickers-images|
+ 15. Health check ..................... |pickers-health|
 
 ==============================================================================
 1. INTRODUCTION                                                  *pickers-intro*
@@ -542,6 +543,10 @@ All keys are optional.  Unset keys retain their default values.
     path_shorten (bool, default false) — cosmetic long-path shortening, see
                                           |pickers-display|
 
+  images (table)~
+    enabled (bool, default true) — draw image entries as pictures in the
+                                    preview window, see |pickers-images|
+
   keys (table)~
     Unified in-picker keys: preview scroll + history navigation (patched
     globally into telescope/fzf-lua/snacks) plus the create_file/
@@ -715,15 +720,47 @@ mechanism -- no pickers.nvim-side logic: >lua
               by default, nothing to opt into
 
 ==============================================================================
-14. HEALTH CHECK                                                *pickers-health*
+14. IMAGE PREVIEWS                                              *pickers-images*
+
+An entry whose file is an image (.png/.jpg/... -- whatever images.nvim's own
+`extensions` lists) is drawn as a picture in the preview window instead of
+being previewed as bytes.  Needs images.nvim
+(https://github.com/StefanBartl/images.nvim); on by default, and inert
+without it: >lua
+  require("pickers").setup({
+    images = { enabled = true },   -- false keeps the engine's text preview
+  })
+<
+  snacks      pick_files, smart and pick_item draw image entries; everything
+              else falls through to snacks' own preview.file
+  telescope   pick_files and pick_item draw image entries; everything else
+              goes to telescope's own buffer previewer.  smart keeps
+              grep_previewer -- a grep row has to jump to its matched line.
+  fzf-lua     no-op -- its builtin previewer has no per-call Lua hook and
+              ships image support of its own (previewers.builtin.extensions
+              = chafa/viu/ueberzug)
+
+Enabled is not the same as active: images.nvim must be installed AND report
+that this terminal can draw.  On a terminal it does not recognise the answer
+is no and the text preview stays -- an empty preview window would be worse
+than the one it replaced.  images.nvim's `display.assume_supported = true`
+overrides that detection.  `:checkhealth pickers` names which of the three
+states applies.
+
+The dependency runs one way only: images.nvim exposes
+`images.integrations.picker` (available/is_image/preview), pickers.nvim calls
+it.  See docs/FEATURES/IMAGES.md.
+
+==============================================================================
+15. HEALTH CHECK                                                *pickers-health*
 
 Run: >
   :checkhealth pickers
 <
 
 Checks: lib.nvim availability, telescope / fzf-lua / snacks.nvim presence,
-rg / fd in PATH, repos_dir existence, registered aliases count, and each
-collection directory.
+rg / fd in PATH, repos_dir existence, registered aliases count, image
+previews (|pickers-images|), and each collection directory.
 
 ==============================================================================
 vim:ft=help:tw=78:ts=2:et:

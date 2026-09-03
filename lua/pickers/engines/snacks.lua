@@ -20,6 +20,13 @@
 --- truncates the displayed path to fit the available column width by
 --- default (`Snacks.picker.util.truncpath`, in its own formatter), so there
 --- is nothing to opt into.
+---
+--- Image previews (`pickers.integrations.images`) are wired into every picker
+--- here that lists files -- pick_files, smart, pick_item -- as a `preview`
+--- function, which snacks resolves per call. `preview_fn()` returns nil
+--- whenever the integration does not apply, and nil is the right value to
+--- pass: an unset `preview` is what makes snacks use its own default.
+--- pick_dir is left out on purpose (a directory is never an image entry).
 
 local notify = require("lib.nvim.notify").create("[pickers.engines.snacks]")
 local spawn_env = require("lib.nvim.cross.run.env")
@@ -47,6 +54,16 @@ local function safe_call(fn, opts)
   if not ok then notify.error("snacks error: " .. tostring(err)) end
 end
 
+---The image-preview function for this call, or nil when image previews do not
+---apply (see `pickers.integrations.images`). Resolved per picker, not cached:
+---the terminal, the configuration and images.nvim's own availability can all
+---change between two pickers within a session.
+---@internal
+---@return (fun(ctx: table))|nil
+local function preview_fn()
+  return require("pickers.integrations.images.adapters.snacks").preview_fn()
+end
+
 -- ── Public engine interface ───────────────────────────────────────────────────
 
 ---@return boolean
@@ -70,6 +87,7 @@ function M.pick_files(opts)
     safe_call(Picker.pick, {
       source = "files",
       title = opts.prompt,
+      preview = preview_fn(),
       finder = function(_, ctx)
         return require("snacks.picker.source.proc").proc(
           ctx:opts({
@@ -95,6 +113,7 @@ function M.pick_files(opts)
     ignored = f.no_ignore,
     follow = f.follow,
     exclude = f.exclude,
+    preview = preview_fn(),
   }
 
   if #opts.roots > 1 then
@@ -158,6 +177,7 @@ function M.smart(opts)
     title = opts.prompt or "Smart> ",
     live = true,
     format = "file",
+    preview = preview_fn(),
     matcher = { sort_empty = false },
     finder = function(_, ctx)
       local items = require("pickers.smart").query(ctx.filter.search or "", {
@@ -201,11 +221,17 @@ function M.pick_item(opts)
     return
   end
 
+  local preview = preview_fn()
   Picker.select(opts.items, {
     prompt = opts.prompt,
     format_item = function(item)
       return (type(item) == "table") and item.text or tostring(item)
     end,
+    -- `select` builds its own picker options and merges `snacks` over them, so
+    -- this is the only way in -- and the only key that may travel this way:
+    -- `select`'s own `on_close` completes the vim.ui.select contract, and a
+    -- merge would replace it rather than wrap it.
+    snacks = preview and { preview = preview } or nil,
   }, function(item)
     if item then opts.on_select(item) end
   end)

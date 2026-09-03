@@ -31,6 +31,12 @@ every LSP list, diagnostics, help, marks, buffers, registers, and more —
 dispatching straight into the resolved engine's own picker function. See
 [docs/BUILTINS.md](docs/BUILTINS.md) for the full name list and per-engine parity matrix.
 
+With [images.nvim](https://github.com/StefanBartl/images.nvim) installed, an
+image entry in the results (`.png`, `.jpg`, …) is **drawn as a picture** in the
+preview window instead of previewed as bytes — snacks and telescope, no
+configuration, and nothing changes without it. See
+[docs/FEATURES/IMAGES.md](docs/FEATURES/IMAGES.md).
+
 > 💡 Pairs well with [insights.nvim](https://github.com/StefanBartl/insights.nvim):
 > use `pickers.nvim` to jump into any repo, then get an instant structural
 > overview of it with `insights.nvim`.
@@ -82,7 +88,7 @@ work, for turning it off without touching any plugin's config.
 
 ## Documentation
 
-- [Features](docs/FEATURES/README.md) — the catalogue, by theme: engines, scopes, actions, native pickers, keys, UI, persistence.
+- [Features](docs/FEATURES/README.md) — the catalogue, by theme: engines, scopes, actions, native pickers, keys, UI, persistence, image previews.
 - [Installation](docs/INSTALLATION.md) — requirements, lazy.nvim (recommended + lazy-loading variant), packer.nvim, and health check.
 - [Commands](docs/COMMANDS.md) — the `:Pickers` command syntax, scopes, and compat command aliases.
 - [Native pickers](docs/BUILTINS.md) — `:Pickers builtin <name>`, the full name list, and the per-engine parity matrix.

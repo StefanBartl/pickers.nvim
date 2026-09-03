@@ -1699,6 +1699,158 @@ do
   files.run = real_run
 end
 
+-- ── pickers.integrations.images — image previews via images.nvim ────────────
+-- images.nvim is a soft dependency and is deliberately NOT on the test
+-- runtimepath, so the "not installed" half below is the real behaviour, not a
+-- simulation of it. The "installed" half runs against a stub injected into
+-- package.loaded — the only way to check the branch logic without a terminal
+-- that can actually draw, which is also why the drawing itself is images.nvim's
+-- own test suite's problem and not this one's.
+do
+  local images = require("pickers.integrations.images")
+
+  -- ── images.nvim absent: every answer is a clean no ────────────────────────
+  check(
+    "integrations.images: available() is false without images.nvim",
+    images.available() == false
+  )
+  check(
+    "integrations.images: is_image() is false without images.nvim",
+    images.is_image("/tmp/a.png") == false
+  )
+  check(
+    "integrations.images: preview() refuses without images.nvim",
+    images.preview(0, "/tmp/a.png") == false
+  )
+  images.clear() -- a no-op, not an error
+
+  local cfg_mod = require("pickers.config")
+  check("integrations.images: enabled() defaults to true", images.enabled() == true)
+  cfg_mod.apply({ images = { enabled = false } })
+  check("integrations.images: images.enabled = false is honoured", images.enabled() == false)
+  cfg_mod.apply({ images = { enabled = true } })
+  check("integrations.images: the opt-out is reversible", images.enabled() == true)
+
+  -- ── images.nvim present (stubbed): the bridge forwards ────────────────────
+  local prev_api = package.loaded["images.integrations.picker"]
+  local drawn, cleared = {}, 0
+  package.loaded["images.integrations.picker"] = {
+    available = function()
+      return true
+    end,
+    is_image = function(path)
+      return type(path) == "string" and path:lower():match("%.png$") ~= nil
+    end,
+    preview = function(winid, file)
+      drawn[#drawn + 1] = { winid = winid, file = file }
+      return true
+    end,
+    clear = function()
+      cleared = cleared + 1
+    end,
+  }
+
+  check("integrations.images: available() follows images.nvim", images.available() == true)
+  check("integrations.images: is_image() delegates", images.is_image("/x/a.png") == true)
+  check("integrations.images: a non-image is still a no", images.is_image("/x/a.md") == false)
+  check(
+    "integrations.images: preview() forwards window + file",
+    images.preview(7, "/x/a.png") == true and drawn[1].winid == 7 and drawn[1].file == "/x/a.png"
+  )
+
+  -- ── snacks adapter: image draws, everything else falls through ────────────
+  local prev_snacks = package.loaded["snacks.picker.preview"]
+  local fell_through = 0
+  package.loaded["snacks.picker.preview"] = {
+    file = function()
+      fell_through = fell_through + 1
+    end,
+  }
+
+  local preview_fn = require("pickers.integrations.images.adapters.snacks").preview_fn()
+  check(
+    "images/snacks: a preview function is returned when available",
+    type(preview_fn) == "function"
+  )
+
+  local function ctx_for(file)
+    return {
+      win = 42,
+      item = { file = file },
+      preview = { reset = function() end, set_title = function() end },
+    }
+  end
+
+  local before = #drawn
+  preview_fn(ctx_for("/x/shot.png"))
+  check(
+    "images/snacks: an image entry is drawn into the preview window",
+    #drawn == before + 1 and drawn[#drawn].winid == 42 and fell_through == 0
+  )
+
+  local cleared_before = cleared
+  preview_fn(ctx_for("/x/notes.md"))
+  check(
+    "images/snacks: a text entry clears the overlay and falls through to snacks",
+    cleared == cleared_before + 1 and fell_through == 1 and #drawn == before + 1
+  )
+
+  package.loaded["snacks.picker.preview"] = prev_snacks
+
+  -- ── telescope adapter: same branch, telescope's own previewer behind it ───
+  local prev_tele = {
+    ["telescope.previewers"] = package.loaded["telescope.previewers"],
+    ["telescope.from_entry"] = package.loaded["telescope.from_entry"],
+    ["telescope.config"] = package.loaded["telescope.config"],
+  }
+  local maker_calls = 0
+  package.loaded["telescope.previewers"] = {
+    new_buffer_previewer = function(o)
+      return o
+    end,
+  }
+  package.loaded["telescope.from_entry"] = {
+    path = function(entry)
+      return entry.path
+    end,
+  }
+  package.loaded["telescope.config"] = {
+    values = {
+      preview = {},
+      buffer_previewer_maker = function()
+        maker_calls = maker_calls + 1
+      end,
+    },
+  }
+
+  local tele = require("pickers.integrations.images.adapters.telescope")
+  local previewer = tele.previewer()
+  check("images/telescope: a previewer is built when available", type(previewer) == "table")
+
+  local state = { state = { bufnr = vim.api.nvim_create_buf(false, true), winid = 0 } }
+  before, cleared_before = #drawn, cleared
+  previewer.define_preview(state, { path = "/x/shot.png" })
+  check(
+    "images/telescope: an image entry is drawn, telescope's maker untouched",
+    #drawn == before + 1 and drawn[#drawn].file == "/x/shot.png" and maker_calls == 0
+  )
+
+  previewer.define_preview(state, { path = "/x/notes.md" })
+  check(
+    "images/telescope: a text entry clears the overlay and hands over to telescope",
+    maker_calls == 1 and cleared == cleared_before + 1 and #drawn == before + 1
+  )
+
+  -- Previews switched off in telescope's own config: stay out of the way.
+  package.loaded["telescope.config"] = { values = { preview = false } }
+  check("images/telescope: `preview = false` yields no previewer", tele.previewer() == nil)
+
+  for k, v in pairs(prev_tele) do
+    package.loaded[k] = v
+  end
+  package.loaded["images.integrations.picker"] = prev_api
+end
+
 -- ── Summary ─────────────────────────────────────────────────────────────────
 print(string.format("\n%d passed, %d failed", passed, failed))
 os.exit(failed == 0 and 0 or 1)

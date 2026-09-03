@@ -143,6 +143,35 @@ function M.check()
     end
   end
 
+  -- ── Image previews (images.nvim) ─────────────────────────────────────────
+  -- Three separate answers, because the three causes need three different
+  -- fixes: a switched-off integration, a missing plugin, and a terminal that
+  -- cannot draw are not the same problem. See pickers.integrations.images.
+  vim.health.start("pickers.nvim — image previews (images.nvim)")
+
+  local ok_images, images = pcall(require, "pickers.integrations.images")
+  if not ok_images then
+    vim.health.error("pickers.integrations.images failed to load")
+  elseif not images.enabled() then
+    vim.health.info("switched off in setup(): images = { enabled = false }")
+  elseif not pcall(require, "images.integrations.picker") then
+    vim.health.info(
+      "images.nvim not installed — image entries preview as text, as before. "
+        .. "https://github.com/StefanBartl/images.nvim previews them as pictures."
+    )
+  elseif images.available() then
+    vim.health.ok(
+      "active on snacks and telescope (fzf-lua previews images through its own "
+        .. "previewers.builtin.extensions — chafa/viu/ueberzug)"
+    )
+  else
+    vim.health.warn(
+      "images.nvim is installed but reports that this terminal cannot draw — "
+        .. "run :checkhealth images; images.nvim's `display.assume_supported = true` "
+        .. "overrides the detection when it is wrong"
+    )
+  end
+
   -- ── Collections ───────────────────────────────────────────────────────────
   vim.health.start("pickers.nvim — collections")
 

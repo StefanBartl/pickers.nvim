@@ -190,6 +190,10 @@ function M.apply(opts)
       cfg.display.path_shorten = opts.display.path_shorten
     end
   end
+
+  if type(opts.images) == "table" then
+    if type(opts.images.enabled) == "boolean" then cfg.images.enabled = opts.images.enabled end
+  end
 end
 
 return M

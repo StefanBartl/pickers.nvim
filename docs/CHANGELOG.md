@@ -11,6 +11,32 @@ a changelog.
 ---
 
 
+[x] **Image previews in the preview window (images.nvim).** An entry whose file
+  is an image (`.png`/`.jpg`/… — images.nvim's own `extensions` list) is drawn
+  as a picture instead of previewed as bytes. New `pickers.integrations.images`
+  bridge plus two engine adapters: snacks gets a per-call `preview` function
+  (`pick_files`, `smart`, `pick_item`) that falls through to
+  `Snacks.picker.preview.file` for everything else — which is what those
+  sources default to anyway; telescope gets a per-call `previewer` object
+  (`pick_files`, `pick_item`) that is `previewers.cat` with one branch in front
+  of it, so non-image entries still reach `conf.values.buffer_previewer_maker`
+  with the user's own `defaults.preview` settings. telescope's `smart` keeps
+  `grep_previewer` (a grep row must jump to its matched line); fzf-lua is a
+  documented gap — its builtin previewer has no per-call Lua hook and ships its
+  own image support (`previewers.builtin.extensions` = chafa/viu/ueberzug),
+  same class as its history keys.
+  The dependency is one-directional and soft: images.nvim exposes
+  `images.integrations.picker` (`available()`/`is_image()`/`preview(winid,
+  file)`), pickers.nvim calls it, and with images.nvim absent every engine
+  keeps its own previewer unchanged. Three gates, in order: `images.enabled`
+  (opt-out, default true), images.nvim present, terminal able to draw — the
+  last one strict, unlike images.nvim's own commands, because an empty preview
+  window is worse than the text preview it replaced (`display.assume_supported
+  = true` on images.nvim's side overrides the detection). Reported by
+  `:checkhealth pickers`. See
+  [docs/FEATURES/IMAGES.md](FEATURES/IMAGES.md) and
+  [docs/CONFIGURATION.md](CONFIGURATION.md#image-previews).
+
 [x] **`pick_item()` preview support.** Items passed to `engine_mod.pick_item()`
   may now be `Pickers.Item` tables `{ text, file? }` instead of plain strings —
   when at least one item in a call carries `file`, every engine attaches its

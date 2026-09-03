@@ -194,6 +194,19 @@ local M = {
   display = {
     path_shorten = false,
   },
+
+  -- Image previews in the preview window, via images.nvim (a soft dependency:
+  -- nothing here needs it, and nothing here fails without it). On by default,
+  -- but only ever ACTIVE when images.nvim is installed and the terminal can
+  -- actually draw -- otherwise every engine keeps its own previewer, exactly
+  -- as before. enabled = false keeps the text preview even then.
+  --   snacks/telescope: wired. fzf-lua: not -- its builtin previewer has no
+  --   per-call Lua hook and ships image support of its own
+  --   (previewers.builtin.extensions = chafa/viu/ueberzug).
+  -- See pickers.integrations.images.
+  images = {
+    enabled = true,
+  },
 }
 
 return M

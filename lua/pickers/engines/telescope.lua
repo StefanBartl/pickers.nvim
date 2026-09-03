@@ -1,6 +1,21 @@
 ---@module 'pickers.engines.telescope'
 ---@brief telescope.nvim adapter — implements the pickers engine interface.
 ---@see pickers.engines.fzf  (same interface)
+---@description
+--- Image previews (`pickers.integrations.images`) are wired into the two
+--- pickers here that preview plain files -- pick_files and pick_item -- by
+--- swapping in the previewer from
+--- `pickers.integrations.images.adapters.telescope`, which falls back to
+--- telescope's own buffer previewer for everything that is not an image.
+--- `image_previewer()` returns nil whenever the integration does not apply, so
+--- the previous previewer choice stands unchanged.
+---
+--- `smart` keeps `grep_previewer` regardless: its list interleaves file rows
+--- with grep rows, and a grep row has to land on its matched line -- a
+--- capability the image previewer would have to reimplement to hand back. An
+--- image found through the smart action therefore still previews as bytes on
+--- telescope; use the file picker (or snacks, which needs no such trade-off)
+--- for browsing images. See docs/FEATURES/IMAGES.md.
 
 local notify = require("lib.nvim.notify").create("[pickers.engines.telescope]")
 
@@ -65,6 +80,15 @@ local function path_display_opts()
   return { "shorten" }
 end
 
+---The image-aware file previewer for this call, or nil when image previews do
+---not apply (see `pickers.integrations.images`). Resolved per picker, like
+---telescope's own previewers, which are per-picker stateful objects.
+---@internal
+---@return table|nil
+local function image_previewer()
+  return require("pickers.integrations.images.adapters.telescope").previewer()
+end
+
 -- ── Public engine interface ───────────────────────────────────────────────────
 
 ---@return boolean
@@ -108,6 +132,9 @@ function M.pick_files(opts)
   call_opts.attach_mappings = require("pickers.result_count").wrap_attach_mappings(nil)
   call_opts.history = history_opts()
   call_opts.path_display = path_display_opts()
+  -- nil leaves find_files' own default previewer in place: `pickers.new(opts,
+  -- defaults)` only falls back to a default for keys the opts do not carry.
+  call_opts.previewer = image_previewer()
 
   safe_call(builtin.find_files, call_opts)
 end
@@ -196,7 +223,9 @@ end
 ---least one carries `file`, entries get a `path` field and the SAME
 ---`conf.values.file_previewer({})` `pick_dir` below already uses, so preview
 ---is "free": native syntax highlighting/scrolling, nothing custom to
----maintain. `on_select` always receives back the exact original entry
+---maintain. With image previews available, the image-aware previewer takes
+---its place — the same fallback for every non-image entry, one branch in
+---front of it. `on_select` always receives back the exact original entry
 ---(string or table), via `entry.value` rather than telescope's `entry[1]` —
 ---the latter isn't guaranteed to equal the whole entry once a custom
 ---`entry_maker` is in play.
@@ -230,7 +259,7 @@ function M.pick_item(opts)
         end,
       }),
       sorter = conf.values.generic_sorter({}),
-      previewer = has_preview and conf.values.file_previewer({}) or false,
+      previewer = has_preview and (image_previewer() or conf.values.file_previewer({})) or false,
       history = history_opts(),
       attach_mappings = require("pickers.result_count").wrap_attach_mappings(function(_, _map)
         actions.select_default:replace(function(bufnr)
