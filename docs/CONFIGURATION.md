@@ -173,7 +173,7 @@ using the snacks engine is therefore a no-op for snacks specifically; it still
 takes effect for telescope/fzf-lua if you have them installed alongside it.
 Snacks history navigation (`<C-Up>`/`<C-Down>` by default) is separate from,
 and additive with, the `history_back`/`history_forward` keys in
-[docs/KEYMAPS.md](KEYMAPS.md#in-picker-keys-preview-scroll--history).
+[docs/KEYMAPS.md](KEYMAPS.md#in-picker-keys-preview-scroll--history--entry-actions).
 
 ---
 

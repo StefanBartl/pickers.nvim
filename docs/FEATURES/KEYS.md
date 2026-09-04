@@ -59,7 +59,7 @@ or surfaced in `:checkhealth pickers` where the gap is static.
 - **Module:** [`keys/`](../../lua/pickers/keys/)
 - **Config:** `keys.*`
 - **Reference:** the per-engine table in
-  [`docs/KEYMAPS.md`](../KEYMAPS.md#in-picker-keys-preview-scroll--history)
+  [`docs/KEYMAPS.md`](../KEYMAPS.md#in-picker-keys-preview-scroll--history--entry-actions)
 
 ### Mouse confirm
 
