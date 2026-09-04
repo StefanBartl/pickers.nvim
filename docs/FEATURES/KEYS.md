@@ -30,10 +30,12 @@ though my default is snacks", which the named fields cannot express.
 
 ## which-key labels
 
-Group labels for the prefixes this plugin occupies, registered when
-which-key.nvim is installed and skipped silently otherwise. No hard dependency.
+Nothing is registered. which-key reads the mappings itself and labels each one
+from its own `desc`, so a separate label table would only give one string two
+places to drift apart -- which is exactly what happened while it existed, and
+why it is gone.
 
-- **Module:** [`bindings/whichkey.lua`](../../lua/pickers/bindings/whichkey.lua)
+- **Module:** [`bindings/keymaps.lua`](../../lua/pickers/bindings/keymaps.lua)
 
 ## In-picker keys
 
