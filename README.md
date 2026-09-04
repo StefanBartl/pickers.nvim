@@ -90,6 +90,9 @@ work, for turning it off without touching any plugin's config.
 
 ## Documentation
 
+Start at [docs/README.md](docs/README.md), which says what is where and which
+question each page answers.
+
 - [Features](docs/FEATURES/README.md) — the catalogue, by theme: engines, scopes, actions, native pickers, keys, UI, persistence, image previews.
 - [Installation](docs/INSTALLATION.md) — requirements, lazy.nvim (recommended + lazy-loading variant), packer.nvim, and health check.
 - [Commands](docs/COMMANDS.md) — the `:Pickers` command syntax, scopes, and compat command aliases.
@@ -100,6 +103,7 @@ work, for turning it off without touching any plugin's config.
 - [Bindings cheatsheet](docs/BINDINGS.md) — machine-readable reference of every keymap, user command, and autocommand.
 - [Cheatsheet](docs/CHEATSHEET.md) — condensed single-page command/scope/keymap reference.
 - [Feature log](docs/CHANGELOG.md) — what changed and when, in the order it happened.
+- [Workflow](docs/WORKFLOW.md) — how scopes, collections and engines combine into a way of working, rather than what each picker does.
 
 ## License
 
