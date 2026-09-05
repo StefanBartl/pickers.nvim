@@ -2184,6 +2184,179 @@ do
   end
 end
 
+-- ── pickers.refine — filter stack, predicate, title, prompt ─────────────────
+do
+  local refine = require("pickers.refine")
+
+  local fields = {
+    path = function(it)
+      return it.path
+    end,
+    content = function(it)
+      return it.line
+    end,
+  }
+  local items = {
+    { path = "src/app.lua", line = "local x = 1" },
+    { path = "src/app_test.lua", line = "assert(x)" },
+    { path = "docs/readme.md", line = "install" },
+  }
+
+  -- predicate: substring, case-insensitive, AND across clauses
+  do
+    local pred = refine.predicate(
+      { { field = "path", mode = "substr", term = "SRC", negate = false } },
+      fields
+    )
+    check("refine.predicate: substr is case-insensitive", pred(items[1]) and not pred(items[3]))
+
+    local two = refine.predicate({
+      { field = "path", mode = "substr", term = "src", negate = false },
+      { field = "content", mode = "substr", term = "assert", negate = false },
+    }, fields)
+    check("refine.predicate: clauses AND", two(items[2]) and not two(items[1]))
+  end
+
+  -- negate, incl. nil field value
+  do
+    local pred = refine.predicate(
+      { { field = "path", mode = "substr", term = "test", negate = true } },
+      fields
+    )
+    check("refine.predicate: negate excludes matches", not pred(items[2]) and pred(items[1]))
+
+    local nofield = refine.predicate(
+      { { field = "author", mode = "substr", term = "x", negate = false } },
+      fields
+    )
+    check("refine.predicate: unknown field passes", nofield(items[1]))
+
+    local neg_nil = refine.predicate(
+      { { field = "author", mode = "substr", term = "x", negate = true } },
+      {}
+    )
+    check("refine.predicate: negated missing field passes", neg_nil(items[1]))
+  end
+
+  -- regex mode
+  do
+    local pred = refine.predicate(
+      { { field = "path", mode = "regex", term = "%.md$", negate = false } },
+      fields
+    )
+    check("refine.predicate: regex matches", pred(items[3]) and not pred(items[1]))
+  end
+
+  -- apply preserves order, does not mutate
+  do
+    local filtered = refine.apply(
+      items,
+      { { field = "path", mode = "substr", term = "src", negate = false } },
+      fields
+    )
+    check(
+      "refine.apply: filters and keeps order",
+      #filtered == 2 and filtered[1].path == "src/app.lua"
+    )
+    check("refine.apply: empty stack returns input", refine.apply(items, {}, fields) == items)
+  end
+
+  -- summary / title
+  do
+    local stack = {
+      { field = "path", mode = "substr", term = "src", negate = false },
+      { field = "content", mode = "regex", term = "test", negate = true },
+    }
+    check("refine.summary", refine.summary(stack) == "path~src · ¬content=~test")
+    check(
+      "refine.title: with counts",
+      refine.title("Matches", stack, 2, 10) == "Matches — path~src · ¬content=~test (2/10)"
+    )
+    check("refine.title: empty stack", refine.title("Matches", {}, nil, 10) == "Matches (10)")
+  end
+
+  -- stateful handle + prompt flow via a stubbed vim.ui
+  do
+    local h = refine.new({ fields = fields })
+    check("refine handle: starts inactive", not h:is_active())
+
+    local prev = vim.ui
+    -- Menu order is sorted field names: content/contains, content/excludes,
+    -- path/contains, path/excludes. Pick #3 (path contains) + input "src".
+    vim.ui = {
+      select = function(choices, _o, cb)
+        cb(choices[3])
+      end,
+      input = function(_o, cb)
+        cb("src")
+      end,
+    }
+    local changed = 0
+    h:prompt(function()
+      changed = changed + 1
+    end)
+    check(
+      "refine handle: prompt added a clause",
+      h:is_active() and #h.stack == 1 and h.stack[1].field == "path"
+    )
+    check("refine handle: on_change fired once", changed == 1)
+    check("refine handle: apply uses the stack", #h:apply(items) == 2)
+
+    -- regex term via /.../  (choice #4 = path excludes)
+    vim.ui = {
+      select = function(choices, _o, cb)
+        cb(choices[4])
+      end,
+      input = function(_o, cb)
+        cb("/%.md$/")
+      end,
+    }
+    h:prompt(function() end)
+    check(
+      "refine handle: /.../ becomes regex",
+      h.stack[2].mode == "regex"
+        and h.stack[2].term == "%.md$"
+        and h.stack[2].negate
+        and h.stack[2].field == "path"
+    )
+
+    -- cancelled prompt: no clause, no on_change — but on_done still fires
+    vim.ui = {
+      select = function(_c, _o, cb)
+        cb(nil)
+      end,
+      input = function(_o, cb)
+        cb(nil)
+      end,
+    }
+    local n = #h.stack
+    local changed_fired, done_fired = false, false
+    h:prompt(function()
+      changed_fired = true
+    end, function()
+      done_fired = true
+    end)
+    check(
+      "refine handle: cancelled select does not fire on_change",
+      #h.stack == n and not changed_fired
+    )
+    check("refine handle: on_done fires even on cancel", done_fired)
+
+    -- clear
+    vim.ui = {
+      select = function(choices, _o, cb)
+        for _, c in ipairs(choices) do
+          if c.kind == "clear" then return cb(c) end
+        end
+      end,
+    }
+    h:prompt(function() end)
+    check("refine handle: clear empties the stack", #h.stack == 0)
+
+    vim.ui = prev
+  end
+end
+
 -- ── Summary ─────────────────────────────────────────────────────────────────
 print(string.format("\n%d passed, %d failed", passed, failed))
 os.exit(failed == 0 and 0 or 1)

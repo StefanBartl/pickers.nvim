@@ -18,6 +18,8 @@ appears once, where a reader would look for it.
 - **[BUILTINS](BUILTINS.md)** — the native pickers (git, LSP, help, …) that
   are not a scope × action.
 - **[KEYS](KEYS.md)** — launching a picker, and the keys that act *inside* one.
+- **[REFINE](REFINE.md)** — `pickers.refine`, the engine-agnostic filter-stack
+  building block for narrowing a big result list by stacked clauses.
 - **[UI](UI.md)** — the pickers that pick a picker, the result count, path
   shortening.
 - **[PERSISTENCE](PERSISTENCE.md)** — history, frecency, and reopening what you
