@@ -22,7 +22,7 @@ then run the action inside it.
 | `dir` | a directory reached by navigation — see below |
 
 - **Module:** [`sources/`](../../lua/pickers/sources/) — one file per scope
-- **Config:** `repos_dir` (defaults to `$REPOS_DIR`)
+- **Config:** `repos_dir` (optional, defaults to `$REPOS_DIR` if set, else unset)
 - **Usercmds:** `:Pickers <scope> <action>`, `:PickersScopes` lists every scope
   that resolves
 
