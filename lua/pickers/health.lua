@@ -36,19 +36,19 @@ function M.check()
   if has_telescope then
     vim.health.ok("telescope.nvim available")
   else
-    vim.health.warn("telescope.nvim not found")
+    vim.health.info("telescope.nvim not found")
   end
 
   if has_fzf then
     vim.health.ok("fzf-lua available")
   else
-    vim.health.warn("fzf-lua not found")
+    vim.health.info("fzf-lua not found")
   end
 
   if has_snacks then
     vim.health.ok("snacks.nvim (picker) available")
   else
-    vim.health.warn("snacks.nvim (picker) not found")
+    vim.health.info("snacks.nvim (picker) not found")
   end
 
   if not has_telescope and not has_fzf and not has_snacks then
