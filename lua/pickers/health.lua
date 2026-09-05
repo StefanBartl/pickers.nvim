@@ -3,6 +3,16 @@
 
 local M = {}
 
+--- `ℹ️ INFO` reads faster than a bare `info()` line in a status list (adapter,
+--- backend, engine) where the column itself carries information; a plain
+--- fact (version, path, count) stays a bare `vim.health.info()`. Paired with
+--- `after/syntax/checkhealth.vim` in the nvim-config, which colors the
+--- `INFO` keyword the same as the built-in `OK`/`WARNING`/`ERROR` ones.
+---@param msg string
+local function note(msg)
+  vim.health.info("ℹ️ INFO " .. msg)
+end
+
 ---Run all `:checkhealth pickers` sections: dependencies, picker engines, CLI
 ---tools, configuration, and collections.
 function M.check()
@@ -36,19 +46,19 @@ function M.check()
   if has_telescope then
     vim.health.ok("telescope.nvim available")
   else
-    vim.health.info("telescope.nvim not found")
+    note("telescope.nvim not found")
   end
 
   if has_fzf then
     vim.health.ok("fzf-lua available")
   else
-    vim.health.info("fzf-lua not found")
+    note("fzf-lua not found")
   end
 
   if has_snacks then
     vim.health.ok("snacks.nvim (picker) available")
   else
-    vim.health.info("snacks.nvim (picker) not found")
+    note("snacks.nvim (picker) not found")
   end
 
   if not has_telescope and not has_fzf and not has_snacks then
