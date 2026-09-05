@@ -368,7 +368,7 @@ Declarative mappings (per-entry engine override)~
   warning, never a throw.
 
 In-picker keys (preview scroll + history + entry actions)~
-  Separate from the keymaps above, `keys` controls bindings that act *inside*
+  Separate from the keymaps above, `keys` controls bindings that act inside
   an open picker — one config surface for everything in this category,
   defined once and translated per engine.  See |pickers-config| and
   lua/pickers/keys/. >lua
@@ -593,7 +593,7 @@ Enable: >lua
 
 Telescope has no scope knob~
   Telescope's history is a process-wide singleton (one `History` object,
-  created on first use and reused for the rest of the session by *every*
+  created on first use and reused for the rest of the session by every
   telescope picker, not just pickers.nvim's — see |telescope.defaults.history|
   upstream). There is no per-call override, so enabling history for telescope
   always behaves like a global default regardless of `fzf_scope` — a
