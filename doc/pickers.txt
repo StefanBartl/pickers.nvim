@@ -74,9 +74,9 @@ Minimal (lazy.nvim): >lua
 
 A fuller spec -- the complete key list is |pickers-config|: >lua
   require("pickers").setup({
-    engine    = "auto",               -- "auto" | "telescope" | "fzf" | "snacks"
-    repos_dir = vim.env.REPOS_DIR,    -- optional; only needed for the "repos"/
-                                       -- "wkdbooks" scopes, nil is fine otherwise
+    engine = "auto",  -- "auto" | "telescope" | "fzf" | "snacks"
+    -- repos_dir already defaults to $REPOS_DIR (via lib.nvim) when set, used
+    -- by the "repos"/"wkdbooks" scopes -- omitted here, set it only to override
     collections = {
       { name = "notes",    dir = vim.env.REPOS_DIR .. "/Notes",
         keys = { files = "<leader>mnf", grep = "<leader>mng" } },
@@ -132,7 +132,7 @@ Optional engine ownership + auto-install~
         engine      = "snacks",     -- "telescope"|"fzf"|"snacks" ("auto" unsupported here)
         own_engine  = true,         -- opt-in; default false (unchanged behaviour)
         engine_opts = {},           -- passed to the engine's own setup()
-        picker_opts = { repos_dir = vim.env.REPOS_DIR }, -- passed to pickers.setup(); repos_dir optional
+        picker_opts = {},              -- passed to pickers.setup() (engine= filled in for you)
       }),
       -- ...your other plugins
     })

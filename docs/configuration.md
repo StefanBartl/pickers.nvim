@@ -14,9 +14,11 @@ require("pickers").setup({
   deps_popup = true,
 
   -- Root directory that contains git repositories. Optional — only needed
-  -- for the "repos"/"wkdbooks" scopes; nil is fine otherwise. $REPOS_DIR is
-  -- this author's own env-var convention, not a Neovim/OS standard.
-  repos_dir = vim.env.REPOS_DIR,
+  -- for the "repos"/"wkdbooks" scopes; nil is fine otherwise. Defaults to
+  -- $REPOS_DIR via lib.nvim's env snapshot if that's set on your machine —
+  -- this author's own convention, not a Neovim/OS standard. Set explicitly
+  -- to override.
+  repos_dir = nil,
 
   -- User-defined named scopes (see docs/collections.md)
   collections = {
