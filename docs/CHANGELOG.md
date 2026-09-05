@@ -10,6 +10,24 @@ a changelog.
 
 ---
 
+[x] **`pickers.refine` — a shared filter-stack building block.** Big result
+  lists (a `cwd`-scoped grep, a plugin's few-hundred-match list) need
+  structured narrowing the single fuzzy prompt cannot express: "path contains
+  X **and** content does not contain Y", stacked and removable. `pickers.refine`
+  is the pure model for that — a stack of `{ field, mode, term, negate }`
+  clauses, `predicate()`/`apply()` built from it, a `summary()`/`title()` for
+  the prompt line, and a `vim.ui.select` → `vim.ui.input` `prompt()` flow to
+  edit it (`/…/` = Lua pattern, else case-insensitive substring). `field` is
+  caller-defined via a `fields` resolver table, so it is not tied to any item
+  shape.
+  Deliberately **no engine wiring**: it never opens, closes or refreshes a
+  picker. The caller re-runs or `:refresh()`es its own picker in the
+  `on_change` callback. First consumer is replacer.nvim, which wires it into
+  its own telescope/fzf match picker locally; pickers.nvim's own list pickers
+  can adopt it later. See [FEATURES/REFINE.md](FEATURES/REFINE.md).
+
+---
+
 
 [x] **A scoped grep on fzf-lua searched the CWD, not the roots it was given.**
   The adapter passed `search_dirs`, which is telescope's spelling; fzf-lua
