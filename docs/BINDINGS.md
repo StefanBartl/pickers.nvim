@@ -42,7 +42,7 @@ A single, machine-readable reference of every keymap, user-command and autocomma
 
 | Command Name (`name`) | Equivalent Invocation (`maps_to`) | Arguments (`nargs`) | Description |
 | --- | --- | --- | --- |
-| `:Pickers` | `:Pickers [scope] [nav|action] [action]` | `*` | Unified entry point *(always registered; `action` ∈ `files`/`grep`/`smart`)* |
+| `:Pickers` | `:Pickers [scope] [nav\|action] [action]` | `*` | Unified entry point *(always registered; `action` ∈ `files`/`grep`/`smart`)* |
 | `:DirPicker` | `:Pickers dir [nav]` | `*` | Dir navigation picker |
 | `:FindConfig` | `:Pickers config files` | `?` | Find files in nvim config |
 | `:GrepConfig` | `:Pickers config grep` | `?` | Live grep in nvim config |
