@@ -29,9 +29,8 @@
   config = function()
     require("pickers").setup({
       engine    = "auto",            -- "auto" | "telescope" | "fzf" | "snacks"
-      repos_dir = vim.env.REPOS_DIR, -- optional: only needed for the "repos"/
-                                      -- "wkdbooks" scopes; nil is fine otherwise,
-                                      -- $REPOS_DIR is this author's own convention
+      -- repos_dir already defaults to $REPOS_DIR (via lib.nvim) when set, used
+      -- by the "repos"/"wkdbooks" scopes — omitted here, set it only to override
       collections = {
         { name = "notes", dir = vim.env.REPOS_DIR .. "/Notes",
           keys = { files = "<leader>mnf", grep = "<leader>mng" } },
@@ -75,8 +74,7 @@ If startup time matters and you only want the plugin loaded on first use:
   },
   config = function()
     require("pickers").setup({
-      engine    = "auto",
-      repos_dir = vim.env.REPOS_DIR, -- optional, see note above
+      engine = "auto",
     })
   end,
 }
@@ -108,9 +106,7 @@ require("lazy").setup({
     engine      = "snacks",       -- "telescope" | "fzf" | "snacks" ("auto" not supported here)
     own_engine  = true,           -- opt-in; false/unset is the default (unchanged) behaviour
     engine_opts = {},             -- passed to Snacks.setup() / telescope.setup() / fzf-lua's setup()
-    picker_opts = {                -- passed to require("pickers").setup() (engine= is filled in for you)
-      repos_dir = vim.env.REPOS_DIR, -- optional, see note above
-    },
+    picker_opts = {},              -- passed to require("pickers").setup() (engine= is filled in for you)
   }),
   -- ...your other plugins
 })
@@ -131,8 +127,7 @@ use {
   requires = { "StefanBartl/lib.nvim" },
   config = function()
     require("pickers").setup({
-      engine    = "auto",
-      repos_dir = vim.env.REPOS_DIR, -- optional, see note above
+      engine = "auto",
     })
   end,
 }

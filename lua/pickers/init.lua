@@ -12,8 +12,9 @@
 ---     dependencies = { "StefanBartl/lib.nvim" },
 ---     config = function()
 ---       require("pickers").setup({
----         engine    = "auto",
----         repos_dir = vim.env.REPOS_DIR,
+---         engine = "auto",
+---         -- repos_dir already defaults to $REPOS_DIR (via lib.nvim) when set;
+---         -- pass it only to override with a different root.
 ---       })
 ---     end,
 ---   }

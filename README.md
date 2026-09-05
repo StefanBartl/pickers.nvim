@@ -63,9 +63,8 @@ Requires [lib.nvim](https://github.com/StefanBartl/lib.nvim) and one of telescop
   dependencies = { "StefanBartl/lib.nvim" },
   opts = {
     -- engine defaults to "auto" (telescope | fzf | snacks, whichever is there)
-    -- repos_dir is optional (only needed for the "repos"/"wkdbooks" scopes);
-    -- $REPOS_DIR is this author's own env-var convention, nil is fine otherwise
-    repos_dir = vim.env.REPOS_DIR,
+    -- repos_dir already defaults to $REPOS_DIR when set (via lib.nvim), needed
+    -- only for the "repos"/"wkdbooks" scopes — set it here only to override
   },
 }
 ```
