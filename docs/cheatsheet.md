@@ -8,9 +8,13 @@
 :Pickers <scope> files            find files in scope
 :Pickers <scope> grep             live grep in scope
 :Pickers <scope> smart            grep + find merged, ranked by relevance
+:Pickers <scope> files all        force hidden+no_ignore+follow, this call only
+:Pickers <scope> files hidden+follow
+                                  the same three flags, alone or joined by +
 :Pickers dir                      dir-nav picker → action picker
 :Pickers dir <nav>                resolve nav → action picker
 :Pickers dir <nav> <action>       fully specified
+:Pickers builtin <name>           the engine's own native picker, by name
 ```
 
 ## Built-in scopes
@@ -42,11 +46,15 @@
 
 | Keymap | Action |
 |---|---|
-| `<leader>dp` | `:Pickers dir` |
+| `<leader>dp` | `:Pickers dir` (a count is the depth: `2<leader>dp`) |
+| `<leader>.` | `:Pickers builtin explorer` |
 | `<leader>fb` | `:Pickers folder files` |
 | `<leader>fc` | `:Pickers config files` |
 | `<leader>gc` | `:Pickers config grep` |
 | `<leader>li` | `:Pickers cwd grep` |
+
+Everything else is opt-in and unbound by default — the full list, with its
+config key per entry, is in [BINDINGS.md](BINDINGS.md#1-keymaps-keymaps).
 
 ## Built-in compat commands
 
@@ -64,6 +72,9 @@
 | `:RepoGrep [repo]` | `:Pickers repos grep` (`[repo]` tab-completes from `REPOS_DIR` and skips the repo picker) |
 | `:WkdBookFiles` | `:Pickers wkdbooks files` |
 | `:WkdBookGrep` | `:Pickers wkdbooks grep` |
+| `:PickersRepeat` | Replay the last dispatched scope/action, empty prompt |
+| `:PickersScopes` | List every resolvable scope as text, without a picker |
+| `:PickersResume` | `:Pickers builtin resume` — the engine's own last session, prompt and all |
 
 ## Smart action (grep + find, merged & ranked)
 
@@ -107,4 +118,6 @@ Each collection in `setup({ collections = { ... } })` gets:
 :checkhealth pickers
 ```
 
-Sections: dependencies · engines · CLI tools · configuration · collections
+Sections: dependencies · picker engines · CLI tools · configuration · image
+previews · collections · the tools declared in
+[`install.json`](install.json) · the `:Pickers` command tree

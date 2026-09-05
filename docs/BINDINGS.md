@@ -33,6 +33,7 @@ A single, machine-readable reference of every keymap, user-command and autocomma
 | *None* (`nil`) | `"cwd_smart"` | `:Pickers cwd smart` | Combined grep + find in CWD, merged & ranked *(disabled by default)* |
 | *None* (`nil`) | `"config_smart"` | `:Pickers config smart` | Combined grep + find in nvim config *(disabled by default)* |
 | *None* (`nil`) | `"folder_smart"` | `:Pickers folder smart` | Pick a folder, then combined grep + find *(disabled by default)* |
+| *None* (`nil`) | `"cwd_find_all"` | `:Pickers cwd files all` | "Find all" escape hatch: forces hidden+no_ignore+follow for one search *(disabled by default)* |
 
 ---
 
@@ -77,11 +78,14 @@ Additionally, optional `keys.files` / `keys.grep` / `keys.smart` keymaps are bou
 
 ## 4. Autocommands (`autocmds`)
 
-| Event | Source File | Description |
-| --- | --- | --- |
-| `VimEnter` | `plugin/pickers.lua` | Register default keymaps/usercmds at startup when the user did *not* call `setup()` (guarded by `vim.g.pickers_nvim_setup_called`). |
+All of these live in the augroup `"pickers.nvim"` when lib.nvim is present; without it they fall back to the raw API and carry no group.
 
-**`smart.frecency`** (opt-in, only registered when `cfg.smart.frecency.enabled == true`; augroup `"pickers.nvim"`, shared with the `VimEnter` fallback above):
+| Event | Pattern | Source File | Description |
+| --- | --- | --- | --- |
+| `VimEnter` | none | `lua/pickers/bindings/autocmds.lua` (registered from `plugin/pickers.lua`) | Register default keymaps/usercmds at startup when the user did *not* call `setup()` (guarded by `vim.g.pickers_nvim_setup_called`). Fires once. |
+| `User` | `LazyLoad` | `lua/pickers/engines/when_loaded.lua` | Deferred engine wiring: patch the in-picker keys, result count and history options into telescope or fzf-lua once lazy.nvim reports that engine loaded, instead of `require`-ing it at `setup()` time. One is registered per engine that still has to be patched, and each deletes itself as soon as its own engine arrives. Not registered at all when the engine is already loaded, or when lazy.nvim is absent (a `vim.schedule` takes over there). |
+
+**`smart.frecency`** (opt-in, only registered when `cfg.smart.frecency.enabled == true`):
 
 | Event(s) | Buffer (pattern) | Source File | Description |
 | --- | --- | --- | --- |
@@ -92,7 +96,7 @@ Additionally, optional `keys.files` / `keys.grep` / `keys.smart` keymaps are bou
 
 ## 5. In-picker keys (`keys`)
 
-> **Note:** Registered when `keys.enable = true` (default on). Separate from the normal-mode keymaps in §1 — these act **inside** an already-open picker, translated per engine. See [docs/KEYMAPS.md](KEYMAPS.md#in-picker-keys-preview-scroll--history--entry-actions) for the full writeup (capability gaps, `open_background_show`, etc.).
+> **Note:** Registered when `keys.enable = true` (default on). Separate from the normal-mode keymaps in §1 — these act **inside** an already-open picker, translated per engine. See [docs/keymaps.md](keymaps.md#in-picker-keys-preview-scroll--history--entry-actions) for the full writeup (capability gaps, `open_background_show`, etc.).
 
 | Action (`config`) | Default | telescope | fzf-lua | snacks |
 | --- | --- | --- | --- | --- |

@@ -15,7 +15,7 @@ appears once, where a reader would look for it.
   scopes, `dir`'s navigation forms, and user-defined collections.
 - **[ACTIONS](ACTIONS.md)** — *what* it searches for: `files`, `grep`, and the
   merged-and-ranked `smart`, plus the search-flag escalation.
-- **[BUILTINS](BUILTINS.md)** — the 52 native pickers (git, LSP, help, …) that
+- **[BUILTINS](BUILTINS.md)** — the native pickers (git, LSP, help, …) that
   are not a scope × action.
 - **[KEYS](KEYS.md)** — launching a picker, and the keys that act *inside* one.
 - **[UI](UI.md)** — the pickers that pick a picker, the result count, path
@@ -26,11 +26,11 @@ appears once, where a reader would look for it.
   window, and PDFs as their first page, via images.nvim.
 
 Reference documentation lives one level up and is not repeated here:
-[`COMMANDS.md`](../COMMANDS.md) for the full argument grammar,
-[`CONFIGURATION.md`](../CONFIGURATION.md) for every option,
-[`BUILTINS.md`](../BUILTINS.md) for the per-engine parity matrix,
-[`KEYMAPS.md`](../KEYMAPS.md) for the key tables,
-[`COLLECTIONS.md`](../COLLECTIONS.md) for collection config, and
+[`commands.md`](../commands.md) for the full argument grammar,
+[`configuration.md`](../configuration.md) for every option,
+[`builtins.md`](../builtins.md) for the per-engine parity matrix,
+[`keymaps.md`](../keymaps.md) for the key tables,
+[`collections.md`](../collections.md) for collection config, and
 [`BINDINGS.md`](../BINDINGS.md) for the binding cheatsheet.
 
 > The per-feature development log this catalogue was written from is kept at

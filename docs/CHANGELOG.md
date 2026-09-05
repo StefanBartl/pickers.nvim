@@ -57,7 +57,7 @@ a changelog.
   under the image previews, because it needs everything they need *plus* a
   rasterizer. Which page and at what dpi is images.nvim's `pdf = { … }`, not a
   setting here. See [docs/FEATURES/IMAGES.md](FEATURES/IMAGES.md) and
-  [docs/CONFIGURATION.md](CONFIGURATION.md#image-previews).
+  [docs/configuration.md](configuration.md#image-previews).
 
 [x] **Image previews in the preview window (images.nvim).** An entry whose file
   is an image (`.png`/`.jpg`/… — images.nvim's own `extensions` list) is drawn
@@ -83,7 +83,7 @@ a changelog.
   = true` on images.nvim's side overrides the detection). Reported by
   `:checkhealth pickers`. See
   [docs/FEATURES/IMAGES.md](FEATURES/IMAGES.md) and
-  [docs/CONFIGURATION.md](CONFIGURATION.md#image-previews).
+  [docs/configuration.md](configuration.md#image-previews).
 
 [x] **`pick_item()` preview support.** Items passed to `engine_mod.pick_item()`
   may now be `Pickers.Item` tables `{ text, file? }` instead of plain strings —
@@ -112,8 +112,8 @@ a changelog.
   sync live finder (order preserved under `sort_empty=false`), telescope via
   `new_dynamic` + `sorters.empty()`, fzf-lua via Lua-function live mode
   (`fzf ≥ 0.45`). Tunable via `smart = { weights, limit, timeout }`. See
-  [docs/COMMANDS.md](COMMANDS.md#the-smart-action) and
-  [docs/CONFIGURATION.md](CONFIGURATION.md#smart-combined-grep--find).
+  [docs/commands.md](commands.md#the-smart-action) and
+  [docs/configuration.md](configuration.md#smart-combined-grep--find).
   - [x] **Frecency / recently-opened boost.** `smart.frecency = { enabled,
     weight, dir }`, opt-in and off by default. A new `pickers.smart.frecency`
     module records visits on `BufReadPost` (real, listed file buffers only),
@@ -125,13 +125,13 @@ a changelog.
     `abspath -> bonus` lookup table and threads it into `score.rank`'s new
     optional `frecency` param, keeping the scorer itself pure/side-effect-
     free (the lookup is computed once by the caller, not read from disk
-    inside the scorer). See [docs/CONFIGURATION.md](CONFIGURATION.md#frecency-opt-in-ranking-boost).
+    inside the scorer). See [docs/configuration.md](configuration.md#frecency-opt-in-ranking-boost).
   - [x] **Dedup grep rows down to one-per-file (best line).** `smart.
     dedup_grep_rows = false` (opt-in). `score.rank`'s new optional 7th
     param collapses multiple grep hits sharing an `abspath` down to the
     single highest-scoring line; a file's other matches are dropped
     entirely (a display-density choice, not a re-scoring). See
-    [docs/CONFIGURATION.md](CONFIGURATION.md#dedup-grep-rows-opt-in).
+    [docs/configuration.md](configuration.md#dedup-grep-rows-opt-in).
 
 - [x] **Optional engine ownership + auto-install.** `require("pickers")
   .plugin_spec({ engine = "snacks", own_engine = true })` — the shape the
@@ -153,14 +153,14 @@ a changelog.
   own by default); `engine = "auto"` + `own_engine = true` errors
   immediately (at spec-build time) since there's no single engine to
   install. See `lua/pickers/plugin_spec.lua` and
-  [docs/INSTALLATION.md](INSTALLATION.md#optional-engine-ownership--auto-install).
+  [docs/installation.md](installation.md#optional-engine-ownership--auto-install).
   - **Why this is harder than "just add a dependency":** lazy.nvim reads a
     plugin's static `dependencies` field *before* any `config()` function
     runs — so pickers.nvim's own spec can't conditionally depend on
     `folke/snacks.nvim` based on the `engine=` value passed into `setup()`,
     since that value isn't known until `config()` runs, which is *after*
     lazy has already resolved/installed dependencies.
-  - **Why `own_engine` must default to off:** `docs/KEYMAPS.md` and
+  - **Why `own_engine` must default to off:** `docs/keymaps.md` and
     `pickers.keys` already document, deliberately, that "pickers.nvim does
     not own `Snacks.setup()`" — so users keep full control over
     engine-specific config that has nothing to do with picking (snacks
@@ -190,13 +190,13 @@ a changelog.
   telescope-only, filling the one real gap (telescope ships the action,
   `actions.layout.toggle_preview`, but binds no default key to it). See
   `lua/pickers/keys/`, `lua/pickers/entry_actions/`, and
-  [docs/KEYMAPS.md](KEYMAPS.md#in-picker-keys-preview-scroll--history--entry-actions).
+  [docs/keymaps.md](keymaps.md#in-picker-keys-preview-scroll--history--entry-actions).
 - [x] **Native builtin pickers.** `:Pickers builtin <name>` — a registry of 52
   native pickers (git/LSP/help/vim-intrinsics/diagnostics/explorer/…)
   dispatched straight to the resolved engine's own function, name/capability-
   verified against the actual installed telescope/fzf-lua/snacks sources (not
   guessed from docs). See `lua/pickers/builtins/` and
-  [docs/BUILTINS.md](BUILTINS.md) for the full parity matrix and documented
+  [docs/builtins.md](builtins.md) for the full parity matrix and documented
   per-engine gaps (e.g. `git_diff`/`lsp_declarations` have no telescope
   picker; `gh_issue`/`gh_pr`/`projects`/`git_log_line`/`notifications` are
   snacks-only).
@@ -238,14 +238,14 @@ a changelog.
   they aren't user-configurable objects the way collections are, so there's
   no natural per-scope config surface to attach an override to. See
   `pickers.actions.files`, `pickers.sources.collection`, and
-  [docs/COLLECTIONS.md](COLLECTIONS.md#find-override).
+  [docs/collections.md](collections.md#find-override).
 - [x] **Result count.** `result_count = { enabled }` in `setup()` — live match
   count in the prompt title (e.g. "Find Files (128)"). Telescope-only,
   disabled by default; fzf-lua/snacks already show a position/total counter
   natively. Polls the entry manager every 150ms (result counts can change
   asynchronously as a live finder streams in matches, with no CursorMoved/
   TextChanged to hang an update off of). See `lua/pickers/result_count/` and
-  [docs/CONFIGURATION.md](CONFIGURATION.md#result-count). Preview toggle is
+  [docs/configuration.md](configuration.md#result-count). Preview toggle is
   also done — see `keys.preview_toggle` above.
 - [x] **Remember last scope/action.** `:PickersRepeat` reopens the most
   recently dispatched {action, source} pair, in-memory only for the current
@@ -254,7 +254,7 @@ a changelog.
   called there once rather than duplicated per-scope — `pickers.actions.dir`
   used to bypass it with its own inline files/grep branch, now delegates to
   `pickers.command.dispatch` instead. See `lua/pickers/last.lua` and
-  [docs/COMMANDS.md](COMMANDS.md#pickersrepeat).
+  [docs/commands.md](commands.md#pickersrepeat).
 - [x] ~~**Selected-index overlay.**~~ **Removed.** The `experimental.selected_index`
   overlay (telescope-only) never worked reliably even after the row↔index
   fix, so the whole feature was pulled — code, config surface (`experimental`
@@ -274,7 +274,7 @@ a changelog.
     path under `stdpath("data")/snacks/`, no `enabled`/`dir`/`limit` field
     anywhere in its opts schema) — there is nothing to opt into or patch.
     `cfg.history.*` simply doesn't apply to snacks; `:checkhealth pickers` now
-    says so explicitly. Documented in docs/CONFIGURATION.md and the
+    says so explicitly. Documented in docs/configuration.md and the
     `pickers.history` module @brief.
 
 ## Commands
@@ -292,7 +292,7 @@ a changelog.
   scopes with a one-line description, plus every collection with its root
   dir) via `notify.info`. See `pickers.ui.scope_picker.list()` (exported,
   the same list the interactive scope picker uses) and
-  [docs/COMMANDS.md](COMMANDS.md#pickersscopes).
+  [docs/commands.md](commands.md#pickersscopes).
 
 ## Keymaps
 
@@ -300,7 +300,7 @@ a changelog.
   opt-in (`nil` by default, same convention as the existing `cwd_files`)
   `keymaps.<name>` entries: `repos_files`, `repos_grep`, `system_files`. See
   `bindings/keymaps.lua`/`bindings/whichkey.lua` and
-  [docs/KEYMAPS.md](KEYMAPS.md).
+  [docs/keymaps.md](keymaps.md).
 - [x] **`keys.open_background_show`.** Opt-in (off by default) addition to
   `open_background` (`<S-CR>`/`<C-o>`): on top of the existing silent
   `bufadd`+`bufload`, also point the window *behind* the picker at the
@@ -309,7 +309,7 @@ a changelog.
   (`original_win_id`/`picker.main`); fzf-lua from its cached invocation
   context (`fzf-lua.utils.__CTX().winid`), best-effort, no line positioning.
   See `lua/pickers/entry_actions/open_background.lua` and
-  [docs/KEYMAPS.md](KEYMAPS.md#in-picker-keys-preview-scroll--history--entry-actions).
+  [docs/keymaps.md](keymaps.md#in-picker-keys-preview-scroll--history--entry-actions).
 - [x] **Declarative `mappings` table with per-entry engine override.**
   `mappings = { [name] = { lhs, engine? } }` (empty by default) — a new
   `lua/pickers/mappings/` module resolves `name` against a single unified
@@ -327,7 +327,7 @@ a changelog.
   default (never a dead keymap); an unresolvable name or malformed entry is
   skipped with a warning, never a throw. Does **not** supersede the fixed
   `keymaps.*` fields — both stay, `mappings` is a second, more flexible
-  surface. See [docs/KEYMAPS.md](KEYMAPS.md#declarative-mappings-per-entry-engine-override).
+  surface. See [docs/keymaps.md](keymaps.md#declarative-mappings-per-entry-engine-override).
 
 ## Feature-parity audit vs. the pre-pickers.nvim config
 
@@ -389,7 +389,7 @@ separately in each of 5 custom utilities, all replaced by pickers.nvim's one
   preview-scroll/history), fzf-lua left unpatched since `ctrl-s`/`ctrl-v`/
   `ctrl-t` are fixed/native there already (not a capability gap). No new
   pickers.nvim-side logic. See `lua/pickers/keys/` and
-  [docs/KEYMAPS.md](KEYMAPS.md#in-picker-keys-preview-scroll--history--entry-actions).
+  [docs/keymaps.md](keymaps.md#in-picker-keys-preview-scroll--history--entry-actions).
 - [x] **Grep exclude globs.** `find.exclude` now also applies to live grep
   (`pickers.actions.grep` merges `source.find`/`cfg.find` and forwards it as
   `opts.find`, same pattern as `pickers.actions.files`), each engine turning
@@ -408,7 +408,7 @@ separately in each of 5 custom utilities, all replaced by pickers.nvim's one
   intentionally left unwired: it already truncates the displayed path to
   fit the available column width by default
   (`Snacks.picker.util.truncpath`), so there's nothing to opt into there.
-  See [docs/CONFIGURATION.md](CONFIGURATION.md#long-path-display-shortening).
+  See [docs/configuration.md](configuration.md#long-path-display-shortening).
 
 **Explicit non-goals** (recommend documenting rather than building):
 file-browser/explorer parity — telescope-file-browser and fzf-lua's explorer

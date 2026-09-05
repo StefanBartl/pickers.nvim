@@ -1,8 +1,8 @@
 # Workflow — getting real use out of pickers.nvim day to day
 
-Every feature here is documented on its own elsewhere ([COMMANDS.md](COMMANDS.md),
-[CONFIGURATION.md](CONFIGURATION.md), [KEYMAPS.md](KEYMAPS.md),
-[COLLECTIONS.md](COLLECTIONS.md), [BUILTINS.md](BUILTINS.md)). This is the
+Every feature here is documented on its own elsewhere ([commands.md](commands.md),
+[configuration.md](configuration.md), [keymaps.md](keymaps.md),
+[collections.md](collections.md), [builtins.md](builtins.md)). This is the
 different question: once several of them exist at once, *how do they actually
 combine* into something worth reaching for daily, rather than something you
 configured once and mostly forgot.
@@ -26,12 +26,16 @@ Four ways to start a search, in the order you'll actually reach for them:
   {scope, root, action} from an empty prompt (useful after you dismissed a
   picker by accident, or want the same search with a fresh query);
   `:PickersResume` reopens the engine's own last picker session, prompt text
-  and all (useful mid-search, after you fat-fingered `<Esc>`). Both dispatch
-  through `pickers.command.dispatch`, so anything that goes through a scope
-  or collection is `:PickersRepeat`-able — `dir` scope included.
+  and all (useful mid-search, after you fat-fingered `<Esc>`). They do not
+  even share a code path: `:PickersRepeat` replays through
+  `pickers.command.dispatch`, the one choke point every fully resolved
+  `:Pickers` action passes — so anything that goes through a scope or
+  collection is `:PickersRepeat`-able, `dir` included — while
+  `:PickersResume` hands straight to the engine's own resume picker and knows
+  nothing about scopes at all.
 
 `:PickersResume` is a thin wrapper over `:Pickers builtin resume`, which is
-fzf-lua's one real gap in the [builtin registry](BUILTINS.md#notes-on-specific-gaps) —
+fzf-lua's one real gap in the [builtin registry](builtins.md#notes-on-specific-gaps) —
 on fzf-lua it's a `notify.warn` no-op, not silently broken.
 
 ## 2. `files`/`grep` vs `smart`: pick the action, not just the scope
@@ -113,14 +117,14 @@ your primary engine, don't wire a keymap expecting the explorer to work —
 either accept the gap or use `mappings` (see §6) to pin just that one entry
 to telescope or snacks while everything else stays on fzf-lua.
 
-## 5. The builtin registry: 52 entries, three engines, one name each
+## 5. The builtin registry: three engines, one name each
 
-`:Pickers builtin <name>` is a flat namespace of 52 names covering
+`:Pickers builtin <name>` is a flat namespace covering
 git/LSP/help/vim-intrinsics/diagnostics/GitHub/etc — deliberately *not*
 scope×action, so it bypasses pickers.nvim's own roots/find-flags resolution
 entirely and just calls straight into the engine's native function.
 
-Two gotchas worth internalizing before you reach for it reflexively:
+Three gotchas worth internalizing before you reach for it reflexively:
 
 - **Naming is per-registry-entry, not per-engine-function.** The three
   engines frequently disagree on what they call the same thing
@@ -131,8 +135,8 @@ Two gotchas worth internalizing before you reach for it reflexively:
   of going through `builtin` instead of calling `Snacks.picker.recent()`
   yourself.
 - **Discovery is tab-completion, not memorization.** `:Pickers builtin <Tab>`
-  cycles the full registry. Given 52 entries across categories you don't use
-  daily (GitHub issues/PRs, LSP declarations, lazy.nvim specs), tab-complete
+  cycles the full registry. Given the number of entries, across categories you
+  don't use daily (GitHub issues/PRs, LSP declarations, lazy.nvim specs), tab-complete
   first, don't guess a name and get a "not found."
 - **Empty cells are real, not bugs.** `git_diff`/`lsp_declarations` have no
   telescope picker; `gh_issue`/`gh_pr`/`projects`/`git_log_line`/
@@ -140,9 +144,9 @@ Two gotchas worth internalizing before you reach for it reflexively:
   exist on fzf-lua; `undo` doesn't exist on telescope. `:Pickers builtin`
   warns you which engines *do* support a name when you hit a gap on your
   current one — read the warning rather than assuming you mistyped. Full
-  matrix: [BUILTINS.md](BUILTINS.md).
+  matrix: [builtins.md](builtins.md).
 
-If you only use two or three of the 52 regularly, that's the case for
+If you only use two or three of them regularly, that's the case for
 `mappings` (next section) over trying to keymap the whole registry.
 
 ## 6. Composing `mappings` with per-collection `find` overrides
@@ -153,7 +157,7 @@ naturally once you have more than one or two collections with different
 `find` needs.
 
 Say you keep a `vendored` collection with `find = { no_ignore = true,
-exclude = { "*.lock" } }` (see [COLLECTIONS.md](COLLECTIONS.md#find-override))
+exclude = { "*.lock" } }` (see [collections.md](collections.md#find-override))
 because you actually want `.gitignore`d vendor files listed. You can then
 give it its own binding *and* pin the engine, independent of your global
 default:
@@ -206,20 +210,21 @@ rather than one entry per repo.
 
 | Trap | What actually happens | Where documented |
 |---|---|---|
-| Enabling `history` expecting it to affect snacks | No-op for snacks — snacks' picker history is unconditional and built-in, `history.*` config simply doesn't reach it | [CONFIGURATION.md](CONFIGURATION.md#history) |
-| Setting `history.fzf_scope` expecting it to affect telescope | No-op for telescope — telescope's history is one process-wide singleton, no per-call scope knob exists | [CONFIGURATION.md](CONFIGURATION.md#history) |
-| `:Pickers <scope> files all` on `grep`/`smart` | Silently ignored — live grep already searches `--hidden --no-ignore-vcs` unconditionally, so "find all" has nothing to force there | [COMMANDS.md](COMMANDS.md#pickers) |
+| Enabling `history` expecting it to affect snacks | No-op for snacks — snacks' picker history is unconditional and built-in, `history.*` config simply doesn't reach it | [configuration.md](configuration.md#history) |
+| Setting `history.fzf_scope` expecting it to affect telescope | No-op for telescope — telescope's history is one process-wide singleton, no per-call scope knob exists | [configuration.md](configuration.md#history) |
+| `:Pickers <scope> files all` on `grep`/`smart` | Silently ignored — live grep already searches `--hidden --no-ignore-vcs` unconditionally, so "find all" has nothing to force there | [commands.md](commands.md#pickers) |
 | Passing `selected_index` / `experimental.selected_index` to `setup()` | Silently ignored with a one-time warning — this overlay was built, found unreliable, and fully removed (code, config surface, docs, tests) | [CHANGELOG.md](CHANGELOG.md) |
-| Expecting `mappings` to bind a `dir` nav | Not supported — `dir`'s nav argument doesn't fit the flat `<scope>_<action>` name shape `mappings` resolves against | [KEYMAPS.md](KEYMAPS.md#declarative-mappings-per-entry-engine-override) |
-| Naming a `mappings` entry with an engine that isn't installed | Falls back to your configured default engine — never becomes a dead keymap | [KEYMAPS.md](KEYMAPS.md#declarative-mappings-per-entry-engine-override) |
-| Assuming `result_count` shows up on fzf-lua/snacks | Telescope-only; the other two already show a native position/total counter, so it's skipped there, not broken | [CONFIGURATION.md](CONFIGURATION.md#result-count) |
-| Expecting `create_file`/`open_background` to "just work" like the other `keys.*` | They're pickers.nvim-specific logic, not a patched built-in engine action — still require merging the exported adapters into your own engine `setup()` manually | [KEYMAPS.md](KEYMAPS.md#in-picker-keys-preview-scroll--history--entry-actions) |
-| Running `smart` on fzf-lua with an old fzf binary | Needs fzf ≥ 0.45 for Lua-function live mode — use telescope or snacks instead of debugging a "broken" smart action | [COMMANDS.md](COMMANDS.md#the-smart-action) |
+| Expecting `mappings` to bind a `dir` nav | Not supported — `dir`'s nav argument doesn't fit the flat `<scope>_<action>` name shape `mappings` resolves against | [keymaps.md](keymaps.md#declarative-mappings-per-entry-engine-override) |
+| Naming a `mappings` entry with an engine that isn't installed | Falls back to your configured default engine — never becomes a dead keymap | [keymaps.md](keymaps.md#declarative-mappings-per-entry-engine-override) |
+| Assuming `result_count` shows up on fzf-lua/snacks | Telescope-only; the other two already show a native position/total counter, so it's skipped there, not broken | [configuration.md](configuration.md#result-count) |
+| Expecting `create_file`/`open_background` to "just work" like the other `keys.*` | They're pickers.nvim-specific logic, not a patched built-in engine action — still require merging the exported adapters into your own engine `setup()` manually | [keymaps.md](keymaps.md#in-picker-keys-preview-scroll--history--entry-actions) |
+| Running `smart` on fzf-lua with an old fzf binary | Needs fzf ≥ 0.45 for Lua-function live mode — use telescope or snacks instead of debugging a "broken" smart action | [commands.md](commands.md#the-smart-action) |
 
 ## 9. When something feels wrong: `:checkhealth pickers`
 
 Before assuming a bug, `:checkhealth pickers` covers dependencies, engine
-detection, CLI tools (`rg`/`fd`), configuration, and collections in one
+detection, CLI tools (`rg`/`fd`), configuration, image previews, collections
+and the declared external tools in one
 pass — including the exact "config has no effect for this engine" cases from
 §8 (e.g. it says outright that `history.*` doesn't apply under snacks, rather
 than leaving you to rediscover that from behavior). Cheaper than re-reading

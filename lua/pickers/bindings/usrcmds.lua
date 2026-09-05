@@ -23,7 +23,7 @@
 --- wrapper over pickers.builtins.run("resume"). Distinct from :PickersRepeat
 --- (which replays pickers.nvim's own last resolved scope/action, not the
 --- engine's session history). fzf-lua has no resume concept, so this is a
---- documented no-op notify.warn there -- see docs/BUILTINS.md.
+--- documented no-op notify.warn there -- see docs/builtins.md.
 
 local usercmd = require("pickers.bindings.util").usercmd
 local notify = require("lib.nvim.notify").create("[pickers]")

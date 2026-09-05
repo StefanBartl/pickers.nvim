@@ -16,7 +16,7 @@ default are the ones with no plausible alternative owner.
 
 - **Module:** [`bindings/keymaps.lua`](../../lua/pickers/bindings/keymaps.lua)
 - **Config:** `keymaps.*`
-- **Keymaps:** see [`docs/KEYMAPS.md`](../KEYMAPS.md)
+- **Keymaps:** see [`docs/keymaps.md`](../keymaps.md)
 
 ## Declarative mappings
 
@@ -59,7 +59,7 @@ or surfaced in `:checkhealth pickers` where the gap is static.
 - **Module:** [`keys/`](../../lua/pickers/keys/)
 - **Config:** `keys.*`
 - **Reference:** the per-engine table in
-  [`docs/KEYMAPS.md`](../KEYMAPS.md#in-picker-keys-preview-scroll--history--entry-actions)
+  [`docs/keymaps.md`](../keymaps.md#in-picker-keys-preview-scroll--history--entry-actions)
 
 ### Mouse confirm
 

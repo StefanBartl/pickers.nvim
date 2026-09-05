@@ -15,6 +15,11 @@ whatever opts you pass, same as calling it yourself.
 Tab-completes over every registered name (`:Pickers builtin <Tab>`). See
 `lua/pickers/builtins/init.lua` for the registry itself.
 
+The matrix below is the list — one row per registered name, 52 of them at the
+time of writing. It is the only place in the docs that counts them, so the
+number cannot go stale anywhere else; every other page links here instead of
+restating it.
+
 ## Why some cells are empty
 
 Each row below was verified against the actual installed plugin sources (not
@@ -87,7 +92,7 @@ as `:Pickers cwd files` / `:Pickers cwd grep` and don't need a builtin entry.
 ## Notes on specific gaps
 
 - **`explorer`**: file explorer / browser, bound to `<leader>.` by default (see
-  [docs/KEYMAPS.md](KEYMAPS.md)). snacks ships a real tree explorer as a picker
+  [docs/keymaps.md](keymaps.md)). snacks ships a real tree explorer as a picker
   source (`Snacks.picker.explorer`). telescope's is the separate
   [telescope-file-browser.nvim](https://github.com/nvim-telescope/telescope-file-browser.nvim)
   extension — it must be installed; pickers.nvim loads it on demand and warns
@@ -97,7 +102,7 @@ as `:Pickers cwd files` / `:Pickers cwd grep` and don't need a builtin entry.
   `mod[fn]` builtins, telescope's explorer is dispatched via a custom `run`
   invoker in the registry (extensions aren't `telescope.builtin.*` functions).
 - **`projects`**: snacks-only. If you need this across engines, a pickers.nvim
-  [collection](COLLECTIONS.md) rooted at `repos_dir` covers most of the same
+  [collection](collections.md) rooted at `repos_dir` covers most of the same
   need (browse repos, jump to files/grep) without depending on snacks.
 - **`gh_issue*` / `gh_pr*`**: no core telescope.builtin or fzf-lua equivalent.
   (A separate `telescope-github.nvim` extension exists if you want GitHub

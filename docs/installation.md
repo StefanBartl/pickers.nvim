@@ -3,6 +3,9 @@
 ## Requirements
 
 **Hard required:**
+- Neovim **0.10+** — `vim.uv` and `vim.system` are used unguarded (directory
+  navigation, the collection and repo sources, and the `smart` action's `rg`/
+  `fd` calls all depend on them)
 - [lib.nvim](https://github.com/StefanBartl/lib.nvim)
 
 **One of (auto-detected, telescope preferred, then fzf-lua, then snacks.nvim):**
@@ -58,9 +61,11 @@ If startup time matters and you only want the plugin loaded on first use:
     "DirPicker", "FindConfig", "GrepConfig", "FindInFolder",
     "LiveGrep", "AllDrives", "AllDrivesGrep", "FindOnSystem",
     "RepoFiles", "RepoGrep", "WkdBookFiles", "WkdBookGrep",
+    "PickersRepeat", "PickersScopes", "PickersResume",
   },
   keys = {
     { "<leader>dp", desc = "[pickers] Dir navigation" },
+    { "<leader>.",  desc = "[pickers] File explorer" },
     { "<leader>fb", desc = "[pickers] Find in folder" },
     { "<leader>fc", desc = "[pickers] Find in config" },
     { "<leader>gc", desc = "[pickers] Grep in config" },
@@ -77,6 +82,11 @@ If startup time matters and you only want the plugin loaded on first use:
 
 lazy.nvim registers stub keymaps / commands that load the plugin on first
 use; `setup()` then replaces them with the real ones.
+
+Both lists cover the built-in defaults only. A collection's generated
+`:{PascalName}Files`/`Grep`/`Smart` commands and any keymap you bind yourself
+have to be added to `cmd`/`keys` as well, or they will not exist until
+something else has already loaded the plugin.
 
 ## Optional: engine ownership + auto-install
 
@@ -138,4 +148,7 @@ use {
 :checkhealth pickers
 ```
 
-Verifies: lib.nvim · telescope/fzf-lua/snacks.nvim · rg · fd/fdfind · repos_dir · registered aliases · each collection directory.
+Verifies: lib.nvim · telescope/fzf-lua/snacks.nvim · rg · fd/fdfind ·
+repos_dir · registered aliases · whether image previews are active and whether
+PDF pages can be rasterized · each collection directory · the tools declared in
+[`install.json`](install.json) · the `:Pickers` command tree.

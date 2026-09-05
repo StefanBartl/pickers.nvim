@@ -13,7 +13,7 @@
 ```
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Neovim](https://img.shields.io/badge/Neovim-0.9%2B-57A143?logo=neovim&logoColor=white)](https://neovim.io)
+[![Neovim](https://img.shields.io/badge/Neovim-0.10%2B-57A143?logo=neovim&logoColor=white)](https://neovim.io)
 [![Lua](https://img.shields.io/badge/Lua-5.1%2FLuaJIT-2C2D72?logo=lua&logoColor=white)](https://www.lua.org)
 ![Status](https://img.shields.io/badge/status-alpha-red)
 
@@ -23,13 +23,13 @@ Consolidates seven separate picker modules into one plugin with a single `:Picke
 Includes a **`smart`** action — `:Pickers <scope> smart` runs grep (content) and
 find-files (filenames) for the same live query and merges both into one list
 **ranked by relevance**, so hits interleave by score regardless of source
-instead of showing as two separate blocks. See [docs/COMMANDS.md](docs/COMMANDS.md#the-smart-action).
+instead of showing as two separate blocks. See [docs/commands.md](docs/commands.md#the-smart-action).
 
 `:Pickers builtin <name>` also gives tab-completed, engine-agnostic access to
-~40 native pickers that aren't a scope×action — git branches/log/status/diff,
+the native pickers that aren't a scope×action — git branches/log/status/diff,
 every LSP list, diagnostics, help, marks, buffers, registers, and more —
 dispatching straight into the resolved engine's own picker function. See
-[docs/BUILTINS.md](docs/BUILTINS.md) for the full name list and per-engine parity matrix.
+[docs/builtins.md](docs/builtins.md) for the full name list and per-engine parity matrix.
 
 With [images.nvim](https://github.com/StefanBartl/images.nvim) installed, an
 image entry in the results (`.png`, `.jpg`, …) is **drawn as a picture** in the
@@ -90,20 +90,14 @@ work, for turning it off without touching any plugin's config.
 
 ## Documentation
 
-Start at [docs/README.md](docs/README.md), which says what is where and which
-question each page answers.
-
+- [Documentation index](docs/README.md) — everything below, plus what isn't listed here, with the question each page answers.
 - [Features](docs/FEATURES/README.md) — the catalogue, by theme: engines, scopes, actions, native pickers, keys, UI, persistence, image previews.
-- [Installation](docs/INSTALLATION.md) — requirements, lazy.nvim (recommended + lazy-loading variant), packer.nvim, and health check.
-- [Commands](docs/COMMANDS.md) — the `:Pickers` command syntax, scopes, and compat command aliases.
-- [Native pickers](docs/BUILTINS.md) — `:Pickers builtin <name>`, the full name list, and the per-engine parity matrix.
-- [Collections](docs/COLLECTIONS.md) — defining user scopes over your own directories.
-- [Keymaps](docs/KEYMAPS.md) — default keymaps and how to change or disable them.
-- [Configuration](docs/CONFIGURATION.md) — full `setup()` reference and picker history.
-- [Bindings cheatsheet](docs/BINDINGS.md) — machine-readable reference of every keymap, user command, and autocommand.
-- [Cheatsheet](docs/CHEATSHEET.md) — condensed single-page command/scope/keymap reference.
-- [Feature log](docs/CHANGELOG.md) — what changed and when, in the order it happened.
-- [Workflow](docs/WORKFLOW.md) — how scopes, collections and engines combine into a way of working, rather than what each picker does.
+- [Installation](docs/installation.md) — requirements, lazy.nvim (recommended + lazy-loading variant), packer.nvim, and health check.
+- [Configuration](docs/configuration.md) — every `setup()` option and its default.
+- [Commands](docs/commands.md) — the `:Pickers` grammar, the scopes, and the compat aliases.
+- [Bindings cheatsheet](docs/BINDINGS.md) — every keymap, user command and autocommand at a glance.
+
+`:help pickers` covers the same ground offline.
 
 ## License
 

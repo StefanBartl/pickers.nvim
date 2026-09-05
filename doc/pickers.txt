@@ -1,4 +1,4 @@
-*pickers.txt*   Unified fuzzy-picker plugin for Neovim
+*pickers.txt*   Unified fuzzy-picker plugin for Neovim               *pickers*
 
 Author:   Stefan Bartl <stefan.bartl.work@gmail.com>
 Homepage: https://github.com/StefanBartl/pickers.nvim
@@ -71,7 +71,7 @@ Minimal (lazy.nvim): >lua
   }
 <
 
-Full options: >lua
+A fuller spec -- the complete key list is |pickers-config|: >lua
   require("pickers").setup({
     engine    = "auto",               -- "auto" | "telescope" | "fzf" | "snacks"
     repos_dir = vim.env.REPOS_DIR,
@@ -88,6 +88,7 @@ Full options: >lua
     keymaps = {
       enable       = true,
       dir_pick     = "<leader>dp",
+      explorer     = "<leader>.",
       folder_files = "<leader>fb",
       config_files = "<leader>fc",
       config_grep  = "<leader>gc",
@@ -311,7 +312,10 @@ following letter is uppercased.
 All keymaps are registered in `lua/pickers/bindings/`.  They mirror the
 keymaps from the original individual modules exactly:
 
-  <leader>dp   :Pickers dir          (dir navigation picker)
+  <leader>dp   :Pickers dir          (dir navigation picker; a count is the
+                                     depth, so 2<leader>dp is two levels up)
+  <leader>.    :Pickers builtin explorer
+                                     (file explorer / browser, active engine)
   <leader>fb   :Pickers folder files (find in interactively picked folder)
   <leader>fc   :Pickers config files (find files in nvim config)
   <leader>gc   :Pickers config grep  (grep in nvim config)
@@ -440,19 +444,22 @@ with configs that used the original individual modules:
   :FindOnSystem       → :Pickers system files
   :RepoFiles [repo]   → :Pickers repos files (or files in [repo] directly)
   :RepoGrep [repo]    → :Pickers repos grep  (or grep in [repo] directly)
-
-  [repo] tab-completes from REPOS_DIR and, when given, skips the repo
-  picker and jumps straight into files/grep for that repo.
   :WkdBookFiles       → :Pickers wkdbooks files
   :WkdBookGrep        → :Pickers wkdbooks grep
+
+[repo] tab-completes from REPOS_DIR and, when given, skips the repo picker and
+jumps straight into files/grep for that repo.
+
+Every collection additionally gets :{PascalName}Files / Grep / Smart — see
+|pickers-collections|.
 
                                                                 *:PickersRepeat*
 :PickersRepeat~
   Reopens the most recently dispatched :Pickers action — same resolved
-  scope/root, same action (files/grep) — without re-resolving through any
-  interactive sub-picker (folder/repo/collection subdir) in between.  Covers
-  every scope, including `dir`.  In-memory only, current session; warns if
-  nothing has been dispatched yet.  See lua/pickers/last.lua.
+  scope/root, same action (files/grep/smart) — without re-resolving through
+  any interactive sub-picker (folder/repo/collection subdir) in between.
+  Covers every scope, including `dir`.  In-memory only, current session;
+  warns if nothing has been dispatched yet.  See lua/pickers/last.lua.
 
                                                                *:PickersScopes*
 :PickersScopes~
@@ -480,6 +487,13 @@ All keys are optional.  Unset keys retain their default values.
     "fzf"        always use fzf-lua
     "snacks"     always use snacks.nvim (picker module)
 
+  deps_popup (bool, default true)~
+    Show the one-time "which CLI tools does this plugin want, and why" popup
+    on the first setup() after install, built from docs/install.json via
+    lib.nvim's deps module.  Set false here to silence it for pickers.nvim
+    only, without touching any vim.g.  `:Lib deps show pickers.nvim` repeats
+    the same report on demand.
+
   repos_dir (string|nil, default $REPOS_DIR)~
     Root directory that contains git repositories.  Used by the `repos` scope.
 
@@ -506,6 +520,8 @@ All keys are optional.  Unset keys retain their default values.
   keymaps (table)~
     enable       (bool, default true)  — set false to disable all keymaps
     dir_pick     (string|nil)          — default "<leader>dp"
+    explorer     (string|nil)          — default "<leader>.", the file
+                                          explorer on the active engine
     folder_files (string|nil)          — default "<leader>fb"
     config_files (string|nil)          — default "<leader>fc"
     config_grep  (string|nil)          — default "<leader>gc"
@@ -534,6 +550,10 @@ All keys are optional.  Unset keys retain their default values.
     fzf_scope (string, default "plugin") — "plugin"|"global"|"patch", fzf-lua only
     dir       (string|nil, default nil) — override history dir
     limit     (integer, default 200)  — max entries kept per history file
+
+  smart (table)~
+    Weights, limit, timeout, frecency and dedup_grep_rows for the combined
+    grep + find action.  Listed in full under |pickers-smart|.
 
   result_count (table)~
     enabled (bool, default false) — master toggle, telescope-only, see

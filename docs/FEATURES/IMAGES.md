@@ -65,9 +65,10 @@ require("pickers").setup({
 })
 ```
 
-`:checkhealth pickers` reports which of the three states applies — switched
-off, images.nvim not installed, or active — because the three need three
-different fixes.
+`:checkhealth pickers` reports which state applies — switched off here,
+images.nvim not installed, installed but reporting that this terminal cannot
+draw, or active — because each needs a different fix, and an active one adds a
+line of its own for whether a PDF page can be rasterized.
 
 ## Engine coverage
 

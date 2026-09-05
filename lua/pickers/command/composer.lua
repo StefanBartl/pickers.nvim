@@ -132,7 +132,7 @@ local function builtin_route()
   return {
     path = { "builtin" },
     args = { { name = "name", type = "PICKERS_BUILTIN_NAME" } },
-    desc = "Native picker (git/lsp/search/…) — see docs/BUILTINS.md",
+    desc = "Native picker (git/lsp/search/…) — see docs/builtins.md",
     run = function(ctx)
       require("pickers.builtins").run(ctx.pos[1])
     end,

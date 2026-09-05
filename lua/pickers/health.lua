@@ -120,7 +120,7 @@ function M.check()
       vim.health.info(
         "history.enabled has no effect on snacks.nvim — its picker history is "
           .. "built-in and always-on (per-source file under stdpath('data')/snacks/), "
-          .. "not configurable via pickers.nvim. See docs/CONFIGURATION.md."
+          .. "not configurable via pickers.nvim. See docs/configuration.md."
       )
     end
     if not has_telescope and not has_fzf and not has_snacks then
@@ -137,7 +137,7 @@ function M.check()
           "fzf-lua cannot remap: "
             .. table.concat(skipped, ", ")
             .. " (horizontal preview scroll / history are fzf-native, fixed). "
-            .. "See docs/KEYMAPS.md."
+            .. "See docs/keymaps.md."
         )
       end
     end
