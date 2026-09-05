@@ -22,7 +22,7 @@ function M.check()
   if pcall(require, "lib.nvim.notify") then
     vim.health.ok("lib.nvim available")
   else
-    vim.health.error("lib.nvim not found — add 'github.com/StefanBartl/lib.nvim' as a dependency")
+    vim.health.error("lib.nvim not found", { "Add 'StefanBartl/lib.nvim' as a dependency" })
   end
 
   -- lib.nvim.bindings.usercmd.composer: required — the :Pickers command layer is built
@@ -32,7 +32,8 @@ function M.check()
     vim.health.ok("lib.nvim.bindings.usercmd.composer available (:Pickers command layer)")
   else
     vim.health.error(
-      ":Pickers will fail to register — lib.nvim.bindings.usercmd.composer not found"
+      ":Pickers will fail to register — lib.nvim.bindings.usercmd.composer not found",
+      { "Add 'StefanBartl/lib.nvim' as a dependency" }
     )
   end
 
@@ -62,7 +63,10 @@ function M.check()
   end
 
   if not has_telescope and not has_fzf and not has_snacks then
-    vim.health.error("No picker engine found — install telescope.nvim, fzf-lua, or snacks.nvim")
+    vim.health.error(
+      "No picker engine found",
+      { "Install one of: telescope.nvim, fzf-lua, snacks.nvim" }
+    )
   end
 
   -- ── CLI tools ─────────────────────────────────────────────────────────────
@@ -74,7 +78,7 @@ function M.check()
   if has_rg then
     vim.health.ok("ripgrep (rg) found")
   else
-    vim.health.warn("ripgrep (rg) not found — live_grep will not work")
+    vim.health.warn("ripgrep (rg) not found — live_grep will not work", { "install ripgrep" })
   end
 
   if vim.fn.executable("fd") == 1 then
@@ -82,7 +86,10 @@ function M.check()
   elseif vim.fn.executable("fdfind") == 1 then
     vim.health.ok("fdfind found")
   else
-    vim.health.warn("fd / fdfind not found — system source and dir-picker will not work")
+    vim.health.warn(
+      "fd / fdfind not found — system source and dir-picker will not work",
+      { "install fd (fd-find on some distros)" }
+    )
   end
 
   -- The smart action (see :help pickers-smart) needs BOTH rg and fd.
@@ -110,7 +117,10 @@ function M.check()
     if vim.fn.isdirectory(cfg.repos_dir) == 1 then
       vim.health.ok("repos_dir exists: " .. cfg.repos_dir)
     else
-      vim.health.warn("repos_dir set but not found: " .. cfg.repos_dir)
+      vim.health.warn(
+        "repos_dir set but not found: " .. cfg.repos_dir,
+        { "Check the repos_dir path in pickers.setup()" }
+      )
     end
   else
     vim.health.info("repos_dir not set — repos source unavailable")
@@ -216,7 +226,10 @@ function M.check()
         if coll.only_git then detail = detail .. "  only_git=true" end
         vim.health.ok(label .. detail)
       else
-        vim.health.warn(label .. "  [directory not found]")
+        vim.health.warn(
+          label .. "  [directory not found]",
+          { "Check this collection's dir in pickers.setup()" }
+        )
       end
     end
   end
