@@ -1,4 +1,5 @@
 *pickers.txt*   Unified fuzzy-picker plugin for Neovim               *pickers*
+                                                                *pickers.nvim*
 
 Author:   Stefan Bartl <stefan.bartl.work@gmail.com>
 Homepage: https://github.com/StefanBartl/pickers.nvim
