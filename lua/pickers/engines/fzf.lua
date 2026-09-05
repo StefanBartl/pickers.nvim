@@ -182,7 +182,17 @@ function M.live_grep(opts)
     rg_opts_list[#rg_opts_list + 1] = "-g"
     rg_opts_list[#rg_opts_list + 1] = vim.fn.shellescape("!" .. g)
   end
-  vim.list_extend(rg_opts_list, extra)
+  -- Every other value folded into this string goes through shellescape (the
+  -- glob excludes above, the roots/paths in multi_root_cmd) before this list
+  -- is joined into one shell command line below -- additional_args is source
+  -- config today (see sources/drives.lua), not live keystroke input, but
+  -- SEC-03's point stands regardless of how harmless a value looks right now:
+  -- shellescape is idempotent on a plain flag like "--type"/"lua" (it just
+  -- wraps it in quotes the shell strips back off), so escaping costs nothing
+  -- here and closes the gap for whatever a future source config passes.
+  for _, a in ipairs(extra) do
+    rg_opts_list[#rg_opts_list + 1] = vim.fn.shellescape(a)
+  end
 
   -- `search_paths`, NOT `search_dirs`. `search_dirs` is telescope's spelling;
   -- fzf-lua has never read it (its `defaults.lua` documents `search_paths?
