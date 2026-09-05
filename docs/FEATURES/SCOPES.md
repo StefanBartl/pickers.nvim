@@ -64,7 +64,7 @@ Three shapes, from the same config field:
 
 - **Module:** [`sources/collection.lua`](../../lua/pickers/sources/collection.lua),
   registered by [`bindings/collections.lua`](../../lua/pickers/bindings/collections.lua)
-- **Config:** `collections` — see [COLLECTIONS.md](../COLLECTIONS.md)
+- **Config:** `collections` — see [collections.md](../collections.md)
 - **Keymaps:** per collection, `keys = { files, grep, smart }`
 
 ## Per-collection find overrides

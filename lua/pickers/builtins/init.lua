@@ -15,7 +15,7 @@
 --- `manpages`; …) and on capability (telescope has no `git_diff` hunks picker
 --- and no `lsp_declarations`; neither telescope nor fzf-lua wrap GitHub
 --- issues/PRs or per-line git log). A `false` entry is such a documented gap,
---- not an oversight — see docs/BUILTINS.md for the full parity matrix.
+--- not an oversight — see docs/builtins.md for the full parity matrix.
 ---
 --- `entry.telescope/fzf/snacks` opts (when present) are defaults merged
 --- *underneath* whatever opts `run()` is called with, so callers can always

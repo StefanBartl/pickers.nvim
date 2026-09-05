@@ -7,10 +7,16 @@ require("pickers").setup({
   -- "auto" detects telescope first, then fzf-lua, then snacks.nvim
   engine = "auto",                      -- "auto" | "telescope" | "fzf" | "snacks"
 
+  -- One-time "which CLI tools does this plugin want, and why" popup on the
+  -- first setup() after install, built from docs/install.json by lib.nvim's
+  -- deps module. false silences it for pickers.nvim only, right here, without
+  -- touching any vim.g. `:Lib deps show pickers.nvim` repeats it on demand.
+  deps_popup = true,
+
   -- Root directory that contains git repositories (default: $REPOS_DIR)
   repos_dir = vim.env.REPOS_DIR,
 
-  -- User-defined named scopes (see docs/COLLECTIONS.md)
+  -- User-defined named scopes (see docs/collections.md)
   collections = {
     { name = "notes",    dir = vim.env.REPOS_DIR .. "/Notes",
       keys = { files = "<leader>mnf", grep = "<leader>mng" } },
@@ -60,7 +66,7 @@ require("pickers").setup({
   -- Declarative mappings: a second, more flexible keymap surface alongside
   -- keymaps.* above -- any scope×action or builtin name, with an optional
   -- per-entry engine override. Empty by default. See "Declarative mappings"
-  -- in docs/KEYMAPS.md.
+  -- in docs/keymaps.md.
   mappings = {},
 
   usercmds = { enable = true },
@@ -90,10 +96,23 @@ require("pickers").setup({
     limit = 200,
   },
 
+  -- Live result count in the prompt title. Telescope-only, off by default.
+  -- See "Result count" below.
+  result_count = {
+    enabled = false,
+    interval_ms = 150,
+  },
+
+  -- Cosmetic long-path shortening, off by default. See "Long-path display
+  -- shortening" below.
+  display = {
+    path_shorten = false,
+  },
+
   -- Unified in-picker keys: preview scroll + history navigation (patched
   -- globally into telescope/fzf-lua/snacks), plus the create_file/
   -- open_background entry actions (merged manually into your own engine
-  -- setup() -- see lua/pickers/entry_actions/README.md). See docs/KEYMAPS.md.
+  -- setup() -- see lua/pickers/entry_actions/README.md). See docs/keymaps.md.
   keys = {
     enable = true,
     preview_scroll_down  = "<PageDown>",
@@ -173,7 +192,7 @@ using the snacks engine is therefore a no-op for snacks specifically; it still
 takes effect for telescope/fzf-lua if you have them installed alongside it.
 Snacks history navigation (`<C-Up>`/`<C-Down>` by default) is separate from,
 and additive with, the `history_back`/`history_forward` keys in
-[docs/KEYMAPS.md](KEYMAPS.md#in-picker-keys-preview-scroll--history--entry-actions).
+[docs/keymaps.md](keymaps.md#in-picker-keys-preview-scroll--history--entry-actions).
 
 ---
 
@@ -204,7 +223,7 @@ live finder (e.g. `live_grep`) streams in matches, with no `CursorMoved` or
 
 The `smart` action runs `rg` (content) **and** `fd` (filenames) for the same
 live query and merges both result sets into **one list ranked by relevance** —
-see [docs/COMMANDS.md](COMMANDS.md#the-smart-action) for what it does and how to
+see [docs/commands.md](commands.md#the-smart-action) for what it does and how to
 open it (`:Pickers <scope> smart`, per-scope/collection `*_smart` keymaps, or
 `:{PascalName}Smart`). This section covers only the tuning knobs.
 
@@ -327,7 +346,8 @@ Being "enabled" is not the same as being active: images.nvim must be installed
 the answer is no and the text preview stays — deliberately, since an empty
 preview window would be worse than the one the engine already had.
 images.nvim's `display.assume_supported = true` overrides that detection.
-`:checkhealth pickers` names which of the three states applies, and reports
+`:checkhealth pickers` names which state applies — switched off, images.nvim
+absent, present but unable to draw on this terminal, or active — and reports
 separately whether PDF pages can be rasterized.
 
 Full details, and why each engine draws the line where it does, in

@@ -25,7 +25,7 @@
 ---
 --- Snacks is the exception: pickers.nvim does not own `Snacks.setup()`, so it
 --- cannot self-patch. Call `keys.snacks_win()` and merge the result into your
---- own `require("snacks").setup({ picker = ... })` — see docs/KEYMAPS.md.
+--- own `require("snacks").setup({ picker = ... })` — see docs/keymaps.md.
 ---
 --- fzf-lua is the documented capability gap: its builtin previewer has vertical
 --- preview scroll but no horizontal scroll, and its `--history` binds ctrl-p /

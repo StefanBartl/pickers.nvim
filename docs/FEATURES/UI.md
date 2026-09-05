@@ -49,10 +49,12 @@ switch flipped, rather than a fourth implementation.
 
 ## Health check
 
-`:checkhealth pickers` runs five sections: declared dependencies, which picker
-engines are installed and which one resolves, whether `rg` and `fd` are on
-`PATH` (`fdfind` counts), the merged configuration, and the registered
-collections.
+`:checkhealth pickers` reports, in this order: the required dependencies, which
+picker engines are installed and which one resolves, whether `rg` and `fd` are
+on `PATH` (`fdfind` counts), the merged configuration, whether image previews
+are active and whether a PDF page can be rasterized, the registered
+collections, and the external tools declared in `docs/install.json`. The
+`:Pickers` command tree adds a section of its own through lib.nvim's composer.
 
 - **Module:** [`health.lua`](../../lua/pickers/health.lua)
 - **Usercmds:** `:checkhealth pickers`

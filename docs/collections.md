@@ -9,7 +9,7 @@ Collections are user-defined named scopes. Each collection becomes a first-class
 ```lua
 collections = {
   -- Direct root — dir is used as-is. `keys.smart` (optional) binds the
-  -- combined grep + find action for this collection (see docs/COMMANDS.md).
+  -- combined grep + find action for this collection (see docs/commands.md).
   { name = "notes",       dir = vim.env.REPOS_DIR .. "/Notes",
     keys = { files = "<leader>mnf", grep = "<leader>mng", smart = "<leader>mns" } },
 

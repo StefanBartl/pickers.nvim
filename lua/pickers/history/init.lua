@@ -16,7 +16,7 @@
 --- per-source history file unconditionally in `Picker.new` (fixed path under
 --- `stdpath("data")/snacks/`, no `enabled`/`dir`/`limit` field anywhere in its
 --- opts schema). There is nothing to opt into or patch; `cfg.history.*` simply
---- does not apply when the active engine is snacks. See docs/CONFIGURATION.md
+--- does not apply when the active engine is snacks. See docs/configuration.md
 --- ("History" section) for the user-facing explanation.
 
 local M = {}

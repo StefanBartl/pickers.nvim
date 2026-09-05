@@ -65,7 +65,7 @@ require("pickers").setup({
     enable = true,
     create_file     = "<C-a>",
     open_background = { "<S-CR>", "<C-o>" },
-    -- ...preview_scroll_*/history_* also live here, see docs/KEYMAPS.md
+    -- ...preview_scroll_*/history_* also live here, see docs/keymaps.md
   },
 })
 ```

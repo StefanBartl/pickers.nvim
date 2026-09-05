@@ -22,7 +22,7 @@
 ---   })
 ---
 --- `own_engine` defaults to false/off (today's behaviour, unchanged):
---- `docs/KEYMAPS.md` and `pickers.keys` already document, deliberately,
+--- `docs/keymaps.md` and `pickers.keys` already document, deliberately,
 --- that "pickers.nvim does not own `Snacks.setup()`" -- so users keep full
 --- control over engine-specific config that has nothing to do with picking
 --- (snacks dashboard/explorer/notifier, telescope extensions, fzf-lua

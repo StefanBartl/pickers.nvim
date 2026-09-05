@@ -8,7 +8,8 @@ capability gaps.
 ## The registry
 
 `:Pickers builtin <name>` dispatches straight into the resolved engine's own
-picker function. 52 names, tab-completed, engine-agnostic at the call site:
+picker function. Every registered name is tab-completed and engine-agnostic
+at the call site:
 one name maps to `Snacks.picker.<fn>()`, `telescope.builtin.<fn>()` or
 `require("fzf-lua").<fn>()` depending on which engine is live.
 
@@ -36,4 +37,4 @@ of failing silently.
 
 - **Module:** [`builtins/init.lua`](../../lua/pickers/builtins/init.lua)
 - **Reference:** the full name list and per-engine matrix in
-  [`docs/BUILTINS.md`](../BUILTINS.md)
+  [`docs/builtins.md`](../builtins.md)

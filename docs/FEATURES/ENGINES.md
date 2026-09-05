@@ -70,7 +70,8 @@ first use with a shell error, the plugin declares those tools through
 `lib.nvim.deps` and shows a one-time popup after install explaining which tools
 it wants and why.
 
-- **Module:** `lib.nvim.deps` (spec in the repo root)
+- **Module:** `lib.nvim.deps`, reading this repo's
+  [`docs/install.json`](../install.json)
 - **Config:** `deps_popup` (default `true`) — set `false` in the spec passed to
   `setup()` to silence it for this plugin only, no `vim.g` needed
 - **Usercmds:** `:Lib deps show pickers.nvim`, `:Lib deps install pickers.nvim`

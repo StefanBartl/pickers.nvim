@@ -11,7 +11,7 @@
 `action` is one of `files`, `grep`, or `smart`. When an argument is omitted an
 interactive picker appears (`hover_select` or `vim.ui.select`).
 
-### Search-flag escalation (2026-08-24)
+### Search-flag escalation
 
 `all` is the shorthand. The three flags are also accepted individually and
 combine with `+`:
@@ -34,13 +34,13 @@ configured `find.*` defaults — e.g. `:Pickers cwd files all`. It works for
 every built-in scope and every collection, but not for `dir` scope. It's a
 no-op on `grep`/`smart` (silently ignored there, since live grep already
 searches `--hidden --no-ignore-vcs` unconditionally). See
-[docs/KEYMAPS.md](KEYMAPS.md) for the opt-in `cwd_find_all` keymap.
+[docs/keymaps.md](keymaps.md) for the opt-in `cwd_find_all` keymap.
 
 `pickers.command.handle({ fargs = {...}, engine = "telescope" })` also
 accepts an optional `engine` override (Lua API only, not exposed on the
 `:Pickers` command itself) — falls back to the configured default if that
 engine isn't installed. This is what `mappings`' per-entry engine override
-uses under the hood; see [docs/KEYMAPS.md](KEYMAPS.md#declarative-mappings-per-entry-engine-override).
+uses under the hood; see [docs/keymaps.md](keymaps.md#declarative-mappings-per-entry-engine-override).
 
 | Scope | Nav (dir only) | Action | Result |
 |---|---|---|---|
@@ -78,7 +78,7 @@ from one source, delegating actual dispatch to the unchanged
 
 Native pickers (git/LSP/help/…) that aren't a scope×action — dispatches
 straight into the resolved engine's own picker function. Tab-completes over
-the registry. See [docs/BUILTINS.md](BUILTINS.md) for the full name list and
+the registry. See [docs/builtins.md](builtins.md) for the full name list and
 the per-engine parity matrix (some names have no telescope or fzf-lua
 equivalent — documented gaps, not bugs).
 
@@ -111,7 +111,7 @@ in once you type. Selecting a grep row opens the file at the matched line;
 selecting a file row opens it at the top. Ranking is identical across
 telescope/fzf-lua/snacks because all three drive the same core
 (`lua/pickers/smart/`). Tune the weighting via `smart.weights` — see
-[docs/CONFIGURATION.md](CONFIGURATION.md#smart-combined-grep--find).
+[docs/configuration.md](configuration.md#smart-combined-grep--find).
 
 > fzf-lua note: the smart action uses fzf-lua's Lua-function live mode, which
 > needs fzf ≥ 0.45. On older fzf, use the telescope or snacks engine for it.
@@ -199,6 +199,6 @@ the same thing as `:PickersRepeat`: this resumes the *engine's* last picker
 session (including whatever you'd typed into the prompt); `:PickersRepeat`
 replays pickers.nvim's own last resolved scope/action from scratch, with an
 empty prompt. fzf-lua has no resume concept, so this is a documented no-op
-`notify.warn` there — see [docs/BUILTINS.md](BUILTINS.md).
+`notify.warn` there — see [docs/builtins.md](builtins.md).
 
-See also [docs/CHEATSHEET.md](CHEATSHEET.md) for a condensed, single-page version of this reference.
+See also [docs/cheatsheet.md](cheatsheet.md) for a condensed, single-page version of this reference.

@@ -39,7 +39,7 @@ require("pickers").setup({
 `hidden`+`no_ignore`+`follow` for this one search only, regardless of
 configured `find.*` defaults — the old `<leader>fa` behaviour. It's a thin
 wrapper over `:Pickers cwd files all` (see
-[docs/COMMANDS.md](COMMANDS.md#pickers)), which works for every scope/
+[docs/commands.md](commands.md#pickers)), which works for every scope/
 collection, not just `cwd`.
 
 Collections can carry a `smart` key too, alongside `files`/`grep`:
@@ -61,7 +61,7 @@ require("pickers").setup({ keymaps = { enable = false } })
 
 `mappings` is a second, more flexible keymap surface alongside the fixed
 `keymaps.*` fields above — one flat table listing any scope×action combo or
-any [builtin](BUILTINS.md) by name, each with an lhs and an **optional
+any [builtin](builtins.md) by name, each with an lhs and an **optional
 per-entry engine override**. It does not replace `keymaps.*`; use whichever
 fits — `keymaps.*` for the common cases with a stable field name, `mappings`
 when you want a name-per-picker table or a per-key engine pin.
@@ -81,7 +81,7 @@ require("pickers").setup({
 
 | Name shape | Dispatches to |
 |---|---|
-| a [`:Pickers builtin <name>`](BUILTINS.md) name | `pickers.builtins.run(name)` |
+| a [`:Pickers builtin <name>`](builtins.md) name | `pickers.builtins.run(name)` |
 | `<scope>_files` / `<scope>_grep` / `<scope>_smart` | `:Pickers <scope> <action>` |
 | `<scope>_find_all` | `:Pickers <scope> files all` (see the escape hatch above) |
 
