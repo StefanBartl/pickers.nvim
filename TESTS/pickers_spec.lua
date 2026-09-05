@@ -2146,6 +2146,10 @@ do
       got ~= nil and vim.deep_equal(got.search_paths, roots),
       got and vim.inspect(got.search_paths)
     )
+    -- Deliberately probing a field fzf-lua's own opts type never declares --
+    -- the assertion IS that it stays absent (the wrong-key bug this whole
+    -- block guards against would set it).
+    ---@diagnostic disable-next-line: undefined-field
     check("fzf live_grep: no search_dirs, which fzf-lua would ignore", got.search_dirs == nil)
 
     package.loaded["telescope.builtin"] = {
