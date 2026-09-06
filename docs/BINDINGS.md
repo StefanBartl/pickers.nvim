@@ -1,6 +1,6 @@
 # pickers.nvim Binding Cheatsheet
 
-A single, machine-readable reference of every keymap, user-command and autocommand that `pickers.nvim` registers. Kept as data (not prose) so it can double as a cheatsheet source and be consumed programmatically (e.g., by `which-key`).
+Every keymap, user command, and autocommand `pickers.nvim` registers. Kept in sync with `lua/pickers/bindings/`.
 
 ---
 
