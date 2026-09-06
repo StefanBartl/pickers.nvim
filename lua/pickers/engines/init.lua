@@ -5,6 +5,7 @@
 --- The resolved engine module exposes:
 ---   pick_files(opts)   pick_item(opts)
 ---   live_grep(opts)    pick_dir(opts)
+---   smart(opts)
 
 local notify = require("lib.nvim.notify").create("[pickers.engines]")
 

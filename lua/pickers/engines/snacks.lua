@@ -6,6 +6,7 @@
 ---   available()        → boolean
 ---   pick_files(opts)   → nil
 ---   live_grep(opts)    → nil
+---   smart(opts)        → nil   (combined grep + find, the `smart` action)
 ---   pick_item(opts)    → nil   (used by repos / wkdbooks sources)
 ---   pick_dir(opts)     → nil   (used by folder source)
 ---

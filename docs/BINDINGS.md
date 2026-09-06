@@ -116,7 +116,7 @@ All of these live in the augroup `"pickers.nvim"` when lib.nvim is present; with
 
 ¹ snacks: pickers.nvim doesn't own `Snacks.setup()`, so nothing is auto-registered there — merge `require("pickers.keys").snacks_win()` into your own `snacks.setup({ picker = { win = ... } })`.
 
-`create_file`/`open_background` run pickers.nvim-specific logic (`lua/pickers/entry_actions/`), not a built-in engine action — merge them into your own engine `setup()` manually via `entry_actions/adapters/{telescope,fzf,snacks}.lua`'s `get_mappings()`/`get_actions()`/`get_keys()`.
+`create_file`/`open_background` run pickers.nvim-specific logic (`lua/pickers/entry_actions/`), not a built-in engine action — merge them into your own engine `setup()` manually via `entry_actions/adapters/{telescope,fzf,snacks}.lua`'s `get_mappings()` (telescope), `get_actions()` (fzf-lua), or `get_actions()` + `get_keys()` + `get_input_keys()` (snacks).
 
 ---
 

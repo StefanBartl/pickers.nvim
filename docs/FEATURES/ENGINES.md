@@ -12,9 +12,10 @@ telescope → fzf-lua → snacks. Naming an engine explicitly pins it, and falls
 back to the resolved default when that one is not installed rather than failing
 the call.
 
-An engine adapter is a small module with a fixed surface — `pick_files`,
-`pick_grep`, `pick_item` and the builtin dispatch — so a fourth backend is a
-new file in `engines/`, not a change anywhere else.
+An engine adapter is a small module with a fixed surface — `available`,
+`pick_files`, `live_grep`, `smart`, `pick_item`, `pick_dir` (plus the separate
+builtin dispatch in `builtins/`) — so a fourth backend is a new file in
+`engines/`, not a change anywhere else.
 
 - **Module:** [`engines/init.lua`](../../lua/pickers/engines/init.lua),
   adapters in `engines/{telescope,fzf,snacks}.lua`

@@ -11,9 +11,10 @@ local M = {}
 ---Default smart config, used when cfg.smart (or a field of it) is absent.
 ---
 ---Read out of `config.DEFAULTS` rather than restated here. It used to be a
----second copy of the same six values, which is one edit away from the two
----disagreeing with nobody noticing -- and the copy was the one that lost,
----since `M.config()` merges the *config* over it.
+---second copy of the same five values (weights, limit, timeout, frecency,
+---dedup_grep_rows), which is one edit away from the two disagreeing with
+---nobody noticing -- and the copy was the one that lost, since `M.config()`
+---merges the *config* over it.
 ---
 ---`DEFAULTS` is plain data with no side effects, so requiring it is safe even
 ---on the path this function exists for: the one where `config.get()` itself
