@@ -20,8 +20,9 @@ extract/
 adapters/
   telescope.lua            get_mappings() -> {i={...}, n={...}}
   fzf.lua                  get_actions()  -> {["ctrl-a"]=fn, ["ctrl-o"]=fn, ["shift-enter"]=fn}
-  snacks.lua                get_actions() -> {create_file=fn, open_background=fn}
-                            get_keys()    -> {["<C-a>"]="create_file", ...}
+  snacks.lua                get_actions()     -> {create_file=fn, open_background=fn}
+                            get_keys()        -> {["<C-a>"]="create_file", ...}   (win.list.keys, normal mode)
+                            get_input_keys()  -> {["<C-a>"]={"create_file", mode={"i","n"}}, ...}  (win.input.keys)
 ```
 
 ## Usage
@@ -42,12 +43,17 @@ require("fzf-lua").setup({
   actions = vim.tbl_extend("force", { ["default"] = ... }, entry_actions.get_actions()),
 })
 
--- snacks.nvim: merge both actions and keys
+-- snacks.nvim: merge actions plus BOTH window key tables. A snacks picker
+-- opens with focus in the input window, so a list-only binding is unreachable
+-- while the query is being typed — get_input_keys() covers that window.
 local entry_actions = require("pickers.entry_actions.adapters.snacks")
 require("snacks").setup({
   picker = {
     actions = entry_actions.get_actions(),
-    win = { list = { keys = entry_actions.get_keys() } },
+    win = {
+      list = { keys = entry_actions.get_keys() },
+      input = { keys = entry_actions.get_input_keys() },
+    },
   },
 })
 ```

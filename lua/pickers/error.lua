@@ -8,7 +8,7 @@
 ---@alias Pickers.ErrorKind
 ---| '"InvalidConfigError"'     # setup() received malformed options
 ---| '"UnknownScopeError"'      # requested scope/collection does not exist
----| '"UnknownActionError"'     # action is not one of files|grep
+---| '"UnknownActionError"'     # action is not one of files|grep|smart
 ---| '"EngineUnavailableError"' # no telescope/fzf engine could be loaded
 ---| '"SourceError"'            # a source failed to resolve
 ---| '"InternalError"'          # unexpected pcall failure
@@ -39,6 +39,8 @@ function M.tostring(err)
   return ("[%s] %s"):format(err.kind or "Error", err.message or "")
 end
 
+--- CDX: no callers anywhere in the repo (nor Pickers.Result) — only M.new /
+--- M.tostring are used (command/init.lua). Kept as advertised typed-error API.
 ---Call `fn(...)` under pcall and return a structured Result. Failures are tagged
 ---with `kind`.
 ---@param kind Pickers.ErrorKind

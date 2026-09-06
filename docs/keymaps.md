@@ -166,7 +166,8 @@ there (not a capability gap — fzf already ships them).
 actions — they run pickers.nvim-specific logic (`lua/pickers/entry_actions/`),
 not a built-in engine action, so you still merge them into your own engine
 `setup()` manually. See `lua/pickers/entry_actions/README.md` for the adapters
-(`get_mappings()`/`get_actions()`/`get_keys()`).
+(`get_mappings()` on telescope; `get_actions()` on fzf-lua; `get_actions()` +
+`get_keys()` + `get_input_keys()` on snacks).
 
 **`open_background` only preloads by default** — `bufadd`+`bufload`, no
 window, no focus change, matching the old per-engine behaviour exactly.
@@ -186,9 +187,10 @@ require("pickers").setup({
 })
 ```
 
-**`preview_toggle` is opt-in** (off/unbound by default, unlike the other six)
-and **telescope-only**: fzf-lua already binds toggle-preview on `<F4>`, snacks
-on `<A-p>`, both natively — neither needs pickers.nvim to provide one.
+**`preview_toggle` is opt-in** (off/unbound by default, unlike the other
+in-picker actions) and **telescope-only**: fzf-lua already binds toggle-preview
+on `<F4>`, snacks on `<A-p>`, both natively — neither needs pickers.nvim to
+provide one.
 Telescope ships the underlying action (`actions.layout.toggle_preview`) but
 binds no key to it by default, so this fills that one gap. It IS patched
 globally like preview-scroll/history (it's a plain built-in telescope action):

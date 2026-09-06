@@ -74,6 +74,10 @@ end
 ---@return boolean
 local function has_path_token(input)
   for token in input:gmatch("%S+") do
+    -- CDX: narrower than build_fd_cmd's own path check (`^[/\\]` / `^%a:[/\\]`)
+    -- — a backslash token like `C:\Users` is not recognised here, so the input
+    -- still triggers default_roots (a PowerShell spawn on Windows) despite
+    -- naming a path.
     if token:match("^[/]") or token:match("^%a:[/]") then return true end
   end
   return false
