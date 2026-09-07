@@ -34,6 +34,12 @@ troubleshooting page; those two are it.
 | --- | --- |
 | [FEATURES/](FEATURES/README.md) | One page per area — actions, builtins, engines, images, keys, persistence, refine, scopes, and the UI |
 
+## Working on it
+
+| Page | Answers |
+| --- | --- |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Ground rules, project layout, and how to add a scope, an action or an engine |
+
 ## History
 
 | Page | Answers |
