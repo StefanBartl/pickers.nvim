@@ -7,7 +7,11 @@
 if vim.g.pickers_nvim_loaded then return end
 vim.g.pickers_nvim_loaded = true
 
-require("pickers.command.composer").register(require("pickers.config").get())
+-- Passed directly instead of require("pickers.config").get(): composer.register
+-- only reads cfg.collections, which is always {} before setup() runs anyway --
+-- no reason to materialize the full DEFAULTS table (deepcopy + lib.nvim reads)
+-- just for this early, collections-less registration.
+require("pickers.command.composer").register({ collections = {} })
 
 -- If the user did NOT call setup() in their config (e.g. no config = function()
 -- block, or the plugin loaded after VimEnter), register default bindings via the
