@@ -10,6 +10,21 @@ a changelog.
 
 ---
 
+[x] **`plugin/pickers.lua` no longer materializes the full default config at
+  startup.** The early `:Pickers` registration (before `setup()` runs, so
+  built-in scopes still work if the user never calls it) passed
+  `require("pickers.config").get()` into `composer.register`, which reads only
+  `cfg.collections` — always `{}` at this point, collections come from user
+  config that has not run yet. That call forced a `vim.deepcopy` of the whole
+  `DEFAULTS` table (keymaps, keys, find, smart, history, images,
+  `depth_aliases` closures, plus a `lib.nvim.system.env` read for `repos_dir`)
+  on every single start, `setup()` or not. Replaced with the literal
+  `{ collections = {} }` composer.register already treats identically — the
+  real config still materializes exactly once, at `setup()` (or the VimEnter
+  fallback), where it is actually needed.
+
+---
+
 [x] **`pickers.refine` — a shared filter-stack building block.** Big result
   lists (a `cwd`-scoped grep, a plugin's few-hundred-match list) need
   structured narrowing the single fuzzy prompt cannot express: "path contains
