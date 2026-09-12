@@ -10,6 +10,19 @@ a changelog.
 
 ---
 
+[x] **`config/DEFAULTS.lua`'s `repos_dir` is no longer computed on require.**
+  Follow-up to the entry below: the call-site fix stopped the early
+  `:Pickers` registration from pulling in the full config, but
+  `DEFAULTS.lua` itself still had `repos_dir = require("lib.nvim.system.env")
+  .get().repo_base` at module scope — so merely `require`ing that module (a
+  docgen script, a test, any future early call site) still ran a `lib.nvim`
+  env read as a side effect. `repos_dir` is now a `nil` placeholder in
+  `DEFAULTS.lua`; the real value is resolved once in `config/init.lua`'s
+  `M.get()`, right after the deep-copy. Same runtime behavior, `DEFAULTS.lua`
+  is pure data now (wkdbook-Lua Checklists `LUA-06`).
+
+---
+
 [x] **`plugin/pickers.lua` no longer materializes the full default config at
   startup.** The early `:Pickers` registration (before `setup()` runs, so
   built-in scopes still work if the user never calls it) passed
