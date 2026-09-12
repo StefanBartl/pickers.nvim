@@ -10,10 +10,11 @@ local M = {
   -- this plugin specifically, right here in the spec passed to setup() —
   -- no vim.g needed. See README.
   deps_popup = true,
-  -- Via lib.nvim's env snapshot, not a direct vim.env.REPOS_DIR read: it's the
-  -- one sanctioned place this env var is read, and `repo_base` is `nil` when
-  -- unset — same behavior as before, single source of truth now.
-  repos_dir = require("lib.nvim.system.env").get().repo_base,
+  -- Placeholder; the real value (via lib.nvim's env snapshot, `repo_base` is
+  -- `nil` when unset) is resolved once in config/init.lua's M.get(), right
+  -- after this table is deep-copied — keeps requiring DEFAULTS.lua alone free
+  -- of that read, so this module stays pure data (LUA-06).
+  repos_dir = nil,
   collections = {},
 
   depth_aliases = {

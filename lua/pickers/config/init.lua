@@ -14,6 +14,12 @@ local _cfg = nil ---@type Pickers.Config|nil
 function M.get()
   if _cfg then return _cfg end
   _cfg = vim.deepcopy(require("pickers.config.DEFAULTS"))
+  -- Via lib.nvim's env snapshot, not a direct vim.env.REPOS_DIR read: it's the
+  -- one sanctioned place this env var is read, and `repo_base` is `nil` when
+  -- unset -- same behavior as before, single source of truth now. Resolved
+  -- here rather than in DEFAULTS.lua so requiring that module alone stays
+  -- pure data (LUA-06).
+  _cfg.repos_dir = require("lib.nvim.system.env").get().repo_base
   return _cfg
 end
 
