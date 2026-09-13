@@ -165,6 +165,8 @@ All commands from the original modules are preserved as aliases:
 | `:RepoGrep [repo]` | `:Pickers repos grep` (or jump straight to `[repo]`, tab-completed) |
 | `:WkdBookFiles` | `:Pickers wkdbooks files` |
 | `:WkdBookGrep` | `:Pickers wkdbooks grep` |
+| `:PluginsBookFiles [plugin]` | `:Pickers plugins_book files` (or jump straight to `[plugin]`, tab-completed) |
+| `:PluginsBookGrep [plugin]` | `:Pickers plugins_book grep` (or jump straight to `[plugin]`, tab-completed) |
 
 Each user-defined collection also gets a `:{PascalName}Smart` command
 (alongside `:{PascalName}Files` / `:{PascalName}Grep`) → `:Pickers {name} smart`.

@@ -24,6 +24,10 @@ collections = {
   -- Only subdirs that contain .git/
   { name = "myrepos",     dir = "/home/user/src", prefix = "", only_git = true },
 
+  -- Hide specific subdirs by exact basename (applies alongside prefix/only_git)
+  { name = "plugins_book", dir = vim.env.REPOS_DIR .. "/WKDBooks/Development/wkdbook-myplugins",
+    prefix = "", exclude = { "ALL", "TEMPLATES", "TOOLS", "_Telemetry" } },
+
   -- Per-collection find override — merged over the global `find` defaults,
   -- not replacing them; unset fields keep the global value.
   { name = "vendored",    dir = "/home/user/vendor",
@@ -38,6 +42,16 @@ collections = {
 | `nil` (not set) | `dir` is used directly as the search root |
 | `""` (empty string) | All immediate subdirs of `dir` are listed; pick one |
 | `"xyz-"` | Only subdirs whose name starts with `"xyz-"` are listed |
+
+## exclude field
+
+A collection's top-level `exclude` field (`string[]`, exact basenames) hides
+specific immediate subdirs from the `prefix`/`only_git` listing — useful for
+a directory that mixes real targets with bookkeeping folders that don't fit
+a `prefix` or `only_git` filter (e.g. subdirs that mirror a plugin's name but
+carry no `.git` of their own). Not to be confused with `find.exclude` below,
+which is an fd/rg glob list applied inside the resolved search root, not a
+subdir-listing filter.
 
 ## find override
 

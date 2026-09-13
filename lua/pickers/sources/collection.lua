@@ -12,18 +12,25 @@ local M = {}
 
 -- ── Helpers ───────────────────────────────────────────────────────────────────
 
----List immediate subdirectories, optionally filtered by prefix and/or .git presence.
+---List immediate subdirectories, optionally filtered by prefix, .git presence
+---and/or an exclude list of exact basenames.
 ---@internal
 ---@param dir      string
 ---@param prefix   string|nil   nil or "" = all dirs, "xyz-" = prefix match
 ---@param only_git boolean
+---@param exclude  string[]|nil  exact basenames to hide
 ---@return string[]  absolute paths
-local function list_subdirs(dir, prefix, only_git)
+local function list_subdirs(dir, prefix, only_git, exclude)
   local stat = vim.uv.fs_stat(dir)
   if not stat or stat.type ~= "directory" then return {} end
 
   local handle = vim.uv.fs_scandir(dir)
   if not handle then return {} end
+
+  local excluded = {}
+  for _, name in ipairs(exclude or {}) do
+    excluded[name] = true
+  end
 
   local result = {}
   local plen = prefix and #prefix or 0
@@ -31,7 +38,7 @@ local function list_subdirs(dir, prefix, only_git)
   while true do
     local name, etype = vim.uv.fs_scandir_next(handle)
     if not name then break end
-    if etype == "directory" then
+    if etype == "directory" and not excluded[name] then
       local full = dir .. "/" .. name
       local ok_prefix = (not prefix or prefix == "") or name:sub(1, plen) == prefix
       local ok_git = (not only_git) or (vim.uv.fs_stat(full .. "/.git") ~= nil)
@@ -44,15 +51,16 @@ end
 
 -- ── Public API ────────────────────────────────────────────────────────────────
 
----List immediate subdirectories, optionally filtered by prefix and/or .git presence.
----Exposed for callers that need the raw path list without going through the
----engine sub-picker (e.g. command-line completion).
+---List immediate subdirectories, optionally filtered by prefix, .git presence
+---and/or an exclude list. Exposed for callers that need the raw path list
+---without going through the engine sub-picker (e.g. command-line completion).
 ---@param dir      string
 ---@param prefix   string|nil   nil or "" = all dirs, "xyz-" = prefix match
 ---@param only_git boolean
+---@param exclude  string[]|nil  exact basenames to hide
 ---@return string[]  absolute paths
-function M.list_subdirs(dir, prefix, only_git)
-  return list_subdirs(dir, prefix, only_git)
+function M.list_subdirs(dir, prefix, only_git, exclude)
+  return list_subdirs(dir, prefix, only_git, exclude)
 end
 
 ---Resolve a collection to a Pickers.Source and call `callback`.
@@ -93,7 +101,7 @@ function M.get(coll, _cfg, callback, engine_mod)
   local prefix = coll.prefix
   local plen = #prefix
   local only_git = coll.only_git == true
-  local subdirs = list_subdirs(dir, prefix, only_git)
+  local subdirs = list_subdirs(dir, prefix, only_git, coll.exclude)
 
   if #subdirs == 0 then
     local info = (prefix == "") and "no subdirs found"

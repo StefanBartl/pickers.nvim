@@ -448,9 +448,12 @@ with configs that used the original individual modules:
   :RepoGrep [repo]    → :Pickers repos grep  (or grep in [repo] directly)
   :WkdBookFiles       → :Pickers wkdbooks files
   :WkdBookGrep        → :Pickers wkdbooks grep
+  :PluginsBookFiles [plugin] → :Pickers plugins_book files (or files in [plugin] directly)
+  :PluginsBookGrep [plugin]  → :Pickers plugins_book grep  (or grep in [plugin] directly)
 
 [repo] tab-completes from REPOS_DIR and, when given, skips the repo picker and
-jumps straight into files/grep for that repo.
+jumps straight into files/grep for that repo. [plugin] tab-completes from the
+"plugins_book" collection's dir the same way.
 
 Every collection additionally gets :{PascalName}Files / Grep / Smart — see
 |pickers-collections|.
