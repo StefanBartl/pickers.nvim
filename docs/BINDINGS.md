@@ -56,6 +56,8 @@ Every keymap, user command, and autocommand `pickers.nvim` registers. Kept in sy
 | `:RepoGrep [repo]` | `:Pickers repos grep` | `?` | Pick a repo, then live grep. With `[repo]` (tab-completed from `REPOS_DIR`), jumps straight into grep for that repo |
 | `:WkdBookFiles` | `:Pickers wkdbooks files` | `?` | Pick a wkdbook, then find files |
 | `:WkdBookGrep` | `:Pickers wkdbooks grep` | `?` | Pick a wkdbook, then live grep |
+| `:PluginsBookFiles [plugin]` | `:Pickers plugins_book files` | `?` | Pick a `plugins_book` repo, then find files. With `[plugin]` (tab-completed), jumps straight into files for that repo |
+| `:PluginsBookGrep [plugin]` | `:Pickers plugins_book grep` | `?` | Pick a `plugins_book` repo, then live grep. With `[plugin]` (tab-completed), jumps straight into grep for that repo |
 | `:PickersRepeat` | `pickers.last.run()` | `?` | Reopen the most recently dispatched `:Pickers` action (same resolved scope/root/action), without re-resolving any interactive sub-picker |
 | `:PickersScopes` | `pickers.ui.scope_picker.list()` | `?` | List every scope `:Pickers` can resolve — built-in scopes plus every user-defined collection — via `notify.info`, without opening the interactive scope picker |
 | `:PickersResume` | `:Pickers builtin resume` | `?` | Reopen the last picker with its last query (the engine's own native resume/history-of-open-pickers feature); fzf-lua has no resume concept |

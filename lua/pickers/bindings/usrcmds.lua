@@ -4,11 +4,20 @@
 ---   :DirPicker [nav]  :FindInFolder  :FindConfig  :GrepConfig
 ---   :LiveGrep  :AllDrives  :AllDrivesGrep  :FindOnSystem
 ---   :RepoFiles [repo]  :RepoGrep [repo]  :WkdBookFiles  :WkdBookGrep
+---   :PluginsBookFiles [plugin]  :PluginsBookGrep [plugin]
 ---   :PickersRepeat  :PickersScopes  :PickersResume
 ---
 --- :RepoFiles/:RepoGrep accept an optional repo-name argument (tab-completed
 --- from REPOS_DIR) that jumps straight into files/grep for that repo, skipping
 --- the interactive repo picker.
+---
+--- :PluginsBookFiles/:PluginsBookGrep work the same way, but tab-complete a
+--- plugin name from the "plugins_book" collection's dir instead of
+--- REPOS_DIR -- see pickers.sources.plugins_book. They override the generic
+--- collection compat commands that pickers.bindings.collections would
+--- otherwise register for that collection (arg-less, since M.setup() runs
+--- usrcmds.register() before the collections loop -- see
+--- pickers.bindings.collections' `vim.fn.exists` guard).
 ---
 --- :PickersRepeat reopens the most recently dispatched :Pickers action (same
 --- resolved scope/root, same action) without re-resolving through any
@@ -61,6 +70,39 @@ end
 ---@return string[]
 local function complete_repo(arglead)
   return require("pickers.sources.repos").complete(arglead)
+end
+
+---Run :PluginsBookFiles/:PluginsBookGrep, resolving `name` directly when
+---given, falling back to the interactive plugins_book picker otherwise.
+---@internal
+---@param name   string|nil
+---@param action  "files"|"grep"
+local function run_plugins_book_action(name, action)
+  if not name or name == "" then
+    require("pickers.command").handle({ fargs = { "plugins_book", action } })
+    return
+  end
+
+  local cfg = require("pickers.config").get()
+  local path = require("pickers.sources.plugins_book").resolve(cfg, name)
+  if not path then
+    notify.error("Plugin not found under the plugins_book collection: " .. name)
+    return
+  end
+
+  local engine_mod = require("pickers.engines").load()
+  if not engine_mod then return end
+
+  local action_mod = require("pickers.actions." .. action)
+  action_mod.run({ roots = { path }, prompt = name .. "> " }, engine_mod)
+end
+
+---Completion for the plugin-name argument of :PluginsBookFiles / :PluginsBookGrep.
+---@internal
+---@param arglead string
+---@return string[]
+local function complete_plugins_book(arglead)
+  return require("pickers.sources.plugins_book").complete(arglead)
 end
 
 local BASE_SCOPE_DESC = {
@@ -163,6 +205,26 @@ function M.register()
   usercmd("WkdBookGrep", function(_)
     require("pickers.command").handle({ fargs = { "wkdbooks", "grep" } })
   end, "[pickers] :WkdBookGrep — pick wkdbook, then live grep", "?")
+
+  usercmd(
+    "PluginsBookFiles",
+    function(opts)
+      run_plugins_book_action(opts.fargs[1], "files")
+    end,
+    "[pickers] :PluginsBookFiles [plugin] — pick a plugins_book repo (or jump to [plugin]), then find files",
+    "?",
+    complete_plugins_book
+  )
+
+  usercmd(
+    "PluginsBookGrep",
+    function(opts)
+      run_plugins_book_action(opts.fargs[1], "grep")
+    end,
+    "[pickers] :PluginsBookGrep [plugin] — pick a plugins_book repo (or jump to [plugin]), then live grep",
+    "?",
+    complete_plugins_book
+  )
 
   usercmd("PickersRepeat", function(_)
     require("pickers.last").run()
