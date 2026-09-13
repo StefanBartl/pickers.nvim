@@ -13,9 +13,24 @@
 - [fzf-lua](https://github.com/ibhagwan/fzf-lua)
 - [snacks.nvim](https://github.com/folke/snacks.nvim) (picker module)
 
-**Recommended CLI tools:**
-- `rg` (ripgrep) — live grep
-- `fd` / `fdfind` — system source, dir picker (telescope, snacks)
+**Optional, each detected at runtime and degrading to nothing when absent:**
+
+| | |
+| --- | --- |
+| `rg` (ripgrep) | Live grep, and the content half of `smart` |
+| `fd` | The file and directory source, and the `system` scope |
+| `fzf` | The fzf engine itself |
+| [images.nvim](https://github.com/StefanBartl/images.nvim) | Image entries drawn in the preview window |
+| [pdfport.nvim](https://github.com/StefanBartl/pdfport.nvim) | A PDF entry previewed as its first page |
+
+`rg`, `fd` and `fzf` are declared in [install.json](install.json) and
+read by lib.nvim's
+[deps module](https://github.com/StefanBartl/lib.nvim/blob/main/lua/lib/nvim/deps/README.md).
+A popup explains what is missing the first time `setup()` runs after
+installing; `:Lib deps show pickers.nvim` repeats it any time, and it is folded
+into `:checkhealth pickers`. Turn the popup off in this plugin's own spec with
+`require("pickers").setup({ deps_popup = false })`, or globally with
+`vim.g.lib_nvim_deps_disable_first_run = true`.
 
 ---
 
