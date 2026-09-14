@@ -1,5 +1,5 @@
 ---@module 'pickers.ui.dir_nav_picker'
----@brief Interactive directory navigation picker via lib.nvim.ui.kit.
+---@brief Interactive directory navigation picker via ui.kit.
 ---@description
 --- Displays:
 ---   • Named aliases from config.depth_aliases (sorted alphabetically)
@@ -14,7 +14,7 @@ local M = {}
 ---@param cfg      Pickers.Config
 ---@param callback fun(choice: string|nil) Alias name, `"1"`..`"5"`, `"path=<typed>"`, or nil when cancelled.
 function M.open(cfg, callback)
-  local kit_ok, kit = pcall(require, "lib.nvim.ui.kit")
+  local kit_ok, kit = pcall(require, "ui.kit")
 
   -- 1. Sorted alias names
   local alias_names = {}

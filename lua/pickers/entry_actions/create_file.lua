@@ -70,7 +70,7 @@ function M.run(path)
   end
 
   vim.schedule(function()
-    require("lib.nvim.ui.kit").input({
+    require("ui.kit").input({
       title = "Create in " .. fn.fnamemodify(parent_dir, ":~:.") .. " (/ for folder): ",
       default = "",
       on_submit = function(input)

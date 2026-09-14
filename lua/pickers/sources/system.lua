@@ -1,7 +1,7 @@
 ---@module 'pickers.sources.system'
 ---@brief Source: systemwide fd-based file search.
 ---@description
---- Opens a lib.nvim.ui.kit.input prompt for the user to specify a search.
+--- Opens a ui.kit.input prompt for the user to specify a search.
 --- Input format (whitespace-separated tokens, any order):
 ---   name        – substring filename match (first bare word)
 ---   .ext        – file extension (token starting with ".")
@@ -116,7 +116,7 @@ function M.get(_cfg, callback)
     return
   end
 
-  require("lib.nvim.ui.kit").input({
+  require("ui.kit").input({
     title = "System search (name .ext /path ...): ",
     on_submit = function(input)
       if not input or input:match("^%s*$") then

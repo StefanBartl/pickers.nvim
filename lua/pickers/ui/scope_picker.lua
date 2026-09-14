@@ -1,5 +1,5 @@
 ---@module 'pickers.ui.scope_picker'
----@brief Interactive scope selection via lib.nvim.ui.kit (with vim.ui.select fallback).
+---@brief Interactive scope selection via ui.kit (with vim.ui.select fallback).
 
 local M = {}
 
@@ -34,7 +34,7 @@ end
 ---@param callback fun(scope: string|nil) Called with the chosen scope, or nil when the picker is cancelled.
 function M.open(callback)
   local scopes = M.list()
-  local ok, kit = pcall(require, "lib.nvim.ui.kit")
+  local ok, kit = pcall(require, "ui.kit")
   if ok and kit and type(kit.select) == "function" then
     kit.select({
       title = "Pickers — Scope",

@@ -22,6 +22,7 @@
 | `fzf` | The fzf engine itself |
 | [images.nvim](https://github.com/StefanBartl/images.nvim) | Image entries drawn in the preview window |
 | [pdfport.nvim](https://github.com/StefanBartl/pdfport.nvim) | A PDF entry previewed as its first page |
+| [ui.nvim](https://github.com/StefanBartl/ui.nvim) | `ui.kit` backs the directory-nav/action/scope pickers (falls back to `vim.ui.select` without it) and the create-file/system-search prompts (no fallback for those two -- they need it if actually invoked) |
 
 `rg`, `fd` and `fzf` are declared in [install.json](install.json) and
 read by lib.nvim's
