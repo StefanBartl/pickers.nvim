@@ -1,5 +1,5 @@
 ---@module 'pickers.ui.action_picker'
----@brief Interactive action selection via lib.nvim.ui.kit (with vim.ui.select fallback).
+---@brief Interactive action selection via ui.kit (with vim.ui.select fallback).
 
 local M = {}
 
@@ -8,7 +8,7 @@ local ACTIONS = { "files", "grep", "smart" }
 ---Open the action picker and call callback with the chosen action (or nil on cancel).
 ---@param callback fun(action: Pickers.Action|nil) Called with the chosen action, or nil when the picker is cancelled.
 function M.open(callback)
-  local ok, kit = pcall(require, "lib.nvim.ui.kit")
+  local ok, kit = pcall(require, "ui.kit")
   if ok and kit and type(kit.select) == "function" then
     kit.select({
       title = "Pickers — Action",

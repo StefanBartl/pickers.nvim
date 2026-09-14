@@ -9,7 +9,7 @@ scope opens a scope picker listing every built-in scope and every registered
 collection; omitting the action opens an action picker; `dir` with no
 navigation argument opens a navigation picker first.
 
-They use `lib.nvim.ui.kit.select` when lib.nvim is installed and fall back to
+They use `ui.kit.select` when lib.nvim is installed and fall back to
 `vim.ui.select` otherwise — a `pcall` per call, so a missing lib.nvim degrades
 the prompt rather than breaking the command. Either way the plugin does not
 introduce a fourth selection UI of its own.

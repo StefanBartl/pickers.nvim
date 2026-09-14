@@ -1333,7 +1333,7 @@ do
   end
 
   local captured_title
-  package.loaded["lib.nvim.ui.kit"] = {
+  package.loaded["ui.kit"] = {
     input = function(opts)
       captured_title = opts.title
       opts.on_submit(".lua /home/user")
@@ -1355,7 +1355,7 @@ do
   )
 
   vim.fn.executable = orig_executable
-  package.loaded["lib.nvim.ui.kit"] = nil
+  package.loaded["ui.kit"] = nil
   package.loaded["pickers.sources.system"] = nil
 end
 -- luacheck: pop
@@ -1366,7 +1366,7 @@ do
   vim.fn.mkdir(dir, "p")
 
   local captured_title
-  package.loaded["lib.nvim.ui.kit"] = {
+  package.loaded["ui.kit"] = {
     input = function(opts)
       captured_title = opts.title
       opts.on_submit("newfile.txt")
@@ -1388,14 +1388,14 @@ do
     vim.fn.filereadable(dir .. "/newfile.txt") == 1
   )
 
-  package.loaded["lib.nvim.ui.kit"] = nil
+  package.loaded["ui.kit"] = nil
   package.loaded["pickers.entry_actions.create_file"] = nil
 end
 
 -- ── ui.dir_nav_picker: "path=…" entry routes through kit.input ──────────────
 do
   local captured_title
-  package.loaded["lib.nvim.ui.kit"] = {
+  package.loaded["ui.kit"] = {
     select = function(opts)
       opts.on_select("path=…")
     end,
@@ -1423,7 +1423,7 @@ do
     tostring(got_result)
   )
 
-  package.loaded["lib.nvim.ui.kit"] = nil
+  package.loaded["ui.kit"] = nil
   package.loaded["pickers.ui.dir_nav_picker"] = nil
 end
 
