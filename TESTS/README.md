@@ -40,4 +40,39 @@ than because the code looked risky:
 The `:Pickers` completion tests register the real composer-backed command and
 drive it through `getcompletion()`, so they are skipped automatically when
 `lib.nvim` is not on the runtimepath (`pickers.command.composer` hard-requires
-`lib.nvim.bindings.usercmd.composer`).
+`lib.nvim.bindings.usercmd.composer`). That same suite now also asserts the
+`dir` route's nav-slot completion (aliases, numeric depths, `path=`) and that
+a collection named `cwd` loses to the built-in scope of the same name instead
+of registering a second, silently-shadowed route.
+
+A later pass filled in the leaf logic the first round of suites had left
+alone: `pickers.error`'s typed-Result wrapper; the `depth_aliases` resolvers
+behind `dir`'s `git`/`root` lookups (walked from a real temp `.git`, not
+mocked); `actions.grep` and `actions.smart`'s find-override merge, the same
+contract `actions.files` already pinned, plus `smart`'s missing-adapter
+guard; `actions.dir.run()` end to end — numeric depth, `path=`, a named
+alias, an alias resolver that errors, an unresolvable raw path, and the
+nil/nil interactive fallback through stubbed nav/action pickers;
+`engines.when_loaded`'s three load-timing branches (already-loaded, no
+lazy.nvim → `vim.schedule`, lazy.nvim → one-shot `User LazyLoad`); the
+telescope/snacks entry-path extractors (mirroring the existing fzf one);
+`open_background`'s empty-path guard and its opt-in `open_background_show`
+window switch (a real scratch buffer, not a fake bufnr, since the window API
+does not tolerate one); the `folder`/`plugins_book`/`wkdbooks` sources;
+`ui.action_picker`'s `ui.kit`/`vim.ui.select` fallback; `pickers.smart`'s own
+`defaults()`/`config()` merge and its frecency-gated `query()` orchestration
+over stubbed `search`/`score`/`frecency`; and the binding layer's compat
+commands — `bindings.collections`' skip-if-registered guard and optional
+per-collection keymaps, `bindings.usrcmds`' direct-dispatch-vs-fallback split
+for `:RepoFiles`/`:PluginsBookFiles`, `bindings.autocmds`' `setup()`-was-
+already-called guard — down to `bindings.setup()`'s and the top-level
+`setup()`'s own enable-flag gating of every sub-registrar.
+
+Deliberately left untested: `pickers.health` (a `:checkhealth` report — one
+`vim.health.*` call per environment probe, nothing it returns to assert on);
+`sources.drives` (shells out to real `Get-PSDrive`/`df`, no stable surface to
+mock without replacing `vim.system` wholesale); and `sources.config`/
+`sources.cwd`, which are one line each with no branch to exercise. The
+`keys.adapters.*` modules have no suite of their own because `pickers.keys`'
+own suite already drives `fzf_keymap`/`telescope_mappings`/`snacks_win`
+straight through to them.

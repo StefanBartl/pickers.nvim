@@ -1001,6 +1001,40 @@ do
     local builtin_names = vim.fn.getcompletion("Pickers builtin ", "cmdline")
     check("complete: builtin git_branches", has(builtin_names, "git_branches"))
     check("complete: builtin lsp_definitions", has(builtin_names, "lsp_definitions"))
+
+    -- dir's nav slot: aliases, numeric depths, and the "path=" prefix.
+    local nav_completion = vim.fn.getcompletion("Pickers dir ", "cmdline")
+    check("complete: dir nav offers action words too", has(nav_completion, "files"))
+    check("complete: dir nav offers depth_aliases (git)", has(nav_completion, "git"))
+    check("complete: dir nav offers numeric depth 3", has(nav_completion, "3"))
+    check("complete: dir nav offers path=", has(nav_completion, "path="))
+
+    -- A collection named "cwd" collides with a built-in scope: M.register's
+    -- `used` guard must skip it (first-match-wins) rather than ask the
+    -- composer to register the same route path twice.
+    require("pickers.config").apply({
+      collections = {
+        { name = "cwd", dir = vim.fn.getcwd() },
+        { name = "notes", dir = "/tmp/notes" },
+      },
+    })
+    local ok_reregister = pcall(cmp.register, require("pickers.config").get())
+    check("complete: re-register with a colliding collection name does not throw", ok_reregister)
+
+    local scopes2 = vim.fn.getcompletion("Pickers ", "cmdline")
+    local cwd_count = 0
+    for _, s in ipairs(scopes2) do
+      if s == "cwd" then cwd_count = cwd_count + 1 end
+    end
+    check("complete: colliding collection name does not appear twice", cwd_count == 1)
+
+    local acts2 = vim.fn.getcompletion("Pickers cwd ", "cmdline")
+    check(
+      "complete: built-in cwd route still resolves actions after collision",
+      has(acts2, "files")
+    )
+
+    require("pickers.config").apply({ collections = {} })
   end
 end
 
@@ -2601,6 +2635,1079 @@ do
 
     vim.ui = prev
   end
+end
+
+-- ── pickers.error — typed Result wrapper ─────────────────────────────────────
+do
+  local perr = require("pickers.error")
+
+  local err = perr.new("UnknownScopeError", "no such scope 'x'")
+  check("error.new: kind", err.kind == "UnknownScopeError")
+  check("error.new: message", err.message == "no such scope 'x'")
+  check(
+    "error.tostring: formats kind+message",
+    perr.tostring(err) == "[UnknownScopeError] no such scope 'x'"
+  )
+  check("error.tostring: missing kind falls back", perr.tostring({ message = "m" }) == "[Error] m")
+  check("error.tostring: missing message falls back", perr.tostring({ kind = "K" }) == "[K] ")
+
+  local ok_res = perr.safe_call("InternalError", function(a, b)
+    return a + b
+  end, 2, 3)
+  check(
+    "error.safe_call: ok result",
+    ok_res.ok == true and ok_res.result == 5 and ok_res.err == nil
+  )
+
+  local err_res = perr.safe_call("InternalError", function()
+    error("boom")
+  end)
+  check("error.safe_call: failure ok=false", err_res.ok == false and err_res.result == nil)
+  check("error.safe_call: failure tags kind", err_res.err and err_res.err.kind == "InternalError")
+  check(
+    "error.safe_call: failure message includes original",
+    err_res.err and err_res.err.message:find("boom", 1, true) ~= nil
+  )
+end
+
+-- ── pickers.config.DEFAULTS — depth_aliases resolvers ────────────────────────
+-- cwd/home are one-liners; root and git are the two with actual walk-up
+-- logic (dir_nav_picker and pickers.actions.dir only ever call these through
+-- cfg.depth_aliases, so this is the only place they get exercised directly).
+do
+  local config = require("pickers.config")
+  local aliases = config.get().depth_aliases
+
+  check("depth_aliases: cwd resolver returns a string", type(aliases.cwd()) == "string")
+  check("depth_aliases: home resolver returns a string", type(aliases.home()) == "string")
+  check(
+    "depth_aliases: root resolver returns an existing directory",
+    vim.fn.isdirectory(aliases.root()) == 1
+  )
+
+  local orig_cwd = vim.uv.cwd()
+  local base = vim.fn.tempname()
+  vim.fn.mkdir(base .. "/repo/.git", "p")
+  vim.fn.mkdir(base .. "/repo/sub", "p")
+  vim.uv.chdir(base .. "/repo/sub")
+  local found = aliases.git()
+  check(
+    "depth_aliases: git resolver finds the upward .git",
+    vim.fs.normalize(found) == vim.fs.normalize(base .. "/repo"),
+    tostring(found)
+  )
+
+  local no_git = vim.fn.tempname()
+  vim.fn.mkdir(no_git, "p")
+  vim.uv.chdir(no_git)
+  local fallback = aliases.git()
+  check(
+    "depth_aliases: git resolver falls back to cwd without a repo",
+    vim.fs.normalize(fallback) == vim.fs.normalize(no_git),
+    tostring(fallback)
+  )
+
+  vim.uv.chdir(orig_cwd)
+  vim.fn.delete(base, "rf")
+  vim.fn.delete(no_git, "rf")
+end
+
+-- ── pickers.actions.grep — per-source find override merges over cfg.find ────
+-- Same merge contract as pickers.actions.files (see that suite), mirrored
+-- here since grep has its own M.run rather than sharing files' code path.
+do
+  local config = require("pickers.config")
+  local grep = require("pickers.actions.grep")
+
+  config.apply({ find = { hidden = true, follow = true, no_ignore = false } })
+
+  local captured
+  local fake_engine = {
+    live_grep = function(opts)
+      captured = opts
+    end,
+  }
+
+  grep.run({ roots = { "/tmp" }, prompt = "cwd> " }, fake_engine)
+  check(
+    "actions.grep: no override -> global find",
+    vim.deep_equal(captured.find, config.get().find)
+  )
+  check("actions.grep: roots forwarded", captured.roots[1] == "/tmp")
+  check("actions.grep: prompt forwarded", captured.prompt == "cwd> ")
+  check(
+    "actions.grep: additional_args defaults empty",
+    vim.deep_equal(captured.additional_args, {})
+  )
+
+  grep.run({
+    roots = { "/tmp" },
+    prompt = "notes> ",
+    find = { hidden = false },
+    additional_args = { "-tlua" },
+  }, fake_engine, { "--fixed-strings" })
+  check("actions.grep: source find override applied", captured.find.hidden == false)
+  check(
+    "actions.grep: source additional_args + extra_args merged",
+    has(captured.additional_args, "-tlua") and has(captured.additional_args, "--fixed-strings")
+  )
+  check("actions.grep: global cfg.find untouched by override", config.get().find.hidden == true)
+
+  config.apply({ find = { hidden = true, no_ignore = false, follow = true } })
+end
+
+-- ── pickers.actions.smart — find override merge + missing-adapter guard ─────
+do
+  local config = require("pickers.config")
+  local smart_action = require("pickers.actions.smart")
+
+  config.apply({ find = { hidden = true, follow = true, no_ignore = false } })
+
+  local captured
+  local fake_engine = {
+    smart = function(opts)
+      captured = opts
+    end,
+  }
+  smart_action.run(
+    { roots = { "/tmp" }, prompt = "cwd> ", additional_args = { "-tlua" } },
+    fake_engine
+  )
+  check(
+    "actions.smart: no override -> global find",
+    vim.deep_equal(captured.find, config.get().find)
+  )
+  check("actions.smart: roots forwarded", captured.roots[1] == "/tmp")
+  check("actions.smart: additional_args passthrough", has(captured.additional_args, "-tlua"))
+
+  smart_action.run({ roots = { "/tmp" }, prompt = "n> ", find = { hidden = false } }, fake_engine)
+  check("actions.smart: source find override applied", captured.find.hidden == false)
+  check("actions.smart: global cfg.find untouched", config.get().find.hidden == true)
+
+  -- Engine with no smart() adapter: notify.error and bail out, never throws.
+  local ok = pcall(smart_action.run, { roots = { "/tmp" }, prompt = "n> " }, {})
+  check("actions.smart: missing adapter does not throw", ok)
+
+  config.apply({ find = { hidden = true, no_ignore = false, follow = true } })
+end
+
+-- ── pickers.actions.dir — nav-arg resolution + dispatch ──────────────────────
+-- resolve() itself is local; exercised here only through M.run's observable
+-- effect (which engine call it produces, or that it produces none).
+do
+  local config = require("pickers.config")
+  local dir_action = require("pickers.actions.dir")
+  local last = require("pickers.last")
+
+  local names = dir_action.alias_names()
+  check(
+    "actions.dir.alias_names: includes builtins",
+    has(names, "cwd") and has(names, "home") and has(names, "root") and has(names, "git")
+  )
+  check("actions.dir.alias_names: sorted", names[1] <= names[#names])
+
+  local calls
+  local fake_engine = {
+    pick_files = function(opts)
+      calls = opts
+    end,
+  }
+  local expect_cwd = vim.fs.normalize(vim.uv.cwd() or vim.fn.getcwd())
+
+  -- Numeric depth "0" -> cwd itself, action given directly.
+  calls = nil
+  dir_action.run("0", "files", fake_engine)
+  check("actions.dir: numeric 0 resolves to cwd", calls ~= nil and calls.roots[1] == expect_cwd)
+  check("actions.dir: dispatch recorded in pickers.last", last.get().action == "files")
+
+  -- "path=..." explicit path, quoted, keyword case-insensitive.
+  local tmp = vim.fn.tempname()
+  vim.fn.mkdir(tmp, "p")
+  calls = nil
+  dir_action.run('PATH="' .. tmp .. '"', "files", fake_engine)
+  check(
+    "actions.dir: path= (quoted, uppercase keyword) resolves",
+    calls ~= nil and calls.roots[1] == vim.fs.normalize(tmp)
+  )
+
+  -- Named alias, case-insensitive.
+  calls = nil
+  dir_action.run("CWD", "files", fake_engine)
+  check(
+    "actions.dir: alias lookup is case-insensitive",
+    calls ~= nil and calls.roots[1] == expect_cwd
+  )
+
+  -- Not an alias, not numeric, and not a real directory as a raw path: the
+  -- after_path isdirectory guard bails before ever reaching the engine.
+  calls = nil
+  dir_action.run("this-is-not-a-real-directory-xyz", "files", fake_engine)
+  check("actions.dir: unresolvable path does not dispatch", calls == nil)
+
+  -- A depth_aliases resolver that errors: caught, notified, nil path -> no dispatch.
+  config.apply({ depth_aliases = {
+    boom = function()
+      error("nope")
+    end,
+  } })
+  calls = nil
+  local ok = pcall(dir_action.run, "boom", "files", fake_engine)
+  check("actions.dir: failing alias resolver does not throw", ok)
+  check("actions.dir: failing alias resolver does not dispatch", calls == nil)
+
+  -- nil nav_arg + nil action: interactive dir-nav picker, then action picker.
+  package.loaded["pickers.ui.dir_nav_picker"] = {
+    open = function(_cfg, cb)
+      cb("0")
+    end,
+  }
+  package.loaded["pickers.ui.action_picker"] = {
+    open = function(cb)
+      cb("files")
+    end,
+  }
+  calls = nil
+  dir_action.run(nil, nil, fake_engine)
+  check(
+    "actions.dir: interactive nav+action reaches dispatch",
+    calls ~= nil and calls.roots[1] == expect_cwd
+  )
+  package.loaded["pickers.ui.dir_nav_picker"] = nil
+  package.loaded["pickers.ui.action_picker"] = nil
+
+  vim.fn.delete(tmp, "rf")
+end
+
+-- ── pickers.engines.when_loaded — run-now / schedule / lazy-load branches ───
+do
+  local when_loaded = require("pickers.engines.when_loaded")
+
+  local prev_telescope = package.loaded["telescope"]
+  local prev_lazy = package.loaded["lazy.core.config"]
+
+  -- Already loaded: fn() runs synchronously, no autocmd involved.
+  package.loaded["telescope"] = { some = "table" }
+  local ran = false
+  when_loaded.run("telescope", function()
+    ran = true
+  end)
+  check("when_loaded: already-loaded module runs fn immediately", ran)
+
+  -- Not loaded, no lazy.nvim: falls back to vim.schedule.
+  package.loaded["telescope"] = nil
+  package.loaded["lazy.core.config"] = nil
+  local scheduled = false
+  when_loaded.run("telescope", function()
+    scheduled = true
+  end)
+  check("when_loaded: not scheduled synchronously without lazy.nvim", not scheduled)
+  vim.wait(50, function()
+    return scheduled
+  end)
+  check("when_loaded: vim.schedule fallback eventually runs fn", scheduled)
+
+  -- Not loaded, lazy.nvim present: waits for a matching `User LazyLoad`,
+  -- ignores a non-matching one, and fires exactly once.
+  package.loaded["lazy.core.config"] = { fake = true }
+  local fired = 0
+  when_loaded.run("telescope", function()
+    fired = fired + 1
+  end)
+  check("when_loaded: lazy.nvim path does not run fn synchronously", fired == 0)
+
+  vim.api.nvim_exec_autocmds("User", { pattern = "LazyLoad", data = "some-other-plugin.nvim" })
+  check("when_loaded: non-matching LazyLoad event is ignored", fired == 0)
+
+  vim.api.nvim_exec_autocmds("User", { pattern = "LazyLoad", data = "telescope.nvim" })
+  check("when_loaded: matching LazyLoad event runs fn", fired == 1)
+
+  vim.api.nvim_exec_autocmds("User", { pattern = "LazyLoad", data = "telescope.nvim" })
+  check("when_loaded: one-shot -- a second matching event does not re-run fn", fired == 1)
+
+  package.loaded["telescope"] = prev_telescope
+  package.loaded["lazy.core.config"] = prev_lazy
+end
+
+-- ── entry_actions.extract — telescope/snacks path-from-item fallback chains ─
+-- Mirrors the existing entry_actions.extract.fzf suite for the other two
+-- engines' extractors.
+do
+  local extract_ts = require("pickers.entry_actions.extract.telescope")
+
+  check("extract.telescope: nil entry -> nil", extract_ts(nil) == nil)
+  check(
+    "extract.telescope: prefers entry.path",
+    extract_ts({ path = "/a", filename = "/b" }) == "/a"
+  )
+  check("extract.telescope: falls back to filename", extract_ts({ filename = "/b" }) == "/b")
+  check("extract.telescope: falls back to string value", extract_ts({ value = "/c" }) == "/c")
+  check("extract.telescope: non-string value ignored", extract_ts({ value = { 1 } }) == nil)
+  check("extract.telescope: empty-string path -> nil", extract_ts({ path = "" }) == nil)
+
+  local extract_snacks = require("pickers.entry_actions.extract.snacks")
+
+  check("extract.snacks: nil item -> nil", extract_snacks(nil) == nil)
+  check("extract.snacks: item.path", extract_snacks({ path = "/a" }) == "/a")
+  check("extract.snacks: item.filename", extract_snacks({ filename = "/b" }) == "/b")
+  check("extract.snacks: nested item.item.path", extract_snacks({ item = { path = "/c" } }) == "/c")
+  check(
+    "extract.snacks: nested item.item.filename",
+    extract_snacks({ item = { filename = "/d" } }) == "/d"
+  )
+  check("extract.snacks: text fallback", extract_snacks({ text = "/e" }) == "/e")
+  check("extract.snacks: no matching field -> nil", extract_snacks({ other = 1 }) == nil)
+  -- item.file set but snacks.picker.util is not on this runtimepath: the
+  -- Snacks.picker.util.path branch's pcall fails, falls through to the same
+  -- manual chain, which also reads item.file.
+  check(
+    "extract.snacks: item.file (util unavailable) still resolves",
+    extract_snacks({ file = "/f" }) == "/f"
+  )
+end
+
+-- ── entry_actions.open_background — empty-path guard, error path, show flag ─
+do
+  local config = require("pickers.config")
+
+  local prev_core = package.loaded["lib.nvim.buffer.open_background"]
+  local behavior
+  package.loaded["lib.nvim.buffer.open_background"] = function(path)
+    return behavior(path)
+  end
+  package.loaded["pickers.entry_actions.open_background"] = nil
+  local open_bg = require("pickers.entry_actions.open_background")
+
+  check("open_background: empty path -> false, no core call", open_bg.run("") == false)
+  check("open_background: nil path -> false", open_bg.run(nil) == false)
+
+  behavior = function()
+    return false, "boom"
+  end
+  check("open_background: core failure -> false", open_bg.run("/some/file") == false)
+
+  behavior = function()
+    return true, 42
+  end
+  check("open_background: core success -> true", open_bg.run("/some/file") == true)
+
+  -- keys.open_background_show default false: opts.win is never touched.
+  local win = vim.api.nvim_get_current_win()
+  local buf_before = vim.api.nvim_win_get_buf(win)
+  open_bg.run("/some/file", { win = win })
+  check(
+    "open_background: show disabled by default -> window untouched",
+    vim.api.nvim_win_get_buf(win) == buf_before
+  )
+
+  -- keys.open_background_show = true: the given window is pointed at the
+  -- buffer, without moving focus there.
+  local real_buf = vim.api.nvim_create_buf(false, true)
+  behavior = function()
+    return true, real_buf
+  end
+  config.apply({ keys = { open_background_show = true } })
+  local cur_win_before = vim.api.nvim_get_current_win()
+  open_bg.run("/some/file", { win = win })
+  check(
+    "open_background: show enabled -> window buffer switched",
+    vim.api.nvim_win_get_buf(win) == real_buf
+  )
+  check("open_background: focus stays put", vim.api.nvim_get_current_win() == cur_win_before)
+
+  vim.api.nvim_win_set_buf(win, buf_before)
+  vim.api.nvim_buf_delete(real_buf, { force = true })
+  config.apply({ keys = { open_background_show = false } })
+  package.loaded["lib.nvim.buffer.open_background"] = prev_core
+  package.loaded["pickers.entry_actions.open_background"] = nil
+end
+
+-- ── pickers.sources.folder — engine.pick_dir() wiring + validation ──────────
+do
+  local folder = require("pickers.sources.folder")
+
+  local got
+  local ok = pcall(folder.get, {}, function(source)
+    got = { called = true, source = source }
+  end, {})
+  check("sources.folder: missing pick_dir does not throw", ok)
+  check("sources.folder: missing pick_dir calls back with nil", got and got.source == nil)
+
+  got = nil
+  folder.get({}, function(source)
+    got = { called = true, source = source }
+  end, {
+    pick_dir = function(opts)
+      opts.on_select(nil)
+    end,
+  })
+  check("sources.folder: cancelled pick_dir -> callback(nil)", got and got.source == nil)
+
+  got = nil
+  folder.get({}, function(source)
+    got = { called = true, source = source }
+  end, {
+    pick_dir = function(opts)
+      opts.on_select("")
+    end,
+  })
+  check("sources.folder: empty-string selection -> callback(nil)", got and got.source == nil)
+
+  got = nil
+  folder.get({}, function(source)
+    got = { called = true, source = source }
+  end, {
+    pick_dir = function(opts)
+      opts.on_select("/definitely/not/a/real/directory/xyz")
+    end,
+  })
+  check("sources.folder: nonexistent dir -> callback(nil)", got and got.source == nil)
+
+  local tmp = vim.fn.tempname()
+  vim.fn.mkdir(tmp .. "/myproject", "p")
+  got = nil
+  folder.get({}, function(source)
+    got = { called = true, source = source }
+  end, {
+    pick_dir = function(opts)
+      opts.on_select(tmp .. "/myproject")
+    end,
+  })
+  check(
+    "sources.folder: valid dir -> roots set",
+    got and got.source and got.source.roots[1] == vim.fs.normalize(tmp .. "/myproject")
+  )
+  check(
+    "sources.folder: prompt uses basename",
+    got and got.source and got.source.prompt == "myproject> "
+  )
+
+  vim.fn.delete(tmp, "rf")
+end
+
+-- ── pickers.sources.plugins_book — list_names/resolve/complete over a collection ─
+do
+  local config = require("pickers.config")
+  local plugins_book = require("pickers.sources.plugins_book")
+
+  local base = vim.fn.tempname()
+  vim.fn.mkdir(base .. "/cascade.nvim", "p")
+  vim.fn.mkdir(base .. "/markdown.nvim", "p")
+  vim.fn.mkdir(base .. "/TEMPLATES", "p")
+
+  config.apply({ collections = {} })
+  check(
+    "plugins_book.list_names: no collection -> empty",
+    vim.tbl_isempty(plugins_book.list_names(config.get()))
+  )
+  check(
+    "plugins_book.resolve: no collection -> nil",
+    plugins_book.resolve(config.get(), "cascade.nvim") == nil
+  )
+
+  config.apply({
+    collections = { { name = "plugins_book", dir = base, prefix = "", exclude = { "TEMPLATES" } } },
+  })
+  local cfg = config.get()
+
+  local names = plugins_book.list_names(cfg)
+  check("plugins_book.list_names: finds cascade.nvim", has(names, "cascade.nvim"))
+  check("plugins_book.list_names: finds markdown.nvim", has(names, "markdown.nvim"))
+  check("plugins_book.list_names: excludes TEMPLATES", not has(names, "TEMPLATES"))
+  check("plugins_book.list_names: sorted", names[1] <= names[#names])
+
+  check("plugins_book.resolve: known plugin", plugins_book.resolve(cfg, "cascade.nvim") ~= nil)
+  check("plugins_book.resolve: unknown plugin -> nil", plugins_book.resolve(cfg, "nope") == nil)
+  check("plugins_book.resolve: excluded name -> nil", plugins_book.resolve(cfg, "TEMPLATES") == nil)
+  check("plugins_book.resolve: empty name -> nil", plugins_book.resolve(cfg, "") == nil)
+
+  local completed = plugins_book.complete("casc")
+  check("plugins_book.complete: prefix match", has(completed, "cascade.nvim"))
+  check("plugins_book.complete: prefix excludes non-match", not has(completed, "markdown.nvim"))
+  check("plugins_book.complete: empty arglead -> all names", #plugins_book.complete("") == #names)
+
+  vim.fn.delete(base, "rf")
+  config.apply({ collections = {} })
+end
+
+-- ── pickers.sources.wkdbooks — collection lookup, repos_dir fallback, error ─
+do
+  local config = require("pickers.config")
+
+  local prev_collection = package.loaded["pickers.sources.collection"]
+  local captured
+  package.loaded["pickers.sources.collection"] = {
+    get = function(coll, _cfg, callback, _engine)
+      captured = coll
+      callback({ roots = { coll.dir }, prompt = coll.name .. "> " })
+    end,
+  }
+  package.loaded["pickers.sources.wkdbooks"] = nil
+  local wkdbooks = require("pickers.sources.wkdbooks")
+
+  -- "wkdbooks" collection present: used as-is, no fallback synthesis.
+  config.apply({
+    collections = { { name = "wkdbooks", dir = "/x/wkdbooks", prefix = "wkdbook-" } },
+    repos_dir = "/should/not/be/used",
+  })
+  wkdbooks.get(config.get(), function() end, {})
+  check("wkdbooks: uses the configured collection dir", captured.dir == "/x/wkdbooks")
+  check("wkdbooks: uses the configured collection prefix", captured.prefix == "wkdbook-")
+
+  -- No "wkdbooks" collection, but repos_dir set: synthesizes one.
+  config.apply({ collections = {} })
+  config.apply({ repos_dir = vim.fn.getcwd() })
+  captured = nil
+  wkdbooks.get(config.get(), function() end, {})
+  check(
+    "wkdbooks: falls back to repos_dir/WKDBooks",
+    captured and captured.dir == vim.fn.getcwd() .. "/WKDBooks"
+  )
+  check("wkdbooks: fallback prefix is wkdbook-", captured and captured.prefix == "wkdbook-")
+
+  -- Neither collection nor repos_dir: error, callback(nil), no throw.
+  config.apply({ collections = {} })
+  local cfg = config.get()
+  cfg.repos_dir = nil
+  captured = nil
+  local got = "unset"
+  local ok = pcall(wkdbooks.get, cfg, function(source)
+    got = source
+  end, {})
+  check("wkdbooks: no collection + no repos_dir does not throw", ok)
+  check("wkdbooks: no collection + no repos_dir -> callback(nil)", got == nil)
+  check("wkdbooks: no collection + no repos_dir -> collection.get not called", captured == nil)
+
+  package.loaded["pickers.sources.collection"] = prev_collection
+  package.loaded["pickers.sources.wkdbooks"] = nil
+  config.apply({ collections = {}, repos_dir = vim.fn.getcwd() })
+end
+
+-- ── pickers.ui.action_picker — ui.kit.select, vim.ui.select fallback ────────
+-- Mirrors the ui.dir_nav_picker / entry_actions.create_file kit.input suites'
+-- package.loaded["ui.kit"] stubbing convention.
+do
+  local captured
+  package.loaded["ui.kit"] = {
+    select = function(opts)
+      captured = opts
+      opts.on_select("grep")
+    end,
+  }
+  package.loaded["pickers.ui.action_picker"] = nil
+  local action_picker = require("pickers.ui.action_picker")
+
+  local chosen
+  action_picker.open(function(a)
+    chosen = a
+  end)
+  check("action_picker: routes through ui.kit.select", captured ~= nil)
+  check(
+    "action_picker: offers files/grep/smart",
+    has(captured.items, "files") and has(captured.items, "grep") and has(captured.items, "smart")
+  )
+  check("action_picker: forwards the chosen action", chosen == "grep")
+
+  package.loaded["ui.kit"] = nil
+  package.loaded["pickers.ui.action_picker"] = nil
+  action_picker = require("pickers.ui.action_picker")
+
+  local prev_select = vim.ui.select
+  local select_items
+  vim.ui.select = function(items, _opts, cb)
+    select_items = items
+    cb("smart")
+  end
+  chosen = nil
+  action_picker.open(function(a)
+    chosen = a
+  end)
+  check("action_picker: falls back to vim.ui.select without ui.kit", select_items ~= nil)
+  check("action_picker: fallback forwards the chosen action", chosen == "smart")
+
+  vim.ui.select = prev_select
+  package.loaded["pickers.ui.action_picker"] = nil
+end
+
+-- ── pickers.smart — defaults()/config() merge, query() orchestration ────────
+-- search.collect/score.rank/frecency.lookup are each already covered on
+-- their own; this is the glue that decides whether frecency runs at all and
+-- forwards the right shape to score.rank.
+do
+  local config = require("pickers.config")
+  local smart = require("pickers.smart")
+
+  local d = smart.defaults()
+  check("smart.defaults: matches DEFAULTS.smart", d.limit == 2000 and d.timeout == 3000)
+  check(
+    "smart.defaults: is a copy, not the live DEFAULTS table",
+    d ~= require("pickers.config.DEFAULTS").smart
+  )
+
+  config.apply({ smart = { limit = 500 } })
+  local c = smart.config()
+  check("smart.config: merges user config over defaults", c.limit == 500)
+  check("smart.config: untouched sibling stays default", c.timeout == 3000)
+  config.apply({ smart = { limit = 2000 } })
+
+  local prev_search = package.loaded["pickers.smart.search"]
+  local prev_score = package.loaded["pickers.smart.score"]
+  local prev_frecency = package.loaded["pickers.smart.frecency"]
+
+  local collect_args, rank_args, lookup_args
+  package.loaded["pickers.smart.search"] = {
+    collect = function(opts)
+      collect_args = opts
+      return { { abspath = "/a" } }, { { abspath = "/b" } }
+    end,
+  }
+  package.loaded["pickers.smart.score"] = {
+    rank = function(...)
+      rank_args = { ... }
+      return { "ranked" }
+    end,
+  }
+  package.loaded["pickers.smart.frecency"] = {
+    lookup = function(_cfg, paths)
+      lookup_args = paths
+      return { ["/a"] = 1 }
+    end,
+  }
+
+  config.apply({ smart = { frecency = { enabled = false } } })
+  local result = smart.query("needle", { roots = { "/r" }, find = {} })
+  check("smart.query: forwards query to search.collect", collect_args.query == "needle")
+  check("smart.query: forwards roots to search.collect", collect_args.roots[1] == "/r")
+  check("smart.query: frecency disabled -> no lookup call", lookup_args == nil)
+  check("smart.query: rank's frecency arg is nil when disabled", rank_args[6] == nil)
+  check("smart.query: returns score.rank's result", vim.deep_equal(result, { "ranked" }))
+
+  config.apply({ smart = { frecency = { enabled = true, weight = 1.0 } } })
+  lookup_args = nil
+  smart.query("needle2", { roots = { "/r" }, find = {} })
+  check(
+    "smart.query: frecency enabled -> lookup called with collected abspaths",
+    lookup_args ~= nil and has(lookup_args, "/a") and has(lookup_args, "/b")
+  )
+  check("smart.query: rank receives the frecency table", rank_args[6] and rank_args[6]["/a"] == 1)
+
+  config.apply({ smart = { frecency = { enabled = false, weight = 1.0 } } })
+  package.loaded["pickers.smart.search"] = prev_search
+  package.loaded["pickers.smart.score"] = prev_score
+  package.loaded["pickers.smart.frecency"] = prev_frecency
+end
+
+-- ── pickers.bindings.collections — compat commands + optional keymaps ───────
+do
+  local collections = require("pickers.bindings.collections")
+
+  local prev_command = package.loaded["pickers.command"]
+  local captured
+  package.loaded["pickers.command"] = {
+    handle = function(opts)
+      captured = opts
+    end,
+  }
+
+  collections.register({
+    name = "zzqux",
+    dir = "/tmp/zzqux",
+    keys = { files = "<leader>ZZqf", grep = "<leader>ZZqg", smart = "<leader>ZZqs" },
+  })
+
+  check("bindings.collections: :ZzquxFiles registered", vim.fn.exists(":ZzquxFiles") == 2)
+  check("bindings.collections: :ZzquxGrep registered", vim.fn.exists(":ZzquxGrep") == 2)
+  check("bindings.collections: :ZzquxSmart registered", vim.fn.exists(":ZzquxSmart") == 2)
+
+  captured = nil
+  vim.cmd("ZzquxFiles")
+  check(
+    "bindings.collections: :ZzquxFiles routes to command.handle('zzqux','files')",
+    captured and vim.deep_equal(captured.fargs, { "zzqux", "files" })
+  )
+
+  captured = nil
+  vim.cmd("ZzquxGrep")
+  check(
+    "bindings.collections: :ZzquxGrep routes to command.handle('zzqux','grep')",
+    captured and vim.deep_equal(captured.fargs, { "zzqux", "grep" })
+  )
+
+  local kf = vim.fn.maparg("<leader>ZZqf", "n", false, true)
+  check("bindings.collections: files keymap registered", not vim.tbl_isempty(kf))
+  captured = nil
+  if type(kf.callback) == "function" then kf.callback() end
+  check(
+    "bindings.collections: files keymap routes to command.handle",
+    captured and vim.deep_equal(captured.fargs, { "zzqux", "files" })
+  )
+
+  -- Re-registering the same collection must not throw (vim.fn.exists guard
+  -- skips re-creating the compat commands; force=true would allow it anyway).
+  local ok = pcall(collections.register, { name = "zzqux", dir = "/tmp/zzqux" })
+  check("bindings.collections: re-register does not throw", ok)
+
+  package.loaded["pickers.command"] = prev_command
+end
+
+-- ── pickers.bindings.usrcmds — compat commands: direct dispatch + fallback ──
+do
+  local config = require("pickers.config")
+  local usrcmds = require("pickers.bindings.usrcmds")
+  usrcmds.register()
+
+  for _, name in ipairs({
+    "DirPicker",
+    "FindConfig",
+    "GrepConfig",
+    "FindInFolder",
+    "LiveGrep",
+    "AllDrives",
+    "AllDrivesGrep",
+    "FindOnSystem",
+    "RepoFiles",
+    "RepoGrep",
+    "WkdBookFiles",
+    "WkdBookGrep",
+    "PluginsBookFiles",
+    "PluginsBookGrep",
+    "PickersRepeat",
+    "PickersScopes",
+    "PickersResume",
+  }) do
+    check("usrcmds: :" .. name .. " registered", vim.fn.exists(":" .. name) == 2)
+  end
+
+  local prev_command = package.loaded["pickers.command"]
+  local captured
+  package.loaded["pickers.command"] = {
+    handle = function(opts)
+      captured = opts
+    end,
+  }
+
+  captured = nil
+  vim.cmd("FindConfig")
+  check(
+    "usrcmds: :FindConfig -> handle({config, files})",
+    captured and vim.deep_equal(captured.fargs, { "config", "files" })
+  )
+
+  captured = nil
+  vim.cmd("GrepConfig")
+  check(
+    "usrcmds: :GrepConfig -> handle({config, grep})",
+    captured and vim.deep_equal(captured.fargs, { "config", "grep" })
+  )
+
+  captured = nil
+  vim.cmd("LiveGrep")
+  check(
+    "usrcmds: :LiveGrep -> handle({cwd, grep})",
+    captured and vim.deep_equal(captured.fargs, { "cwd", "grep" })
+  )
+
+  captured = nil
+  vim.cmd("DirPicker 2 files")
+  check(
+    "usrcmds: :DirPicker forwards fargs with a dir prefix",
+    captured and vim.deep_equal(captured.fargs, { "dir", "2", "files" })
+  )
+
+  captured = nil
+  vim.cmd("RepoFiles")
+  check(
+    "usrcmds: :RepoFiles (no arg) -> handle({repos, files})",
+    captured and vim.deep_equal(captured.fargs, { "repos", "files" })
+  )
+
+  captured = nil
+  vim.cmd("PluginsBookFiles")
+  check(
+    "usrcmds: :PluginsBookFiles (no arg) -> handle({plugins_book, files})",
+    captured and vim.deep_equal(captured.fargs, { "plugins_book", "files" })
+  )
+
+  package.loaded["pickers.command"] = prev_command
+
+  -- With a name argument, :RepoFiles/:RepoGrep/:PluginsBook* resolve and
+  -- dispatch straight to the engine, skipping pickers.command.handle.
+  local prev_engines = package.loaded["pickers.engines"]
+  local engine_calls
+  package.loaded["pickers.engines"] = {
+    load = function()
+      return {
+        pick_files = function(opts)
+          engine_calls = { kind = "files", opts = opts }
+        end,
+        live_grep = function(opts)
+          engine_calls = { kind = "grep", opts = opts }
+        end,
+      }
+    end,
+  }
+
+  local base = vim.fn.tempname()
+  vim.fn.mkdir(base .. "/lib.nvim/.git", "p")
+  config.apply({ repos_dir = base })
+
+  engine_calls = nil
+  vim.cmd("RepoFiles lib.nvim")
+  check(
+    "usrcmds: :RepoFiles <name> resolves and dispatches directly",
+    engine_calls
+      and engine_calls.kind == "files"
+      and engine_calls.opts.roots[1] == vim.fs.normalize(base .. "/lib.nvim")
+  )
+
+  engine_calls = nil
+  vim.cmd("RepoGrep lib.nvim")
+  check(
+    "usrcmds: :RepoGrep <name> resolves and dispatches directly",
+    engine_calls and engine_calls.kind == "grep"
+  )
+
+  -- Wrapped in pcall purely to keep this test process alive: an unresolved
+  -- name's notify.error(...) surfaces as a real error through vim.cmd() in
+  -- this headless harness (lib.nvim's usercmd pcall only guards a *thrown*
+  -- callback, not an ERROR-level notification). What matters here is that
+  -- resolution stopped before ever reaching the engine.
+  engine_calls = nil
+  pcall(vim.cmd, "RepoFiles does-not-exist")
+  check("usrcmds: :RepoFiles <unknown name> does not dispatch", engine_calls == nil)
+
+  local completed = vim.fn.getcompletion("RepoFiles lib", "cmdline")
+  check("usrcmds: :RepoFiles completion resolves repo names", has(completed, "lib.nvim"))
+
+  vim.fn.delete(base, "rf")
+  package.loaded["pickers.engines"] = prev_engines
+
+  local prev_last = package.loaded["pickers.last"]
+  local last_ran = false
+  package.loaded["pickers.last"] = {
+    run = function()
+      last_ran = true
+    end,
+  }
+  vim.cmd("PickersRepeat")
+  check("usrcmds: :PickersRepeat -> pickers.last.run()", last_ran)
+  package.loaded["pickers.last"] = prev_last
+
+  local prev_builtins = package.loaded["pickers.builtins"]
+  local resume_name
+  package.loaded["pickers.builtins"] = {
+    run = function(name)
+      resume_name = name
+    end,
+  }
+  vim.cmd("PickersResume")
+  check("usrcmds: :PickersResume -> builtins.run('resume')", resume_name == "resume")
+  package.loaded["pickers.builtins"] = prev_builtins
+
+  local ok_scopes = pcall(vim.cmd, "PickersScopes")
+  check("usrcmds: :PickersScopes does not throw", ok_scopes)
+
+  config.apply({ repos_dir = vim.fn.getcwd() })
+end
+
+-- ── pickers.bindings.autocmds — VimEnter fallback, guarded by setup_called ──
+do
+  local prev_setup_called = vim.g.pickers_nvim_setup_called
+  local prev_bindings = package.loaded["pickers.bindings"]
+
+  local setup_calls = 0
+  package.loaded["pickers.bindings"] = {
+    setup = function()
+      setup_calls = setup_calls + 1
+    end,
+  }
+  package.loaded["pickers.bindings.autocmds"] = nil
+  local autocmds = require("pickers.bindings.autocmds")
+  autocmds.register()
+
+  -- setup() was already called: the fallback is a no-op.
+  vim.g.pickers_nvim_setup_called = true
+  vim.api.nvim_exec_autocmds("VimEnter", {})
+  check("autocmds: setup_called=true -> fallback skips bindings.setup", setup_calls == 0)
+
+  -- `once = true` already consumed that autocmd; register a fresh one to
+  -- exercise the "setup() was never called" branch.
+  package.loaded["pickers.bindings.autocmds"] = nil
+  autocmds = require("pickers.bindings.autocmds")
+  autocmds.register()
+  vim.g.pickers_nvim_setup_called = false
+  vim.api.nvim_exec_autocmds("VimEnter", {})
+  check("autocmds: setup_called=false -> fallback runs bindings.setup once", setup_calls == 1)
+
+  vim.api.nvim_exec_autocmds("VimEnter", {})
+  check("autocmds: fallback is one-shot (once=true)", setup_calls == 1)
+
+  vim.g.pickers_nvim_setup_called = prev_setup_called
+  package.loaded["pickers.bindings"] = prev_bindings
+  package.loaded["pickers.bindings.autocmds"] = nil
+end
+
+-- ── pickers.bindings — setup(): enable-flag gating of every sub-registrar ───
+do
+  local calls
+  local function reset_calls()
+    calls =
+      { composer = 0, keymaps = 0, usrcmds = 0, collections = 0, mappings = 0, keys_patch = 0 }
+  end
+
+  local prev = {
+    ["pickers.command.composer"] = package.loaded["pickers.command.composer"],
+    ["pickers.bindings.keymaps"] = package.loaded["pickers.bindings.keymaps"],
+    ["pickers.bindings.usrcmds"] = package.loaded["pickers.bindings.usrcmds"],
+    ["pickers.bindings.collections"] = package.loaded["pickers.bindings.collections"],
+    ["pickers.mappings"] = package.loaded["pickers.mappings"],
+    ["pickers.keys"] = package.loaded["pickers.keys"],
+  }
+
+  package.loaded["pickers.command.composer"] = {
+    register = function()
+      calls.composer = calls.composer + 1
+    end,
+  }
+  package.loaded["pickers.bindings.keymaps"] = {
+    register = function()
+      calls.keymaps = calls.keymaps + 1
+    end,
+  }
+  package.loaded["pickers.bindings.usrcmds"] = {
+    register = function()
+      calls.usrcmds = calls.usrcmds + 1
+    end,
+  }
+  package.loaded["pickers.bindings.collections"] = {
+    register = function()
+      calls.collections = calls.collections + 1
+    end,
+  }
+  package.loaded["pickers.mappings"] = {
+    apply = function()
+      calls.mappings = calls.mappings + 1
+    end,
+  }
+  package.loaded["pickers.keys"] = {
+    patch = function()
+      calls.keys_patch = calls.keys_patch + 1
+    end,
+  }
+  package.loaded["pickers.bindings"] = nil
+  local bindings = require("pickers.bindings")
+
+  reset_calls()
+  bindings.setup({
+    keymaps = { enable = true },
+    usercmds = { enable = true },
+    collections = { { name = "a", dir = "/a" }, { name = "b", dir = "/b" } },
+    keys = { enable = true },
+  })
+  check("bindings.setup: composer always registers", calls.composer == 1)
+  check("bindings.setup: keymaps.enable=true -> registered", calls.keymaps == 1)
+  check("bindings.setup: usercmds.enable=true -> registered", calls.usrcmds == 1)
+  check("bindings.setup: one collections.register() per collection", calls.collections == 2)
+  check("bindings.setup: mappings.apply always runs", calls.mappings == 1)
+  check("bindings.setup: keys.enable=true -> keys.patch runs", calls.keys_patch == 1)
+
+  reset_calls()
+  bindings.setup({
+    keymaps = { enable = false },
+    usercmds = { enable = false },
+    collections = {},
+    keys = { enable = false },
+  })
+  check("bindings.setup: keymaps.enable=false -> skipped", calls.keymaps == 0)
+  check("bindings.setup: usercmds.enable=false -> skipped", calls.usrcmds == 0)
+  check(
+    "bindings.setup: no collections -> collections.register never called",
+    calls.collections == 0
+  )
+  check("bindings.setup: keys.enable=false -> keys.patch skipped", calls.keys_patch == 0)
+  check("bindings.setup: composer still registers", calls.composer == 1)
+  check("bindings.setup: mappings.apply still runs", calls.mappings == 1)
+
+  reset_calls()
+  bindings.setup({ keymaps = { enable = false }, usercmds = { enable = false }, collections = {} })
+  check("bindings.setup: keys defaults to enabled when cfg.keys is nil", calls.keys_patch == 1)
+
+  for name, mod in pairs(prev) do
+    package.loaded[name] = mod
+  end
+  package.loaded["pickers.bindings"] = nil
+end
+
+-- ── pickers (init.lua) — setup(): sets the flag, wires opt-in patches ───────
+do
+  local prev_setup_called = vim.g.pickers_nvim_setup_called
+  local prev = {
+    ["pickers.config"] = package.loaded["pickers.config"],
+    ["pickers.bindings"] = package.loaded["pickers.bindings"],
+    ["pickers.history"] = package.loaded["pickers.history"],
+    ["pickers.smart.frecency"] = package.loaded["pickers.smart.frecency"],
+    ["pickers"] = package.loaded["pickers"],
+  }
+
+  local calls
+  local function reset_calls()
+    calls = { bindings_setup = 0, history_patch = 0, frecency_patch = 0 }
+  end
+
+  local fake_cfg
+  package.loaded["pickers.config"] = {
+    apply = function() end,
+    get = function()
+      return fake_cfg
+    end,
+  }
+  package.loaded["pickers.bindings"] = {
+    setup = function()
+      calls.bindings_setup = calls.bindings_setup + 1
+    end,
+  }
+  package.loaded["pickers.history"] = {
+    patch = function()
+      calls.history_patch = calls.history_patch + 1
+    end,
+  }
+  package.loaded["pickers.smart.frecency"] = {
+    patch = function()
+      calls.frecency_patch = calls.frecency_patch + 1
+    end,
+  }
+  package.loaded["pickers"] = nil
+  local pickers = require("pickers")
+
+  vim.g.pickers_nvim_setup_called = nil
+  reset_calls()
+  fake_cfg = {
+    history = { enabled = false },
+    smart = { frecency = { enabled = false } },
+    deps_popup = false,
+  }
+  pickers.setup({})
+  check(
+    "pickers.setup: marks vim.g.pickers_nvim_setup_called",
+    vim.g.pickers_nvim_setup_called == true
+  )
+  check("pickers.setup: always calls bindings.setup", calls.bindings_setup == 1)
+  check("pickers.setup: history.enabled=false -> history.patch skipped", calls.history_patch == 0)
+  check(
+    "pickers.setup: frecency.enabled=false -> frecency.patch skipped",
+    calls.frecency_patch == 0
+  )
+
+  reset_calls()
+  fake_cfg =
+    { history = { enabled = true }, smart = { frecency = { enabled = true } }, deps_popup = false }
+  pickers.setup({})
+  check("pickers.setup: history.enabled=true -> history.patch runs", calls.history_patch == 1)
+  check("pickers.setup: frecency.enabled=true -> frecency.patch runs", calls.frecency_patch == 1)
+
+  for name, mod in pairs(prev) do
+    package.loaded[name] = mod
+  end
+  vim.g.pickers_nvim_setup_called = prev_setup_called
 end
 
 -- ── Summary ─────────────────────────────────────────────────────────────────
