@@ -30,6 +30,32 @@ a changelog.
   fzf-lua's action table always closes the running fzf process first, so
   its adapter reopens fzf (`fzf.resume()`) once the panel closes.
 
+  Follow-up, same feature: the cheatsheet key is now visible **without
+  pressing anything** — telescope's `results_title` and fzf-lua's `--header`
+  show a "`<C-/> cheatsheet`"/"`f1 cheatsheet`" hint the moment a picker
+  opens (`pickers.cheatsheet.hint()`, wired into every `pick_files`/
+  `live_grep`/`smart`/`pick_item`/`pick_dir` call in both engine adapters).
+  Investigating what snacks.nvim could offer here surfaced two things worth
+  recording: first, the "f"/"h" single-letter badges snacks shows in a
+  picker's title bar (e.g. after `:RepoFiles`) are NOT typed query text —
+  they're `Snacks.picker.config.defaults.toggles`' own native `{flags}`
+  badges, rendered whenever `find.hidden`/`find.follow` are on, which they
+  are by default. Second, and more useful: snacks already ships its own
+  native `?` → `toggle_help_input`/`toggle_help_list` (bound by default,
+  `Snacks.win:toggle_help()`), which reads every keymap actually bound on
+  the picker's buffer and shows its `desc` — including pickers.nvim's own,
+  automatically, with zero code needed on our side. So rather than forcing a
+  static title hint into snacks (there is no clean slot for one without
+  pickers.nvim owning the user's layout config, and the `{flags}` toggle
+  mechanism is for live boolean search flags, not static text — hijacking it
+  for a permanently-on decorative badge would be a real misuse), snacks users
+  reach the same information through that native panel instead.
+  `pickers.entry_actions.adapters.snacks`'s `get_actions()` now hands
+  `create_file`/`open_background`/`cheatsheet` a `desc` pulled from
+  `pickers.cheatsheet.DESCRIPTIONS` (exported for exactly this reuse) so that
+  native panel and `pickers.cheatsheet`'s own panel never describe the same
+  key differently.
+
 ---
 
 [x] **`config/DEFAULTS.lua`'s `repos_dir` is no longer computed on require.**

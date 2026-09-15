@@ -21,11 +21,14 @@
 
 local M = {}
 
----@internal
----Human-readable description per `pickers.keys` action, in the same order as
----`pickers.keys.ORDER` (iteration order for the panel).
+---Human-readable description per `pickers.keys` action. Exported (not just
+---`local`) so `pickers.entry_actions.adapters.snacks` can reuse the same
+---strings as the `desc` on its own named actions -- Snacks' native
+---`?` → `toggle_help_*` panel (see @description) reads those straight off
+---real buffer keymaps, and duplicating the text here and there would only
+---give the two a chance to drift.
 ---@type table<string, string>
-local DESCRIPTIONS = {
+M.DESCRIPTIONS = {
   preview_scroll_down = "Scroll preview down",
   preview_scroll_up = "Scroll preview up",
   preview_scroll_left = "Scroll preview left",
@@ -64,7 +67,7 @@ function M.lines(overrides)
       if spec and #spec.lhs > 0 then lhs_display = table.concat(spec.lhs, " / ") end
     end
     if lhs_display then
-      rows[#rows + 1] = { lhs = lhs_display, desc = DESCRIPTIONS[action] or action }
+      rows[#rows + 1] = { lhs = lhs_display, desc = M.DESCRIPTIONS[action] or action }
       widest = math.max(widest, #lhs_display)
     end
   end
@@ -78,6 +81,28 @@ function M.lines(overrides)
   lines[#lines + 1] = "  q / <Esc>  close"
 
   return lines
+end
+
+---Short hint text for a picker's own title/header area (telescope
+---`results_title`, fzf-lua `--header`) — `""` when the cheatsheet action is
+---disabled or unbound, so a caller can skip setting the option entirely
+---rather than showing an empty hint. Snacks has no equivalent static-text
+---slot without pickers.nvim owning the user's layout config (its title only
+---composes from a template + the live `{flags}` toggle badges — see
+---`pickers.keys.adapters.snacks` for what those actually are); snacks users
+---reach the same information through its OWN native `?` → `toggle_help_*`
+---panel instead, which `pickers.entry_actions.adapters.snacks` feeds proper
+---`desc` strings for.
+---@param engine "telescope"|"fzf-lua"
+---@return string
+function M.hint(engine)
+  if require("pickers.config").get().keys.enable == false then return "" end
+
+  if engine == "fzf-lua" then return "f1 cheatsheet" end
+
+  local spec = require("pickers.keys").resolve().cheatsheet
+  if not spec or #spec.lhs == 0 then return "" end
+  return spec.lhs[1] .. " cheatsheet"
 end
 
 ---Open the cheatsheet panel. No-op (silently) when ui.nvim is not installed

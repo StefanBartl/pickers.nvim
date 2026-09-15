@@ -883,7 +883,18 @@ do
     sik["<C-/>"] ~= nil and sik["<C-/>"][1] == "cheatsheet"
   )
   local sa = snacks_adapter.get_actions()
-  check("entry_actions.snacks: cheatsheet action fn", type(sa.cheatsheet) == "function")
+  check(
+    "entry_actions.snacks: cheatsheet action fn",
+    type(sa.cheatsheet) == "table" and type(sa.cheatsheet.action) == "function"
+  )
+  check(
+    "entry_actions.snacks: cheatsheet desc reused from pickers.cheatsheet.DESCRIPTIONS",
+    sa.cheatsheet.desc == require("pickers.cheatsheet").DESCRIPTIONS.cheatsheet
+  )
+  check(
+    "entry_actions.snacks: create_file/open_background also carry desc",
+    type(sa.create_file.desc) == "string" and type(sa.open_background.desc) == "string"
+  )
 
   -- fzf adapter: fixed ctrl-a/ctrl-o/shift-enter/f1, gated only by keys.enable
   -- (cheatsheet's OWN lhs config has no effect on this engine -- see
@@ -1594,6 +1605,43 @@ do
   package.loaded["ui.kit"] = nil
   package.loaded["pickers.cheatsheet"] = nil
 end
+
+-- ── pickers.cheatsheet.hint(): title/header text for telescope/fzf-lua ──────
+do
+  local config = require("pickers.config")
+  package.loaded["pickers.cheatsheet"] = nil
+  local cheatsheet = require("pickers.cheatsheet")
+
+  config.apply({ keys = { enable = true, cheatsheet = "<C-/>" } })
+  check(
+    "cheatsheet.hint: telescope names the bound key",
+    cheatsheet.hint("telescope") == "<C-/> cheatsheet"
+  )
+  check(
+    "cheatsheet.hint: fzf-lua always says f1 (fixed, ignores keys.cheatsheet's lhs)",
+    cheatsheet.hint("fzf-lua") == "f1 cheatsheet"
+  )
+
+  config.apply({ keys = { cheatsheet = false } })
+  check("cheatsheet.hint: telescope is empty when unbound", cheatsheet.hint("telescope") == "")
+  check(
+    "cheatsheet.hint: fzf-lua still says f1 when keys.cheatsheet=false (fixed binding)",
+    cheatsheet.hint("fzf-lua") == "f1 cheatsheet"
+  )
+
+  config.apply({ keys = { enable = false } })
+  check(
+    "cheatsheet.hint: telescope empty when keys.enable=false",
+    cheatsheet.hint("telescope") == ""
+  )
+  check("cheatsheet.hint: fzf-lua empty when keys.enable=false", cheatsheet.hint("fzf-lua") == "")
+
+  config.apply({ keys = { enable = true, cheatsheet = "<C-/>" } })
+  package.loaded["pickers.cheatsheet"] = nil
+end
+-- (the actual results_title/--header wiring into engines.telescope/engines.fzf
+-- is exercised further down, in the "engine live_grep option tests" block,
+-- alongside the other stubbed fzf-lua/telescope live_grep checks)
 
 -- ── pick_item(): Pickers.Item preview extension, all three engines ─────────
 -- Items may be plain strings (unchanged behaviour — repos/wkdbooks sources
@@ -2319,6 +2367,11 @@ do
     -- block guards against would set it).
     ---@diagnostic disable-next-line: undefined-field
     check("fzf live_grep: no search_dirs, which fzf-lua would ignore", got.search_dirs == nil)
+    check(
+      "fzf live_grep: --header names the cheatsheet key, visible on open",
+      got.fzf_opts and got.fzf_opts["--header"] == "f1 cheatsheet",
+      got.fzf_opts and vim.inspect(got.fzf_opts)
+    )
 
     package.loaded["telescope.builtin"] = {
       live_grep = function(o)
@@ -2332,6 +2385,31 @@ do
       got ~= nil and vim.deep_equal(got.search_dirs, roots),
       got and vim.inspect(got.search_dirs)
     )
+    check(
+      "telescope live_grep: results_title names the cheatsheet key, visible on open",
+      got.results_title == "<C-/> cheatsheet",
+      tostring(got.results_title)
+    )
+
+    -- keys.enable = false: both hints disappear entirely (not just "").
+    require("pickers.config").apply({ keys = { enable = false } })
+    package.loaded["pickers.cheatsheet"] = nil
+    got = nil
+    require("pickers.engines.fzf").live_grep({ roots = roots, prompt = "P" })
+    check(
+      "fzf live_grep: no --header when keys.enable=false",
+      got.fzf_opts["--header"] == nil,
+      vim.inspect(got.fzf_opts)
+    )
+    got = nil
+    require("pickers.engines.telescope").live_grep({ roots = roots, prompt = "P" })
+    check(
+      "telescope live_grep: no results_title when keys.enable=false",
+      got.results_title == nil,
+      tostring(got.results_title)
+    )
+    require("pickers.config").apply({ keys = { enable = true } })
+    package.loaded["pickers.cheatsheet"] = nil
 
     package.loaded["snacks.picker"] = {
       grep = function(o)

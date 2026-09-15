@@ -2,8 +2,12 @@
 
 This is the static reference. For the keys bound **inside an already-open
 picker** (preview scroll, history, create file, open in background, …),
-press `<C-/>` (`f1` on fzf-lua) while a picker is open — see
-[FEATURES/KEYS.md](FEATURES/KEYS.md#cheatsheet).
+press `<C-/>` (`f1` on fzf-lua) while a picker is open — telescope and
+fzf-lua even show that hint in the title/header the moment the picker opens.
+On snacks, press `?` instead (in the input or list window, normal mode) for
+Snacks' own native keymap help — see
+[FEATURES/KEYS.md](FEATURES/KEYS.md#cheatsheet) for why snacks gets a
+different key.
 
 ## :Pickers command syntax
 

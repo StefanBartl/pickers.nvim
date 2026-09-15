@@ -64,15 +64,24 @@ local function do_open_background(picker, item)
   -- Do NOT close picker - that's the point of background open
 end
 
----Named actions table for `Snacks.picker` `opts.actions`.
----@return table<string, function> actions
+---Named actions table for `Snacks.picker` `opts.actions`, `desc` included.
+---Snacks' own `?` → `toggle_help_input`/`toggle_help_list` (native, bound by
+---default -- see `Snacks.win:toggle_help()`) reads real buffer keymaps and
+---shows each one's `desc`; a plain function here would still work but the
+---panel would fall back to the raw action name with underscores turned to
+---spaces ("create file") instead of `pickers.cheatsheet.DESCRIPTIONS`' fuller
+---text ("Create file/folder") -- reused here, not retyped, so the two panels
+---(this native one and `pickers.cheatsheet`'s own) never drift apart.
+---@return table<string, { action: function, desc: string }> actions
 function M.get_actions()
   if require("pickers.config").get().keys.enable == false then return {} end
 
+  local desc = require("pickers.cheatsheet").DESCRIPTIONS
+
   return {
-    create_file = do_create_file,
-    open_background = do_open_background,
-    cheatsheet = do_cheatsheet,
+    create_file = { action = do_create_file, desc = desc.create_file },
+    open_background = { action = do_open_background, desc = desc.open_background },
+    cheatsheet = { action = do_cheatsheet, desc = desc.cheatsheet },
   }
 end
 
