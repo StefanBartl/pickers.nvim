@@ -394,9 +394,9 @@ In-picker keys (preview scroll + history + entry actions)~
       picker = { win = require("pickers.keys").snacks_win() },
     })
 <
-  `create_file`/`open_background` (the in-picker entry actions) are the
-  exception: they are NOT patched globally, since they run pickers.nvim
-  logic rather than a built-in engine action — merge
+  `create_file`/`open_background`/`cheatsheet` (the in-picker entry actions)
+  are the exception: they are NOT patched globally, since they run
+  pickers.nvim logic rather than a built-in engine action — merge
   lua/pickers/entry_actions/'s adapters into your own setup() manually, as
   documented there.
 
@@ -430,6 +430,18 @@ In-picker keys (preview scroll + history + entry actions)~
   clicks itself, outside keymap.builtin — same capability-gap class as its
   history keys.
 
+  `cheatsheet` opens a read-only panel (pickers.cheatsheet) listing every
+  currently-bound key in this section, built from |pickers.keys|.resolve()
+  so a remapped or unbound key shows up as what it actually is.  Default
+  <C-/> — NOT <C-?>: every picker prompt starts in insert mode, where a raw
+  "?" just searches for a literal question mark, and Neovim resolves <C-?>
+  to the same byte (0x7F/DEL) that Backspace sends in many terminals, which
+  would open the cheatsheet on every backspace instead.  Like
+  create_file/open_background it runs pickers.nvim logic and is NOT patched
+  globally — merge it via lua/pickers/entry_actions/'s adapters.  fzf-lua's
+  binding is fixed to f1, same class as its ctrl-a/ctrl-o/shift-enter: >lua
+    require("pickers").setup({ keys = { cheatsheet = "<C-/>" } })
+<
 ==============================================================================
 8. COMPAT COMMANDS                                               *pickers-compat*
 
@@ -575,8 +587,8 @@ All keys are optional.  Unset keys retain their default values.
   keys (table)~
     Unified in-picker keys: preview scroll + history navigation (patched
     globally into telescope/fzf-lua/snacks) plus the create_file/
-    open_background entry actions (merged manually into your own engine
-    setup() — see lua/pickers/entry_actions/README.md). See |pickers-keymaps|.
+    open_background/cheatsheet entry actions (merged manually into your own
+    engine setup() — see lua/pickers/entry_actions/README.md). See |pickers-keymaps|.
       enable               (bool, default true) — master switch
       preview_scroll_down  (string|string[]|false, default "<PageDown>")
       preview_scroll_up    (string|string[]|false, default "<PageUp>")
@@ -596,8 +608,11 @@ All keys are optional.  Unset keys retain their default values.
                              new tab
       mouse_confirm        (string|string[]|false, default "<2-LeftMouse>")
                              — double-click a result to open it
+      cheatsheet           (string|string[]|false, default "<C-/>") — show
+                             the in-picker keymap cheatsheet; fixed to f1 on
+                             fzf-lua
     fzf-lua only binds the vertical preview scroll and the fixed ctrl-a/
-    ctrl-o/shift-enter entry actions — horizontal scroll, history, and
+    ctrl-o/shift-enter/f1 entry actions — horizontal scroll, history, and
     remapping the entry-action keys are all fzf-native/fixed there.
 
 ==============================================================================

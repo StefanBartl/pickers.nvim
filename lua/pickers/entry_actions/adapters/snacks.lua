@@ -1,5 +1,5 @@
 ---@module 'pickers.entry_actions.adapters.snacks'
----@brief snacks.nvim entry-action registrations: create_file + open_background.
+---@brief snacks.nvim entry-action registrations: create_file + open_background + cheatsheet.
 ---@description
 --- Two-part registration, matching Snacks.picker's own convention: named
 --- actions via `get_actions()` (merged into `opts.actions`), plus separate
@@ -25,6 +25,14 @@ local create_file = require("pickers.entry_actions.create_file")
 local open_background = require("pickers.entry_actions.open_background")
 
 local M = {}
+
+---@internal
+---Open the keymap cheatsheet. Does NOT close the picker -- a snacks picker
+---is a plain Neovim float same as the cheatsheet panel, so it opens on top
+---and hands focus back on close (same reasoning as open_background).
+local function do_cheatsheet()
+  require("pickers.cheatsheet").show()
+end
 
 ---@internal
 ---@param picker any
@@ -64,12 +72,13 @@ function M.get_actions()
   return {
     create_file = do_create_file,
     open_background = do_open_background,
+    cheatsheet = do_cheatsheet,
   }
 end
 
 ---Key -> action-name bindings for `win.list.keys` (bare-string form; the
 ---snacks list window is normal-mode only), honouring `pickers.keys`' resolved
----`create_file`/`open_background` config.
+---`create_file`/`open_background`/`cheatsheet` config.
 ---@return table<string, string> keys
 function M.get_keys()
   local resolved = require("pickers.keys").resolve()
@@ -83,19 +92,22 @@ function M.get_keys()
     keys[key] = "open_background"
   end
 
+  for _, key in ipairs((resolved.cheatsheet or {}).lhs or {}) do
+    keys[key] = "cheatsheet"
+  end
+
   return keys
 end
 
 ---Key -> action-name bindings for `win.input.keys`, in snacks'
 ---mode-qualified form so the actions are reachable while the prompt has focus
----(which is where every picker starts). Modes come from `pickers.keys.ACTIONS`
----(`{ "i", "n" }` for both entry actions).
+---(which is where every picker starts). Modes come from `pickers.keys.ACTIONS`.
 ---@return table<string, { [1]: string, mode: string[] }> keys
 function M.get_input_keys()
   local resolved = require("pickers.keys").resolve()
   local keys = {}
 
-  for _, action in ipairs({ "create_file", "open_background" }) do
+  for _, action in ipairs({ "create_file", "open_background", "cheatsheet" }) do
     local spec = resolved[action]
     if spec then
       for _, key in ipairs(spec.lhs or {}) do

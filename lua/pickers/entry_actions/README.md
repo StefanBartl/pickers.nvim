@@ -1,9 +1,9 @@
 # `pickers.entry_actions`
 
-In-picker "create file/folder" and "open in background" actions, shared
-across telescope.nvim, fzf-lua, and snacks.nvim — the picker-specific
-counterpart to `pickers.engines.*` (which handles *finding* files, not
-keybindings inside an already-open results list).
+In-picker "create file/folder", "open in background", and "keymap
+cheatsheet" actions, shared across telescope.nvim, fzf-lua, and snacks.nvim —
+the picker-specific counterpart to `pickers.engines.*` (which handles
+*finding* files, not keybindings inside an already-open results list).
 
 Not part of `pickers.actions` (that's the `:Pickers` command's scope-dispatch
 layer — `dir`/`files`/`grep` — a different concern).
@@ -19,11 +19,21 @@ extract/
   snacks.lua               item -> path (prefers Snacks.picker.util.path())
 adapters/
   telescope.lua            get_mappings() -> {i={...}, n={...}}
-  fzf.lua                  get_actions()  -> {["ctrl-a"]=fn, ["ctrl-o"]=fn, ["shift-enter"]=fn}
-  snacks.lua                get_actions()     -> {create_file=fn, open_background=fn}
+  fzf.lua                  get_actions()  -> {["ctrl-a"]=fn, ["ctrl-o"]=fn, ["shift-enter"]=fn, ["f1"]=fn}
+  snacks.lua                get_actions()     -> {create_file=fn, open_background=fn, cheatsheet=fn}
                             get_keys()        -> {["<C-a>"]="create_file", ...}   (win.list.keys, normal mode)
                             get_input_keys()  -> {["<C-a>"]={"create_file", mode={"i","n"}}, ...}  (win.input.keys)
 ```
+
+`cheatsheet` (`pickers.cheatsheet`) is a fourth entry action alongside the two
+above: a read-only floating panel listing every currently-bound `pickers.keys`
+action (create_file/open_background included), built from
+`pickers.keys.resolve()` so it always reflects what is actually bound, not
+just DEFAULTS.lua. Unlike create_file/open_background it does not touch the
+selected entry and does not close the picker on telescope/snacks (both are
+plain Neovim floats — the panel just opens on top). fzf-lua is the exception:
+its action table always closes the running fzf process first, so its
+`do_cheatsheet` reopens fzf (`fzf.resume()`) once the panel closes.
 
 ## Usage
 
@@ -58,12 +68,16 @@ require("snacks").setup({
 })
 ```
 
+Once wired, each engine's cheatsheet key (`keys.cheatsheet`, default
+`<C-/>`; fixed to `f1` on fzf-lua — see below) opens the panel from inside
+any open picker.
+
 ## Configuration
 
 Part of the unified `pickers.keys` namespace (see `lua/pickers/keys/`) —
-`create_file`/`open_background` are two of its actions, alongside preview
-scroll and history navigation, sharing one config surface and one master
-`enable` switch:
+`create_file`/`open_background`/`cheatsheet` are three of its actions,
+alongside preview scroll and history navigation, sharing one config surface
+and one master `enable` switch:
 
 ```lua
 require("pickers").setup({
@@ -71,19 +85,22 @@ require("pickers").setup({
     enable = true,
     create_file     = "<C-a>",
     open_background = { "<S-CR>", "<C-o>" },
+    cheatsheet      = "<C-/>",
     -- ...preview_scroll_*/history_* also live here, see docs/keymaps.md
   },
 })
 ```
 
 The adapters above call `require("pickers.keys").resolve()` to read these —
-they don't read `pickers.config` directly. `create_file`/`open_background`
-use Neovim keymap syntax and are honoured by the **telescope and snacks**
-adapters directly. **fzf-lua's `ctrl-a`/`ctrl-o`/`shift-enter` bindings are
-fixed** — fzf-lua's action-table keys are fzf's own bind syntax ("ctrl-a"),
-not Neovim keymap syntax ("<C-a>"), and there is no general, safe way to
-translate one to the other — only `keys.enable` is honoured by the fzf
-adapter.
+they don't read `pickers.config` directly. `create_file`/`open_background`/
+`cheatsheet` use Neovim keymap syntax and are honoured by the **telescope and
+snacks** adapters directly. **fzf-lua's `ctrl-a`/`ctrl-o`/`shift-enter`/`f1`
+bindings are fixed** — fzf-lua's action-table keys are fzf's own bind syntax
+("ctrl-a"), not Neovim keymap syntax ("<C-a>"), and there is no general, safe
+way to translate one to the other — only `keys.enable` is honoured by the fzf
+adapter. `<C-?>` was considered and rejected for the default lhs: Neovim
+resolves it to the same byte (0x7F/DEL) that Backspace sends in many
+terminals, which would fire the cheatsheet on every backspace.
 
 ### `open_background_show`
 

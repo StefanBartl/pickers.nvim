@@ -13,12 +13,15 @@
 --- Snacks list/preview windows are normal mode only, so those entries use the
 --- bare-string binding form; the input window carries the mode-qualified form.
 ---
---- `create_file`/`open_background` are deliberately excluded here — unlike
---- the built-in preview-scroll/history actions, they run pickers.nvim-
---- specific logic and are not auto-patched anywhere (same as the telescope/
---- fzf adapters, which simply don't have them in their lookup tables). See
+--- `create_file`/`open_background`/`cheatsheet` are deliberately excluded
+--- here — unlike the built-in preview-scroll/history actions, they run
+--- pickers.nvim-specific logic and are not auto-patched anywhere (same as the
+--- telescope/fzf adapters, which simply don't have them in their lookup
+--- tables). Without this exclusion `cheatsheet` would fall through to the
+--- default branch below and get bound to a Snacks action literally named
+--- `"cheatsheet"`, which does not exist. See
 --- `pickers.entry_actions.adapters.snacks` for their own `get_actions()`/
---- `get_keys()` (list-window only, matching Snacks.picker's own convention).
+--- `get_keys()`/`get_input_keys()` (matching Snacks.picker's own convention).
 ---
 --- `preview_toggle` is also excluded — snacks' own native action for this is
 --- named "toggle_preview" (reversed word order from pickers.nvim's
@@ -49,7 +52,12 @@ local CONFIRM = { mouse_confirm = "confirm" }
 
 --- Handled elsewhere (pickers.entry_actions, or not applicable to snacks) --
 --- see @description.
-local SKIP = { create_file = true, open_background = true, preview_toggle = true }
+local SKIP = {
+  create_file = true,
+  open_background = true,
+  preview_toggle = true,
+  cheatsheet = true,
+}
 
 ---@param resolved table<string, { lhs: string[], modes: string[] }>
 ---@return { input: { keys: table }, list: { keys: table }, preview: { keys: table } }

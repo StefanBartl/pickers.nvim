@@ -23,5 +23,6 @@
 ---@field vsplit?               Pickers.KeyBinding Open selected entry in a vertical split. Default: "<C-v>"
 ---@field tab?                  Pickers.KeyBinding Open selected entry in a new tab. Default: "<C-t>"
 ---@field mouse_confirm?        Pickers.KeyBinding Double-click a result to open it. Default: "<2-LeftMouse>"
+---@field cheatsheet?           Pickers.KeyBinding Show the in-picker keymap cheatsheet. Default: "<C-/>"
 
 return {}

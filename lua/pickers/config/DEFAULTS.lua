@@ -93,8 +93,8 @@ local M = {
 
   -- Unified in-picker keys namespace: preview scroll + native history
   -- navigation (patched globally into telescope/fzf-lua/snacks) plus the
-  -- create_file/open_background entry actions (merged manually into your own
-  -- engine setup() -- see pickers.entry_actions). See pickers.keys.
+  -- create_file/open_background/cheatsheet entry actions (merged manually
+  -- into your own engine setup() -- see pickers.entry_actions). See pickers.keys.
   --   Each action takes a single lhs, a list of lhs, or `false` to unbind it.
   --   fzf-lua only binds the vertical preview scroll and the fixed ctrl-a/
   --   ctrl-o/shift-enter entry actions (horizontal scroll, history, and
@@ -134,6 +134,14 @@ local M = {
     -- clicks itself, outside keymap.builtin -- same capability-gap class as
     -- its history keys (see pickers.keys.adapters.fzf).
     mouse_confirm = "<2-LeftMouse>",
+    -- Read-only panel listing every bound key in this table (pickers.cheatsheet).
+    -- "<C-/>", not "<C-?>": every picker prompt starts in insert mode, where a
+    -- raw "?" just searches for a literal question mark, and Neovim resolves
+    -- "<C-?>" to the same byte (0x7F/DEL) that Backspace sends in many
+    -- terminals -- that would fire the cheatsheet on every backspace instead.
+    -- fzf-lua's binding is fixed regardless of this value, same class as its
+    -- ctrl-a/ctrl-o/shift-enter entry actions above.
+    cheatsheet = "<C-/>",
   },
 
   -- Native picker-history file(s) under stdpath("data")/pickers.nvim/history.
