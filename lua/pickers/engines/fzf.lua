@@ -101,6 +101,21 @@ local function safe_call(fn, opts)
   if not ok then notify.error("fzf-lua error: " .. tostring(err)) end
 end
 
+---`fzf_opts` fragment carrying a `--header` hint pointing at the cheatsheet
+---key ("f1 cheatsheet"), or `{}` when the action is disabled -- fzf-lua's
+---binding is fixed to f1 regardless of `keys.cheatsheet`'s lhs (see
+---`pickers.entry_actions.adapters.fzf`), so unlike telescope's
+---`results_title` this never needs `pickers.keys.resolve()`.
+---@internal
+---@return table
+local function cheatsheet_header()
+  local ok, cheatsheet = pcall(require, "pickers.cheatsheet")
+  if not ok then return {} end
+  local hint = cheatsheet.hint("fzf-lua")
+  if hint == "" then return {} end
+  return { ["--header"] = hint }
+end
+
 ---`fzf_opts` for `--history`, or nil when history is disabled or scope isn't
 ---"plugin" (under "global"/"patch" the global fzf-lua default already covers
 ---it — see `pickers.history`).
@@ -144,7 +159,7 @@ function M.pick_files(opts)
     prompt = opts.prompt,
     query = opts.query,
     winopts = { on_create = setup_double_esc },
-    fzf_opts = history_fzf_opts("files"),
+    fzf_opts = vim.tbl_extend("force", history_fzf_opts("files") or {}, cheatsheet_header()),
     path_shorten = path_shorten_opt(),
   }
 
@@ -213,7 +228,7 @@ function M.live_grep(opts)
     rg_opts = table.concat(rg_opts_list, " "),
     query = opts.query,
     winopts = { on_create = setup_double_esc },
-    fzf_opts = history_fzf_opts("grep"),
+    fzf_opts = vim.tbl_extend("force", history_fzf_opts("grep") or {}, cheatsheet_header()),
     path_shorten = path_shorten_opt(),
   })
 end
@@ -276,7 +291,12 @@ function M.smart(opts)
     file_icons = false,
     git_icons = false,
     color_icons = false,
-    fzf_opts = vim.tbl_extend("force", { ["--no-sort"] = true }, history_fzf_opts("grep") or {}),
+    fzf_opts = vim.tbl_extend(
+      "force",
+      { ["--no-sort"] = true },
+      history_fzf_opts("grep") or {},
+      cheatsheet_header()
+    ),
     winopts = { on_create = setup_double_esc },
     actions = {
       ["default"] = actions.file_edit_or_qf,
@@ -318,7 +338,12 @@ function M.pick_item(opts)
   if not has_preview then
     fzf.fzf_exec(opts.items, {
       prompt = opts.prompt,
-      fzf_opts = vim.tbl_extend("force", { ["--no-multi"] = true }, history_fzf_opts("item") or {}),
+      fzf_opts = vim.tbl_extend(
+        "force",
+        { ["--no-multi"] = true },
+        history_fzf_opts("item") or {},
+        cheatsheet_header()
+      ),
       winopts = { on_create = setup_double_esc },
       actions = {
         ["default"] = function(selected)
@@ -344,7 +369,7 @@ function M.pick_item(opts)
       ["--no-multi"] = true,
       ["--delimiter"] = "\\t",
       ["--with-nth"] = "1",
-    }, history_fzf_opts("item") or {}),
+    }, history_fzf_opts("item") or {}, cheatsheet_header()),
     preview = function(selected)
       local line = (type(selected) == "table") and selected[1] or selected
       local file = line and line:match("\t(.+)$")
@@ -378,7 +403,7 @@ function M.pick_dir(opts)
     cwd = cwd,
     fd_opts = "--type d --hidden --follow --exclude .git",
     winopts = { on_create = setup_double_esc },
-    fzf_opts = history_fzf_opts("dir"),
+    fzf_opts = vim.tbl_extend("force", history_fzf_opts("dir") or {}, cheatsheet_header()),
     actions = {
       ["default"] = function(selected)
         if not selected or not selected[1] then return end

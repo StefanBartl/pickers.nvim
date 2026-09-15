@@ -20,10 +20,19 @@ extract/
 adapters/
   telescope.lua            get_mappings() -> {i={...}, n={...}}
   fzf.lua                  get_actions()  -> {["ctrl-a"]=fn, ["ctrl-o"]=fn, ["shift-enter"]=fn, ["f1"]=fn}
-  snacks.lua                get_actions()     -> {create_file=fn, open_background=fn, cheatsheet=fn}
+  snacks.lua                get_actions()     -> {create_file={action=fn,desc="Create file/folder"}, ...}
                             get_keys()        -> {["<C-a>"]="create_file", ...}   (win.list.keys, normal mode)
                             get_input_keys()  -> {["<C-a>"]={"create_file", mode={"i","n"}}, ...}  (win.input.keys)
 ```
+
+The snacks adapter's `get_actions()` values carry `desc` (not bare functions) so
+Snacks' own **native** `?` → `toggle_help_input`/`toggle_help_list` help panel
+(bound by default, `Snacks.win:toggle_help()` — reads real buffer keymaps and
+shows each one's `desc`) labels these three the same way `pickers.cheatsheet`
+does, instead of falling back to the raw action name ("create file"). One
+extra, no-effort way the cheatsheet key itself is discoverable on snacks: press
+`?` in the picker's list or input window (normal mode) to see everything that
+is actually bound there, pickers.nvim's own keys included.
 
 `cheatsheet` (`pickers.cheatsheet`) is a fourth entry action alongside the two
 above: a read-only floating panel listing every currently-bound `pickers.keys`

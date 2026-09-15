@@ -442,6 +442,19 @@ In-picker keys (preview scroll + history + entry actions)~
   binding is fixed to f1, same class as its ctrl-a/ctrl-o/shift-enter: >lua
     require("pickers").setup({ keys = { cheatsheet = "<C-/>" } })
 <
+  The key is visible without pressing anything on telescope (results_title)
+  and fzf-lua (--header): a "<C-/> cheatsheet" / "f1 cheatsheet" hint shows
+  the moment the picker opens.  Snacks has no equivalent static slot (its
+  title only composes from a template plus the live {flags} toggle badges —
+  follow/hidden/ignored/modified booleans, e.g. the "f"/"h" badges visible by
+  default since pickers.nvim's own find.hidden/find.follow default to true —
+  nothing to do with a typed query); press "?" there instead (input or list
+  window, normal mode) for Snacks' own native keymap help
+  (Snacks.win:toggle_help(), bound by default) — it reads real buffer
+  keymaps, pickers.nvim's own included, and
+  pickers.entry_actions.adapters.snacks feeds it a matching `desc` for
+  create_file/open_background/cheatsheet.
+
 ==============================================================================
 8. COMPAT COMMANDS                                               *pickers-compat*
 

@@ -213,6 +213,17 @@ would open the cheatsheet on every backspace instead. Like
 way — see `lua/pickers/entry_actions/README.md`. fzf-lua's binding is fixed to
 `f1`, same class as its `ctrl-a`/`ctrl-o`/`shift-enter`.
 
+The key itself is visible without pressing anything: telescope's
+`results_title` and fzf-lua's `--header` show a "`<C-/> cheatsheet`" /
+"`f1 cheatsheet`" hint as soon as a picker opens. Snacks has no equivalent
+static slot (its title only composes from a template plus the live `{flags}`
+toggle badges — see [FEATURES/KEYS.md#cheatsheet](FEATURES/KEYS.md#cheatsheet)
+for what those badges actually are, e.g. the "f"/"h" you may have seen in a
+`cwd files` picker's title — that's `follow`/`hidden` being on by default, not
+a typed query); snacks users get the same information a different way —
+`?` in the picker's input or list window (normal mode) opens Snacks' own
+**native** keymap help.
+
 Each action takes a single lhs, a list of lhs, or `false` to unbind it:
 ```lua
 require("pickers").setup({

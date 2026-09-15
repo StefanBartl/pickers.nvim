@@ -123,5 +123,24 @@ does not close the picker on telescope/snacks (both plain Neovim floats — the
 panel opens on top) but does on fzf-lua, which resumes the picker once the
 panel closes (same shape as `open_background`'s resume, run in reverse).
 
+**Visible without pressing anything:** telescope's `results_title` and
+fzf-lua's `--header` both show a "`<C-/> cheatsheet`" / "`f1 cheatsheet`" hint
+the moment a picker opens — no separate title real estate is spent, both were
+otherwise unused by pickers.nvim's own pickers. Snacks has no equivalent
+static-text slot without pickers.nvim owning the user's layout config (its
+window title only composes from a template plus the live `{flags}` toggle
+badges you may already have seen — `follow`/`hidden`/`ignored`/`modified`
+booleans rendered as single-letter badges, e.g. "f"/"h" when both are on by
+default, `Snacks.picker.config.defaults.toggles`, nothing to do with a typed
+query). Snacks users reach the same information a different, arguably better
+way: **`?`, in the input or list window's normal mode, opens Snacks' own
+native `toggle_help_input`/`toggle_help_list` panel** (bound by default,
+`Snacks.win:toggle_help()`) — it reads every keymap really bound on that
+buffer and shows its `desc`, `pickers.nvim`'s own keys included.
+`pickers.entry_actions.adapters.snacks`'s `get_actions()` feeds
+`create_file`/`open_background`/`cheatsheet` a `desc` pulled straight from
+`pickers.cheatsheet.DESCRIPTIONS` so that native panel and this one never say
+something different for the same key.
+
 - **Module:** [`cheatsheet/init.lua`](../../lua/pickers/cheatsheet/init.lua)
 - **Config:** `keys.cheatsheet` (default `<C-/>`; fixed to `f1` on fzf-lua)

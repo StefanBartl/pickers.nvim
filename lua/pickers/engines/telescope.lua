@@ -59,6 +59,20 @@ local function safe_call(fn, opts)
   if not ok then notify.error("telescope error: " .. tostring(err)) end
 end
 
+---`results_title` hint pointing at the cheatsheet key ("<C-/> cheatsheet"),
+---or nil when the action is disabled/unbound -- telescope has no separate
+---header slot, but `results_title` sits right above the results list, is
+---currently unused by every source in this file, and (unlike `prompt_title`,
+---already `opts.prompt`) is free real estate for this.
+---@internal
+---@return string|nil
+local function cheatsheet_hint()
+  local ok, cheatsheet = pcall(require, "pickers.cheatsheet")
+  if not ok then return nil end
+  local hint = cheatsheet.hint("telescope")
+  return hint ~= "" and hint or nil
+end
+
 ---History opts for `call_opts.history`, or nil when history is disabled.
 ---Always the same value regardless of `fzf_scope` — see `pickers.history`
 ---@brief for why telescope has no per-call/per-scope history isolation.
@@ -108,6 +122,7 @@ function M.pick_files(opts)
 
   local call_opts = {
     prompt_title = opts.prompt,
+    results_title = cheatsheet_hint(),
     default_text = opts.query,
   }
 
@@ -152,6 +167,7 @@ function M.live_grep(opts)
   local exclude = (opts.find or {}).exclude or {}
   safe_call(builtin.live_grep, {
     prompt_title = opts.prompt,
+    results_title = cheatsheet_hint(),
     search_dirs = opts.roots,
     default_text = opts.query,
     additional_args = function()
@@ -191,6 +207,7 @@ function M.smart(opts)
   pickers
     .new({}, {
       prompt_title = opts.prompt or "Smart",
+      results_title = cheatsheet_hint(),
       finder = finders.new_dynamic({
         fn = function(prompt)
           return require("pickers.smart").query(prompt or "", {
@@ -250,6 +267,7 @@ function M.pick_item(opts)
   pickers
     .new({}, {
       prompt_title = opts.prompt,
+      results_title = cheatsheet_hint(),
       finder = finders.new_table({
         results = opts.items,
         entry_maker = function(it)
@@ -295,6 +313,7 @@ function M.pick_dir(opts)
   pickers
     .new({}, {
       prompt_title = opts.prompt or "Folder",
+      results_title = cheatsheet_hint(),
       finder = finders.new_oneshot_job(
         { fd, "--type", "d", "--hidden", "--follow", "--exclude", ".git", ".", cwd },
         {
