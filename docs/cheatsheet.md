@@ -1,5 +1,10 @@
 # pickers.nvim — Cheatsheet
 
+This is the static reference. For the keys bound **inside an already-open
+picker** (preview scroll, history, create file, open in background, …),
+press `<C-/>` (`f1` on fzf-lua) while a picker is open — see
+[FEATURES/KEYS.md](FEATURES/KEYS.md#cheatsheet).
+
 ## :Pickers command syntax
 
 ```

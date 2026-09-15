@@ -10,6 +10,28 @@ a changelog.
 
 ---
 
+[x] **New in-picker keymap cheatsheet (`pickers.cheatsheet`), a fourteenth
+  `keys.*` action.** A read-only floating panel (`ui.kit.viewer`) listing
+  every currently-bound `keys.*` action, built straight from
+  `pickers.keys.resolve()` so a remapped or unbound key shows up as what it
+  actually is, not what `DEFAULTS.lua` says. Wired the same way as
+  `create_file`/`open_background` (entry_actions adapters, merged into your
+  own engine `setup()` — not patched globally, since it runs pickers.nvim
+  logic). Default lhs is `<C-/>`, deliberately NOT the requested `<C-?>`:
+  every picker prompt starts in insert mode, where a raw `?` just searches
+  for a literal question mark, and `nvim_replace_termcodes`/`keytrans()`
+  showed `<C-?>` resolves to the same byte (`0x7F`/`DEL`) that Backspace
+  sends in many terminal setups — binding it would fire the cheatsheet on
+  every backspace instead. `<C-/>` round-trips through Neovim's own key
+  translation as a distinct key. fzf-lua's binding is fixed to `f1` (same
+  class as its `ctrl-a`/`ctrl-o`/`shift-enter`, fzf's own bind syntax isn't
+  translatable from Neovim notation); telescope/snacks are both plain
+  Neovim floats so the panel opens on top without closing the picker, while
+  fzf-lua's action table always closes the running fzf process first, so
+  its adapter reopens fzf (`fzf.resume()`) once the panel closes.
+
+---
+
 [x] **`config/DEFAULTS.lua`'s `repos_dir` is no longer computed on require.**
   Follow-up to the entry below: the call-site fix stopped the early
   `:Pickers` registration from pulling in the full config, but

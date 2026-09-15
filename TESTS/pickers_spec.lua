@@ -788,6 +788,59 @@ do
   config.apply({ keys = { mouse_confirm = "<2-LeftMouse>" } })
 end
 
+-- ── pickers.keys — cheatsheet: <C-/> default, in-picker keymap panel ───────
+do
+  local config = require("pickers.config")
+  local keys = require("pickers.keys")
+
+  local cfg0 = config.get()
+  check("keys: default cheatsheet lhs", cfg0.keys.cheatsheet == "<C-/>")
+
+  local r = keys.resolve(cfg0)
+  check("keys.resolve: cheatsheet lhs", has(r.cheatsheet.lhs, "<C-/>"))
+  check(
+    "keys.resolve: cheatsheet modes i+n",
+    has(r.cheatsheet.modes, "i") and has(r.cheatsheet.modes, "n")
+  )
+
+  -- <C-?> was rejected as the default lhs: Neovim's own key-notation
+  -- translation resolves it to the literal DEL byte (0x7F), the same byte
+  -- terminals commonly send for the physical Backspace key (classic Unix
+  -- `stty erase=^?` default) -- verify the resolvable half of that claim
+  -- (the byte itself) so a future Neovim change would fail this, not just
+  -- take the DEFAULTS.lua comment on faith.
+  local c_question = vim.api.nvim_replace_termcodes("<C-?>", true, true, true)
+  check("keys: <C-?> resolves to the DEL byte (0x7F)", c_question == "\127")
+  local c_slash = vim.api.nvim_replace_termcodes("<C-/>", true, true, true)
+  check("keys: <C-/> does NOT resolve to that same byte", c_slash ~= "\127")
+
+  -- telescope adapter degrades to empty mappings when telescope is absent
+  local tm = keys.telescope_mappings(cfg0)
+  if pcall(require, "telescope.actions") then
+    check("keys.telescope: cheatsheet bound (i)", tm.i["<C-/>"] ~= nil)
+    check("keys.telescope: cheatsheet bound (n)", tm.n["<C-/>"] ~= nil)
+  else
+    check("keys.telescope: cheatsheet unbound (telescope absent)", tm.i["<C-/>"] == nil)
+  end
+
+  -- fzf-lua: cheatsheet is custom pickers.nvim logic, same class as
+  -- create_file/open_background -- must NOT appear in keymap.builtin.
+  local fk = keys.fzf_keymap(cfg0)
+  check("keys.fzf: excludes cheatsheet", fk["<C-/>"] == nil)
+
+  -- snacks adapter: also not part of the generic win() translation (own
+  -- entry_actions concern, same as create_file/open_background).
+  local win = keys.snacks_win(cfg0)
+  check("keys.snacks: win() excludes cheatsheet", win.input.keys["<C-/>"] == nil)
+
+  -- Unbinding via false
+  config.apply({ keys = { cheatsheet = false } })
+  check("keys: cheatsheet unbind", #keys.resolve(config.get()).cheatsheet.lhs == 0)
+
+  -- Restore default for any later blocks relying on it.
+  config.apply({ keys = { cheatsheet = "<C-/>" } })
+end
+
 -- ── pickers.entry_actions — absorbed into pickers.keys, adapters read resolve() ─
 do
   local config = require("pickers.config")
@@ -814,17 +867,42 @@ do
   check("entry_actions.telescope: create_file bound (i)", tm.i["<C-a>"] ~= nil)
   check("entry_actions.telescope: create_file bound (n)", tm.n["<C-a>"] ~= nil)
   check("entry_actions.telescope: open_background bound", tm.i["<S-CR>"] ~= nil)
+  check("entry_actions.telescope: cheatsheet bound (i)", tm.i["<C-/>"] ~= nil)
+  check("entry_actions.telescope: cheatsheet bound (n)", tm.n["<C-/>"] ~= nil)
 
-  -- snacks adapter: get_keys() reads keys.resolve() too.
+  -- snacks adapter: get_keys()/get_input_keys()/get_actions() read
+  -- keys.resolve() too.
   local snacks_adapter = require("pickers.entry_actions.adapters.snacks")
   local sk = snacks_adapter.get_keys()
   check("entry_actions.snacks: create_file key", sk["<C-a>"] == "create_file")
   check("entry_actions.snacks: open_background key", sk["<S-CR>"] == "open_background")
+  check("entry_actions.snacks: cheatsheet key", sk["<C-/>"] == "cheatsheet")
+  local sik = snacks_adapter.get_input_keys()
+  check(
+    "entry_actions.snacks: cheatsheet input key",
+    sik["<C-/>"] ~= nil and sik["<C-/>"][1] == "cheatsheet"
+  )
+  local sa = snacks_adapter.get_actions()
+  check("entry_actions.snacks: cheatsheet action fn", type(sa.cheatsheet) == "function")
 
-  -- fzf adapter: fixed ctrl-a/ctrl-o/shift-enter, gated only by keys.enable.
+  -- fzf adapter: fixed ctrl-a/ctrl-o/shift-enter/f1, gated only by keys.enable
+  -- (cheatsheet's OWN lhs config has no effect on this engine -- see
+  -- pickers.entry_actions.adapters.fzf's @description).
   local fzf_adapter = require("pickers.entry_actions.adapters.fzf")
   local fa = fzf_adapter.get_actions()
   check("entry_actions.fzf: ctrl-a present when enabled", type(fa["ctrl-a"]) == "function")
+  check("entry_actions.fzf: f1 present when enabled", type(fa["f1"]) == "function")
+
+  config.apply({ keys = { cheatsheet = false } })
+  check(
+    "entry_actions.fzf: f1 present even when keys.cheatsheet=false (fixed, not config-driven)",
+    type(fzf_adapter.get_actions()["f1"]) == "function"
+  )
+  check(
+    "entry_actions.telescope: cheatsheet unbound when keys.cheatsheet=false",
+    ts.get_mappings().i["<C-/>"] == nil
+  )
+  config.apply({ keys = { cheatsheet = "<C-/>" } })
 
   config.apply({ keys = { enable = false } })
   check(
@@ -848,6 +926,7 @@ do
       history_back = "<C-p>",
       create_file = "<C-a>",
       open_background = { "<S-CR>", "<C-o>" },
+      cheatsheet = "<C-/>",
     },
   })
   config.apply({ keys = { history_back = "<C-p>" } })
@@ -1425,6 +1504,95 @@ do
 
   package.loaded["ui.kit"] = nil
   package.loaded["pickers.ui.dir_nav_picker"] = nil
+end
+
+-- ── pickers.cheatsheet: lines() reads keys.resolve(), show() drives kit.viewer ─
+do
+  local config = require("pickers.config")
+  package.loaded["pickers.cheatsheet"] = nil
+  local cheatsheet = require("pickers.cheatsheet")
+
+  config.apply({ keys = { enable = true, cheatsheet = "<C-/>", history_back = "<C-p>" } })
+
+  local lines = cheatsheet.lines()
+  local text = table.concat(lines, "\n")
+  check("cheatsheet.lines: shows the bound cheatsheet key", text:find("<C-/>", 1, true) ~= nil)
+  check(
+    "cheatsheet.lines: shows its description",
+    text:find("Show this cheatsheet", 1, true) ~= nil
+  )
+  check(
+    "cheatsheet.lines: shows another bound action (history_back)",
+    text:find("<C-p>", 1, true) ~= nil
+  )
+  check("cheatsheet.lines: footer names q/<Esc>", text:find("q / <Esc>  close", 1, true) ~= nil)
+
+  config.apply({ keys = { history_back = false } })
+  local lines_unbound = cheatsheet.lines()
+  check(
+    "cheatsheet.lines: an unbound action's lhs does not appear",
+    table.concat(lines_unbound, "\n"):find("<C-p>", 1, true) == nil
+  )
+  config.apply({ keys = { history_back = "<C-p>" } })
+
+  local overridden = cheatsheet.lines({ cheatsheet = "f1" })
+  local overridden_text = table.concat(overridden, "\n")
+  check(
+    "cheatsheet.lines: an override wins over keys.resolve()'s lhs (fzf-lua's f1)",
+    overridden_text:find("f1", 1, true) ~= nil and overridden_text:find("<C-/>", 1, true) == nil
+  )
+
+  -- show(): drives ui.kit.viewer and wires on_close through the returned surface.
+  local captured_opts
+  local captured_on_close
+  package.loaded["ui.kit"] = {
+    viewer = function(opts)
+      captured_opts = opts
+      return {
+        on_close = function(_self, fn)
+          captured_on_close = fn
+        end,
+      }
+    end,
+  }
+  package.loaded["pickers.cheatsheet"] = nil
+  local cheatsheet2 = require("pickers.cheatsheet")
+
+  local closed = false
+  cheatsheet2.show({
+    on_close = function()
+      closed = true
+    end,
+  })
+  check("cheatsheet.show: opened kit.viewer", captured_opts ~= nil)
+  check("cheatsheet.show: title", captured_opts and captured_opts.title == "pickers.nvim keymaps")
+  check(
+    "cheatsheet.show: lines match lines()",
+    captured_opts
+      and table.concat(captured_opts.lines, "\n"):find("Show this cheatsheet", 1, true) ~= nil
+  )
+  check(
+    "cheatsheet.show: on_close wired through the surface",
+    type(captured_on_close) == "function"
+  )
+  if captured_on_close then captured_on_close() end
+  check("cheatsheet.show: on_close fires", closed)
+
+  -- Fallback when ui.kit has no viewer(): must not throw, must still call on_close.
+  package.loaded["ui.kit"] = nil
+  package.loaded["pickers.cheatsheet"] = nil
+  local cheatsheet3 = require("pickers.cheatsheet")
+  local fallback_closed = false
+  local ok_fallback = pcall(cheatsheet3.show, {
+    on_close = function()
+      fallback_closed = true
+    end,
+  })
+  check("cheatsheet.show: fallback path does not throw", ok_fallback)
+  check("cheatsheet.show: fallback path still fires on_close", fallback_closed)
+
+  package.loaded["ui.kit"] = nil
+  package.loaded["pickers.cheatsheet"] = nil
 end
 
 -- ── pick_item(): Pickers.Item preview extension, all three engines ─────────

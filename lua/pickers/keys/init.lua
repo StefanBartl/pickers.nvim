@@ -69,6 +69,20 @@
 ---   fzf-lua   → not exposed via `keymap.builtin`; the underlying fzf binary
 ---               handles mouse clicks itself, same capability-gap class as
 ---               its history keys (see `pickers.keys.adapters.fzf`).
+---
+--- `cheatsheet` opens a read-only panel (`pickers.cheatsheet`) listing every
+--- currently-bound action in this table. Defaults to `<C-/>`, NOT `<C-?>`:
+--- every picker prompt starts in insert mode, where a raw `?` just searches
+--- for a literal question mark, and `<C-?>` resolves (in Neovim's own
+--- termcode translation, verified via `keytrans()`) to the same byte
+--- (0x7F / DEL) that Backspace sends in many terminal setups -- binding it
+--- would fire the cheatsheet on every backspace instead. `<C-/>` round-trips
+--- through `keytrans()` as its own distinct key. Like create_file/
+--- open_background, this runs pickers.nvim-specific logic (not a plain
+--- built-in engine action), so it is NOT patched globally by `M.patch()` --
+--- telescope/snacks read `keys.resolve()` directly in their entry_actions
+--- adapters, and fzf-lua's binding is fixed (same class as its ctrl-a/
+--- ctrl-o/shift-enter, see `pickers.entry_actions.adapters.fzf`).
 
 local M = {}
 
@@ -101,6 +115,9 @@ M.ACTIONS = {
   -- never in insert mode (only the prompt buffer is), so "n" is the only
   -- mode that can ever see this lhs.
   mouse_confirm = { default = "<2-LeftMouse>", modes = { "n" } },
+  -- Read-only keymap cheatsheet (pickers.cheatsheet). NOT "<C-?>" -- see the
+  -- @description block above.
+  cheatsheet = { default = "<C-/>", modes = { "i", "n" } },
 }
 
 --- Stable iteration order (pairs() is unordered; adapters and tests want
@@ -120,6 +137,7 @@ M.ORDER = {
   "vsplit",
   "tab",
   "mouse_confirm",
+  "cheatsheet",
 }
 
 --- Normalise one raw config value into a list of lhs strings.

@@ -133,13 +133,14 @@ snacks. See `lua/pickers/keys/`.
 | `vsplit` | `<C-v>` | ✓ | native (`ctrl-v`) | ✓ |
 | `tab` | `<C-t>` | ✓ | native (`ctrl-t`) | ✓ |
 | `mouse_confirm` | `<2-LeftMouse>` | ✓ | native (fzf's own mouse handling) | native + patched |
+| `cheatsheet` | `<C-/>` | ✓ | fixed (`f1`) | ✓ |
 
 fzf-lua is the capability gap: its builtin previewer has no horizontal preview
 scroll, its history is fzf's own `--history` bound to `ctrl-p`/`ctrl-n`
 natively, its entry-action bindings are fixed to `ctrl-a`/`ctrl-o`/
-`shift-enter` (fzf's own bind syntax, not translatable from Neovim keymap
+`shift-enter`/`f1` (fzf's own bind syntax, not translatable from Neovim keymap
 syntax), and mouse clicks are handled by the fzf binary itself, outside
-`keymap.builtin` — none of these five are remappable there. Unmappable
+`keymap.builtin` — none of these are remappable there. Unmappable
 actions are skipped and reported once via `notify.debug` (or surfaced in
 `:checkhealth pickers` for the static, always-true gaps).
 
@@ -199,6 +200,18 @@ require("pickers").setup({
   keys = { preview_toggle = "<M-p>" },
 })
 ```
+
+**`cheatsheet`** opens a read-only panel listing every currently-bound key
+from this table (source-of-truth is `pickers.keys.resolve()`, so a remapped
+or unbound key shows up as what it actually is). Default `<C-/>` — **not**
+`<C-?>`: every picker prompt starts in insert mode, where a raw `?` just
+searches for a literal question mark, and Neovim resolves `<C-?>` to the same
+byte (`0x7F`/`DEL`) that Backspace sends in many terminals, so binding it
+would open the cheatsheet on every backspace instead. Like
+`create_file`/`open_background`, this runs pickers.nvim-specific logic
+(`pickers.cheatsheet`), so it's merged into your own engine `setup()` the same
+way — see `lua/pickers/entry_actions/README.md`. fzf-lua's binding is fixed to
+`f1`, same class as its `ctrl-a`/`ctrl-o`/`shift-enter`.
 
 Each action takes a single lhs, a list of lhs, or `false` to unbind it:
 ```lua

@@ -1,5 +1,5 @@
 ---@module 'pickers.entry_actions.adapters.telescope'
----@brief Telescope entry-action mappings: create_file + open_background.
+---@brief Telescope entry-action mappings: create_file + open_background + cheatsheet.
 ---@description
 --- Single canonical source for these mappings — collapses the pre-existing
 --- duplicate config.telescope.actions.open_badd / config.telescope.open_background
@@ -12,6 +12,15 @@ local create_file = require("pickers.entry_actions.create_file")
 local open_background = require("pickers.entry_actions.open_background")
 
 local M = {}
+
+---@internal
+---Open the keymap cheatsheet. Unlike create_file/open_background, this does
+---NOT close the picker -- telescope's floating window and the cheatsheet's
+---are both plain Neovim floats, so the panel simply opens on top and hands
+---focus back on close.
+local function do_cheatsheet()
+  require("pickers.cheatsheet").show()
+end
 
 ---@internal
 ---@param prompt_bufnr integer
@@ -45,8 +54,9 @@ local function do_open_background(prompt_bufnr)
 end
 
 ---Build the {i={...}, n={...}} mapping table for telescope.setup()'s
----defaults.mappings, honouring `keys.enable`/`keys.create_file`/`keys.open_background`
----(via `pickers.keys.resolve()`, the single source of truth for in-picker keys).
+---defaults.mappings, honouring `keys.enable`/`keys.create_file`/
+---`keys.open_background`/`keys.cheatsheet` (via `pickers.keys.resolve()`, the
+---single source of truth for in-picker keys).
 ---@return table mappings
 function M.get_mappings()
   local resolved = require("pickers.keys").resolve()
@@ -60,6 +70,11 @@ function M.get_mappings()
   for _, key in ipairs((resolved.open_background or {}).lhs or {}) do
     mappings.i[key] = do_open_background
     mappings.n[key] = do_open_background
+  end
+
+  for _, key in ipairs((resolved.cheatsheet or {}).lhs or {}) do
+    mappings.i[key] = do_cheatsheet
+    mappings.n[key] = do_cheatsheet
   end
 
   return mappings

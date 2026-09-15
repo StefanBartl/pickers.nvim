@@ -43,16 +43,16 @@ The part that costs the most and shows the least: preview scrolling, history
 navigation and the entry actions are defined **once** and translated per
 engine, so the same key does the same thing on telescope, fzf-lua and snacks.
 
-Thirteen actions, covering preview scroll (four directions), history back and
+Fourteen actions, covering preview scroll (four directions), history back and
 forward, `create_file`, `open_background`, `preview_toggle`, `split`, `vsplit`,
-`tab`, and `mouse_confirm`.
+`tab`, `mouse_confirm`, and `cheatsheet`.
 
 **fzf-lua is the capability gap, and it is a real one.** Its builtin previewer
 has no horizontal preview scroll; its history is fzf's own `--history` bound to
 `ctrl-p`/`ctrl-n` natively; its entry-action bindings are fixed to
-`ctrl-a`/`ctrl-o`/`shift-enter` in fzf's own bind syntax, which is not
+`ctrl-a`/`ctrl-o`/`shift-enter`/`f1` in fzf's own bind syntax, which is not
 translatable from Neovim keymap notation; and mouse clicks are handled by the
-fzf binary itself, outside `keymap.builtin`. Those five are not remappable
+fzf binary itself, outside `keymap.builtin`. None of those are remappable
 there. Unmappable actions are skipped and reported once through `notify.debug`,
 or surfaced in `:checkhealth pickers` where the gap is static.
 
@@ -103,3 +103,25 @@ translation-table wiring with no logic of its own — the point is a consistent
 lhs (`<C-s>`/`<C-v>`/`<C-t>`) across engines rather than three different ones.
 
 - **Config:** `keys.split`, `keys.vsplit`, `keys.tab`
+
+### Cheatsheet
+
+Opens a read-only floating panel (`pickers.cheatsheet`, via `ui.kit.viewer`)
+listing every currently-bound `keys.*` action, built from
+`pickers.keys.resolve()` so a remapped or unbound key shows up as what it
+actually is, not what DEFAULTS.lua says it should be. `q`/`<Esc>` or losing
+focus closes it.
+
+Not `<C-?>`: every picker prompt starts in insert mode, so a raw `?` just
+searches for a literal question mark, and Neovim resolves `<C-?>` to the same
+byte (`0x7F`/`DEL`) that Backspace sends in many terminals — that would open
+the cheatsheet on every backspace. `<C-/>` round-trips through Neovim's own
+key translation as a distinct key instead.
+
+Runs pickers.nvim-specific logic like `create_file`/`open_background`, so it
+does not close the picker on telescope/snacks (both plain Neovim floats — the
+panel opens on top) but does on fzf-lua, which resumes the picker once the
+panel closes (same shape as `open_background`'s resume, run in reverse).
+
+- **Module:** [`cheatsheet/init.lua`](../../lua/pickers/cheatsheet/init.lua)
+- **Config:** `keys.cheatsheet` (default `<C-/>`; fixed to `f1` on fzf-lua)
