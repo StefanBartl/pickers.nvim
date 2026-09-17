@@ -68,11 +68,78 @@ for `:RepoFiles`/`:PluginsBookFiles`, `bindings.autocmds`' `setup()`-was-
 already-called guard — down to `bindings.setup()`'s and the top-level
 `setup()`'s own enable-flag gating of every sub-registrar.
 
-Deliberately left untested: `pickers.health` (a `:checkhealth` report — one
-`vim.health.*` call per environment probe, nothing it returns to assert on);
-`sources.drives` (shells out to real `Get-PSDrive`/`df`, no stable surface to
-mock without replacing `vim.system` wholesale); and `sources.config`/
-`sources.cwd`, which are one line each with no branch to exercise. The
-`keys.adapters.*` modules have no suite of their own because `pickers.keys`'
-own suite already drives `fzf_keymap`/`telescope_mappings`/`snacks_win`
-straight through to them.
+Deliberately left untested: `sources.config`/`sources.cwd`, which are one
+line each with no branch to exercise. The `keys.adapters.*` modules have no
+suite of their own because `pickers.keys`' own suite already drives
+`fzf_keymap`/`telescope_mappings`/`snacks_win` straight through to them.
+
+## Re-audit (round 2)
+
+A second pass re-checked every file under `lua/pickers` against the list
+above and re-verified each stated skip reason still holds. Most of it does:
+`telescope.nvim`/`fzf-lua`/`snacks.nvim` are still absent as CI/dev siblings
+(only `lib.nvim` and `ui.nvim` are), `sources.config`/`sources.cwd` are still
+one-liners, and no new source files have appeared since round 1. Two
+skip reasons, however, no longer held up:
+
+- **`pickers.health`** — round 1's reasoning ("nothing it returns to assert
+  on") is true for the bulk of the function, but `M.check()` is one
+  unbroken function body: if it raises partway through, the WHOLE report
+  never finishes, and `pcall` can see that even with no return value to
+  check. That turned up a real bug (below), so the file now has two checks:
+  a smoke test that the full report runs to completion when `lib.nvim` is
+  actually present (the normal case), and a pinned regression for the crash.
+- **`sources.drives`** — round 1's reasoning ("shells real `Get-PSDrive`/`df`
+  via `vim.system`, no stable mock surface without replacing the whole
+  process layer") missed that `vim.system` is a plain global, not a
+  `require()`-time upvalue — it can be monkey-patched directly around the
+  call and restored right after, the same technique `open.nvim`'s
+  `keywords_spec` already uses for its own subprocess calls, with no real
+  PowerShell/`df` ever spawned. The suite branches on the REAL command the
+  module built (`powershell` vs `df`) rather than assuming a host, so it is
+  correct on both the Windows dev box and the Ubuntu CI runner. Covered:
+  `is_windows()`, `roots()`'s trim + dedup parsing of both platforms' output
+  and its session cache (a second call does not shell out again), and
+  `get()`'s `Pickers.Source` wrapping (prompt, `.git`/`node_modules`/etc.
+  exclusion globs). Not covered: `wsl_roots()` (only reachable on real WSL,
+  not exercisable from either CI or this Windows dev box) and the "truly
+  zero roots" branch of `get()` — both `windows_roots`' A-Z brute-force
+  fallback and `posix_roots`' fixed candidate list probe REAL directories
+  with `vim.fn.isdirectory()`, so reaching an empty list needs every one of
+  those checks to fail on a live filesystem, which no host this suite runs
+  on can simulate without also breaking the fallback logic itself.
+
+**Two real bugs found, both pinned as `BUG:`-marked regression assertions
+in `pickers_spec.lua` rather than fixed** (neither blocks writing its own
+test, so per the campaign's convention they are left for a decision on how
+to fix rather than changed here):
+
+1. `pickers.health`'s dependency section reports
+   `lib.nvim.bindings.usercmd.composer` missing via an ordinary
+   `vim.health.error()` when absent — the same graceful pattern every other
+   missing-dependency check in the function uses. But the very last line of
+   `M.check()` unconditionally does
+   `require("lib.nvim.bindings.usercmd.composer").checkhealth("Pickers")`,
+   outside any `pcall`, straight into the exact module the section above
+   just reported as absent. On a real "not found" that `require` throws
+   again — this time uncaught — so `:checkhealth pickers` crashes outright
+   instead of finishing the report, in precisely the situation where the
+   user most needs a coherent one.
+2. `pickers.smart.frecency`'s `M.patch()` has no idempotency guard of its
+   own, and the shared `"pickers.nvim"` augroup it registers `BufReadPost`/
+   `VimLeavePre` into is resolved by name through
+   `lib.nvim.bindings.autocmd.group()`, which memoizes the augroup id and
+   hands it back without clearing unless the caller explicitly passes
+   `clear=true` — which `frecency.lua` never does. Calling `pickers.setup()`
+   a second time with `smart.frecency.enabled=true` both times (a config
+   reload, or a plugin manager re-running `config()`) does not replace the
+   handler, it adds a second one: every buffer read gets recorded twice and
+   `VimLeavePre` flushes twice, permanently, for the rest of the session.
+   Verified directly against real autocmd counts via `nvim_get_autocmds`,
+   not simulated.
+
+Test count: 575 → 592 checks (0 fails), stable across repeated runs.
+`luacheck lua plugin TESTS` and `stylua --check lua plugin TESTS` both green
+(`.luacheckrc` gained `vim.system` alongside the existing `vim.g`/`vim.ui`
+allowance, for the same reason: the spec monkeypatches it around a handful
+of cases and restores it right after).
