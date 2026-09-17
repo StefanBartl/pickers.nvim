@@ -1345,6 +1345,69 @@ do
   vim.fn.delete(legacy_dir, "rf")
 end
 
+-- ── pickers.smart.frecency — M.patch() autocmd registration ─────────────────
+-- BufReadPost/VimLeavePre are only ever created here, so this suite is free
+-- to clean them up itself afterwards without touching any other test.
+do
+  package.loaded["pickers.smart.frecency"] = nil
+  local frecency = require("pickers.smart.frecency")
+  local config = require("pickers.config")
+
+  local tmp_dir = vim.fn.tempname()
+  vim.fn.mkdir(tmp_dir, "p")
+  local cfg = vim.tbl_deep_extend(
+    "force",
+    config.get(),
+    { smart = { frecency = { enabled = true, weight = 1.0, dir = tmp_dir } } }
+  )
+
+  -- `nvim_get_autocmds` raises for a group that does not exist yet (this is
+  -- the first real -- non-stubbed -- autocmd this file registers), so the
+  -- lookup is pcall'd, same as lib.nvim's own internal `group_exists()`.
+  ---@param event string
+  local function count(event)
+    local ok, acs = pcall(vim.api.nvim_get_autocmds, { group = "pickers.nvim", event = event })
+    return ok and #acs or 0
+  end
+
+  local before_read, before_leave = count("BufReadPost"), count("VimLeavePre")
+
+  frecency.patch(cfg)
+  check(
+    "frecency.patch: registers one BufReadPost visit-recorder",
+    count("BufReadPost") == before_read + 1
+  )
+  check("frecency.patch: registers one VimLeavePre flush", count("VimLeavePre") == before_leave + 1)
+
+  -- BUG: `M.patch()` has no idempotency guard of its own, and the shared
+  -- "pickers.nvim" augroup it registers into is resolved by NAME through
+  -- `lib.nvim.bindings.autocmd.group()`, which memoizes the id and hands it
+  -- back WITHOUT clearing unless the caller explicitly passes `clear=true`
+  -- -- which frecency.lua never does. So calling `pickers.setup()` a second
+  -- time with `smart.frecency.enabled=true` both times (a config reload,
+  -- or a second plugin-manager `config()` run) does not replace the
+  -- handler, it ADDS a second one: every buffer read gets recorded twice
+  -- and `VimLeavePre` flushes twice, permanently, for the rest of the
+  -- session -- the same "string augroup resolved without clearing" family
+  -- already found in other repos in this campaign.
+  frecency.patch(cfg)
+  check(
+    "BUG: frecency.patch() called twice registers a SECOND BufReadPost "
+      .. "handler instead of staying at one",
+    count("BufReadPost") == before_read + 2,
+    "count=" .. count("BufReadPost")
+  )
+  check(
+    "BUG: ...and a second VimLeavePre flush handler too",
+    count("VimLeavePre") == before_leave + 2,
+    "count=" .. count("VimLeavePre")
+  )
+
+  vim.api.nvim_clear_autocmds({ group = "pickers.nvim", event = { "BufReadPost", "VimLeavePre" } })
+  vim.fn.delete(tmp_dir, "rf")
+  package.loaded["pickers.smart.frecency"] = nil
+end
+
 -- ── pickers.smart.score — pure scorer + merge/rank ──────────────────────────
 do
   local score = require("pickers.smart.score")
@@ -3182,6 +3245,97 @@ do
   config.apply({ collections = {}, repos_dir = vim.fn.getcwd() })
 end
 
+-- ── pickers.sources.drives — cross-platform drives/mount-points source ──────
+-- Round 1 skipped this file: "shells real Get-PSDrive/df via vim.system, no
+-- stable mock surface without replacing the whole process layer". That no
+-- longer holds -- `vim.system` is a plain global, not a `require()`-time
+-- upvalue, so it can be monkey-patched directly around the call (the same
+-- technique open.nvim's keywords_spec already uses for its own subprocess
+-- calls), with no real PowerShell/df ever spawned.
+do
+  package.loaded["pickers.sources.drives"] = nil
+  local drives = require("pickers.sources.drives")
+
+  local is_win = drives.is_windows()
+  check(
+    "drives.is_windows: matches vim.fn.has",
+    is_win == (vim.fn.has("win32") == 1 or vim.fn.has("win64") == 1)
+  )
+
+  -- Branch on the REAL command the module builds (not on an assumed host),
+  -- so this suite is correct whether it runs on the Windows dev box or the
+  -- Ubuntu CI runner. The Windows stdout reuses the actual cwd's own drive
+  -- letter and the POSIX one reuses "/" -- both are guaranteed to exist as
+  -- real directories, since `isdirectory()` still runs for real against them.
+  local win_drive = (vim.uv.cwd() or vim.fn.getcwd()):match("^(%a:)") or "C:"
+
+  local orig_system = vim.system
+  local seen_cmd
+  local next_stdout = ""
+  vim.system = function(cmd, _opts, cb)
+    seen_cmd = cmd
+    vim.schedule(function()
+      cb({ stdout = next_stdout })
+    end)
+  end
+
+  -- Deliberately messy: trailing whitespace and a duplicate entry, so the
+  -- trim + dedup steps in windows_roots/posix_roots are actually exercised,
+  -- not just given already-clean input.
+  if is_win then
+    next_stdout = win_drive .. "\\  \r\n" .. win_drive .. "\\\r\n"
+  else
+    next_stdout = "Mounted on\n/   \n/\n"
+  end
+
+  local got
+  drives.roots(function(r)
+    got = r
+  end)
+  vim.wait(2000, function()
+    return got ~= nil
+  end)
+
+  check("drives.roots: shells out to the platform's own tool", seen_cmd ~= nil)
+  check(
+    "drives.roots: picks powershell on Windows, df elsewhere",
+    (is_win and seen_cmd[1] == "powershell") or (not is_win and seen_cmd[1] == "df")
+  )
+  check("drives.roots: parses at least one root", got ~= nil and #got >= 1, vim.inspect(got))
+  check(
+    "drives.roots: a duplicate line collapses to one entry",
+    got ~= nil and #got == 1,
+    "#=" .. tostring(got and #got)
+  )
+
+  -- Session cache: "drives don't change during a session" (module comment)
+  -- -- a second call must be served from the cache, not shell out again.
+  seen_cmd = nil
+  local got2
+  drives.roots(function(r)
+    got2 = r
+  end)
+  check("drives.roots: second call is served synchronously (cached)", got2 ~= nil)
+  check("drives.roots: a cache hit does not shell out again", seen_cmd == nil)
+  check("drives.roots: cached result is the same table", got2 == got)
+
+  -- M.get(): the cached roots become a Pickers.Source with the expected
+  -- prompt and noise-exclusion globs.
+  local source
+  drives.get({}, function(s)
+    source = s
+  end)
+  check("drives.get: wraps the cached roots", source ~= nil and #source.roots == #got)
+  check("drives.get: sets the All Drives prompt", source ~= nil and source.prompt == "All Drives> ")
+  check(
+    "drives.get: excludes .git via additional_args",
+    source ~= nil and has(source.additional_args, "!.git/")
+  )
+
+  vim.system = orig_system
+  package.loaded["pickers.sources.drives"] = nil
+end
+
 -- ── pickers.ui.action_picker — ui.kit.select, vim.ui.select fallback ────────
 -- Mirrors the ui.dir_nav_picker / entry_actions.create_file kit.input suites'
 -- package.loaded["ui.kit"] stubbing convention.
@@ -3635,6 +3789,56 @@ do
     package.loaded[name] = mod
   end
   package.loaded["pickers.bindings"] = nil
+end
+
+-- ── pickers.health — :checkhealth pickers ────────────────────────────────────
+-- Round 1 skipped this file outright ("a pure :checkhealth report, nothing
+-- it returns to assert on") -- true for most of it, but `M.check()` is a
+-- single unbroken function body, so a raised error partway through still
+-- means the WHOLE report never finishes, which is something `pcall` can see
+-- even with nothing returned. Real `vim.health.*` (Neovim 0.10+) is a plain
+-- printer outside an actual `:checkhealth` buffer too, so it needs no stub.
+do
+  package.loaded["pickers.health"] = nil
+  local health = require("pickers.health")
+
+  -- Smoke test: with lib.nvim actually present (a real CI/dev sibling), the
+  -- full report -- dependencies, engines, CLI tools, config, images,
+  -- collections, declared tools -- runs to completion without raising. This
+  -- is the path every real, correctly-installed user takes.
+  local ok_smoke = pcall(health.check)
+  check("health.check: does not raise when lib.nvim is fully present", ok_smoke)
+
+  -- BUG: the dependency section's "not found" branch for
+  -- lib.nvim.bindings.usercmd.composer (line ~32) reports it missing via an
+  -- ordinary `vim.health.error()` and carries on -- the same graceful
+  -- pattern every other missing-dependency check in this function uses. But
+  -- the very last line of `M.check()` unconditionally does
+  -- `require("lib.nvim.bindings.usercmd.composer").checkhealth("Pickers")`,
+  -- OUTSIDE any pcall, calling straight into the exact module the section
+  -- above just reported as absent. On a real "not found" that require
+  -- throws again -- this time uncaught -- so `:checkhealth pickers` crashes
+  -- outright instead of finishing the report, in precisely the situation
+  -- where the user most needs a coherent one. Same "health.lua's
+  -- dependency-missing branch calls into the missing dependency
+  -- unconditionally afterwards" family already found in four other repos.
+  local prev_loaded = package.loaded["lib.nvim.bindings.usercmd.composer"]
+  package.loaded["lib.nvim.bindings.usercmd.composer"] = nil
+  package.preload["lib.nvim.bindings.usercmd.composer"] = function()
+    error("simulated: module not found")
+  end
+
+  local ok_missing = pcall(health.check)
+  check(
+    "BUG: health.check() crashes (instead of finishing the report) when "
+      .. "lib.nvim.bindings.usercmd.composer is missing, even though the "
+      .. "earlier dependency check already reported it as missing",
+    not ok_missing
+  )
+
+  package.preload["lib.nvim.bindings.usercmd.composer"] = nil
+  package.loaded["lib.nvim.bindings.usercmd.composer"] = prev_loaded
+  package.loaded["pickers.health"] = nil
 end
 
 -- ── pickers (init.lua) — setup(): sets the flag, wires opt-in patches ───────

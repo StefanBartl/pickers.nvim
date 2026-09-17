@@ -3,9 +3,11 @@ std = "luajit"
 read_globals = { "vim" }
 
 -- pickers.nvim intentionally writes plugin-load guards to vim.g.* — allow it.
--- The spec suite monkeypatches vim.ui.{select,input} around single cases,
--- restoring the original right after — allow writing that field too.
-globals = { "vim.g", "vim.ui" }
+-- The spec suite monkeypatches vim.ui.{select,input} and vim.system around
+-- single cases, restoring the original right after — allow writing those
+-- fields too (vim.system: pickers.sources.drives' real Get-PSDrive/df calls,
+-- stubbed out so no subprocess actually runs).
+globals = { "vim.g", "vim.ui", "vim.system" }
 
 -- The codebase favours readability over an 80/120 column cap.
 max_line_length = false
