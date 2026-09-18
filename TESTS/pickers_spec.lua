@@ -1563,7 +1563,11 @@ do
   local create_file = require("pickers.entry_actions.create_file")
 
   create_file.run(dir)
-  vim.wait(50) -- M.run schedules the prompt
+  -- M.run schedules the prompt; wait for it to have been asked rather than
+  -- for a stopwatch, the way when_loaded's scheduled fallback below does.
+  vim.wait(500, function()
+    return captured_title ~= nil
+  end)
 
   check(
     "entry_actions.create_file: kit.input was asked",
