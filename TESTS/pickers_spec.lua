@@ -2752,6 +2752,20 @@ do
     vim.fn.isdirectory(aliases.root()) == 1
   )
 
+  -- Both git-resolver branches derive their answer from `vim.uv.cwd()`, and
+  -- `getcwd(3)` hands back the path with every symlink already resolved. On
+  -- macOS the per-user temp dir sits behind the /var → /private/var symlink,
+  -- so `tempname()` says "/var/folders/…" while the resolver — correctly and
+  -- consistently — says "/private/var/folders/…". Two spellings of one
+  -- directory: the resolver is stable, the comparison was the naive half.
+  -- Resolve both sides before comparing; the assertion still tells `repo`
+  -- apart from `repo/sub` and from `repo/.git`, which is what it is for.
+  ---@param path string
+  ---@return string
+  local function real(path)
+    return vim.fs.normalize(vim.uv.fs_realpath(path) or path)
+  end
+
   local orig_cwd = vim.uv.cwd()
   local base = vim.fn.tempname()
   vim.fn.mkdir(base .. "/repo/.git", "p")
@@ -2760,7 +2774,7 @@ do
   local found = aliases.git()
   check(
     "depth_aliases: git resolver finds the upward .git",
-    vim.fs.normalize(found) == vim.fs.normalize(base .. "/repo"),
+    real(found) == real(base .. "/repo"),
     tostring(found)
   )
 
@@ -2770,7 +2784,7 @@ do
   local fallback = aliases.git()
   check(
     "depth_aliases: git resolver falls back to cwd without a repo",
-    vim.fs.normalize(fallback) == vim.fs.normalize(no_git),
+    real(fallback) == real(no_git),
     tostring(fallback)
   )
 
