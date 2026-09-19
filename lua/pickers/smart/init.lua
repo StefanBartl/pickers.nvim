@@ -43,10 +43,11 @@ end
 ---Run a combined grep + find search for `query` and return the ranked items.
 ---@param query string
 ---@param opts  { roots: string[], find: Pickers.FindOpts, additional_args?: string[] }
----@return Pickers.Smart.Item[]
+---@return Pickers.Smart.Item[] items
+---@return string[] problems  Non-empty when a fd/rg run failed, timed out, or was killed (ERR-11) -- an engine adapter MAY surface this; an empty `items` with empty `problems` is a real zero-match query.
 function M.query(query, opts)
   local sm = M.config()
-  local files, greps = require("pickers.smart.search").collect({
+  local files, greps, problems = require("pickers.smart.search").collect({
     roots = opts.roots,
     query = query or "",
     find = opts.find,
@@ -67,7 +68,7 @@ function M.query(query, opts)
     frecency = require("pickers.smart.frecency").lookup(cfg, abspaths)
   end
 
-  return require("pickers.smart.score").rank(
+  local ranked = require("pickers.smart.score").rank(
     query or "",
     files,
     greps,
@@ -76,6 +77,7 @@ function M.query(query, opts)
     frecency,
     sm.dedup_grep_rows
   )
+  return ranked, problems
 end
 
 return M

@@ -85,9 +85,39 @@ function M.rg_args(find, extra, query)
   return args
 end
 
+---Classify a finished (or failed) `vim.system` run as a problem string, or
+---nil for a normal outcome -- including a tool's own "no matches" exit code,
+---which is not an error. Lets `M.collect` tell "empty because nothing
+---matched" apart from "empty (or truncated) because the run itself broke"
+---(ERR-11): a killed-at-timeout or non-zero run currently looks identical to
+---a real zero-match query to every caller above this function.
+---@internal
+---@param tool string
+---@param root string
+---@param ok boolean               pcall status around the spawn+wait
+---@param res vim.SystemCompleted|nil
+---@param benign_code integer|nil  an extra exit code that is not an error (rg: 1 = no matches)
+---@return string|nil
+local function classify_run(tool, root, ok, res, benign_code)
+  if not ok then return tool .. " failed to run in " .. root .. ": " .. tostring(res) end
+  if not res then return tool .. " produced no result in " .. root end
+  if res.signal and res.signal ~= 0 then
+    return tool
+      .. " was killed (signal "
+      .. res.signal
+      .. ") in "
+      .. root
+      .. " -- results may be truncated"
+  end
+  if res.code ~= 0 and res.code ~= benign_code then
+    return tool .. " exited " .. res.code .. " in " .. root
+  end
+  return nil
+end
+
 ---Run fd + rg across every root and return the merged raw candidates.
 ---@param opts { roots: string[], query: string, find: Pickers.FindOpts, additional_args?: string[], timeout?: integer }
----@return Pickers.Smart.File[] files, Pickers.Smart.Grep[] greps
+---@return Pickers.Smart.File[] files, Pickers.Smart.Grep[] greps, string[] problems  Empty `problems` means every run finished cleanly (an empty `files`/`greps` is then a real "no matches", not a broken run) -- see `classify_run`.
 function M.collect(opts)
   local roots = opts.roots or { uv.cwd() or "." }
   local query = opts.query or ""
@@ -99,6 +129,7 @@ function M.collect(opts)
 
   local files = {} ---@type Pickers.Smart.File[]
   local greps = {} ---@type Pickers.Smart.Grep[]
+  local problems = {} ---@type string[]
 
   for _, root in ipairs(roots) do
     root = vim.fs.normalize(root)
@@ -110,6 +141,8 @@ function M.collect(opts)
       local ok, res = pcall(function()
         return vim.system(cmd, spawn_env.apply({ cwd = root, text = true })):wait(timeout)
       end)
+      local problem = classify_run("fd", root, ok, res)
+      if problem then problems[#problems + 1] = problem end
       if ok and res and res.stdout then
         for line in res.stdout:gmatch("[^\r\n]+") do
           local rel = vim.fs.normalize(line) -- forward slashes on every OS
@@ -131,6 +164,9 @@ function M.collect(opts)
       local ok, res = pcall(function()
         return vim.system(cmd, spawn_env.apply({ cwd = root, text = true })):wait(timeout)
       end)
+      -- rg's own exit code 1 means "ran fine, matched nothing" -- benign.
+      local problem = classify_run("rg", root, ok, res, 1)
+      if problem then problems[#problems + 1] = problem end
       if ok and res and res.stdout then
         for line in res.stdout:gmatch("[^\r\n]+") do
           -- vimgrep: file:line:col:text
@@ -153,7 +189,7 @@ function M.collect(opts)
     end
   end
 
-  return files, greps
+  return files, greps, problems
 end
 
 return M
