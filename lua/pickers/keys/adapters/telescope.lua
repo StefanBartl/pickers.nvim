@@ -16,9 +16,16 @@
 ---                           mouse mapping at all)
 ---
 --- `mappings()` builds a `defaults.mappings` table (`{ i = {...}, n = {...} }`);
---- `patch()` installs it via `telescope.setup()`. Telescope deep-merges
---- `defaults.mappings`, so a later user `setup()` keeps ours as long as it does
---- not rebind the same lhs.
+--- `patch()` installs it via `telescope.setup()`. Telescope's own `setup()`
+--- does NOT deep-merge `defaults.mappings` -- unlike `layout_config`/
+--- `history`/`cache_picker`/`preview`, it is a plain `first_non_null()` pick
+--- (see `telescope.config`'s `get()`), so a second `setup()` call replaces the
+--- whole table wholesale. `patch()` therefore reads the CURRENT
+--- `telescope.config.values.mappings` (which already reflects whatever the
+--- user's own prior `setup()` call configured) and deep-merges its own
+--- additions into it itself, before calling `setup()` -- the user's lhs wins
+--- on conflict, so their own `defaults.mappings` block is never discarded
+--- (LUA-90).
 
 local M = {}
 
@@ -100,15 +107,26 @@ function M.mappings(resolved)
   return out
 end
 
---- Install the mappings globally via `telescope.setup()`. No-op when telescope
---- is not installed.
+--- Install the mappings globally via `telescope.setup()`, deep-merged on top
+--- of whatever is already in `telescope.config.values.mappings` (the user's
+--- own prior `setup()` call, if any) -- never replacing it wholesale, since
+--- telescope's own `setup()` does not deep-merge this key itself (see the
+--- module doc above). No-op when telescope is not installed.
 ---@param resolved table<string, { lhs: string[], modes: string[] }>
 function M.patch(resolved)
   local ok = pcall(require, "telescope")
   if not ok then return end
 
   pcall(function()
-    require("telescope").setup({ defaults = { mappings = M.mappings(resolved) } })
+    local current = (require("telescope.config").values or {}).mappings or {}
+    local ours = M.mappings(resolved)
+    -- The user's own lhs wins on conflict -- pickers.nvim only fills in
+    -- additions, it never fights over a key the user already bound.
+    local merged = {
+      i = vim.tbl_extend("keep", current.i or {}, ours.i),
+      n = vim.tbl_extend("keep", current.n or {}, ours.n),
+    }
+    require("telescope").setup({ defaults = { mappings = merged } })
   end)
 end
 
