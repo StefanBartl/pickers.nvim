@@ -1,5 +1,5 @@
 ---@module 'pickers.sources.drives'
----@brief Source: all mount points / drive letters (cross-platform, session-cached).
+---@brief Source: all mount points / drive letters (cross-platform, TTL-cached).
 ---@description
 --- Platform detection order:
 ---   1. lib.nvim.cross platform helpers (if available)
@@ -51,8 +51,16 @@ local function run_captured(cmd, cb)
   end)
 end
 
--- Module-level cache — drives don't change during a session.
-local _cache = nil ---@type string[]|nil
+-- A session-length cache would leave a drive plugged in (or removed) mid-
+-- session invisible until Neovim restarts -- PERF-42 requires a defined
+-- invalidation point. A TTL re-probes periodically instead of caching
+-- forever, while still sparing a PowerShell/df spawn on every
+-- `:Pickers drives` call within that window.
+local DRIVES_CACHE_TTL_SECONDS = 60
+local _cache_ns = require("lib.nvim.cache.memory").namespace(
+  "pickers.nvim.drives",
+  { ttl = DRIVES_CACHE_TTL_SECONDS }
+)
 
 -- ── Platform detection ────────────────────────────────────────────────────────
 
@@ -151,14 +159,16 @@ end
 ---@see M.get
 ---@param cb fun(roots: string[])
 local function get_roots(cb)
-  if _cache then
-    cb(_cache)
+  local cached = _cache_ns.get("roots")
+  if cached then
+    cb(cached)
     return
   end
 
   local function done(raw)
-    _cache = require("lib.lua.tables").dedup_list(raw)
-    cb(_cache)
+    local deduped = require("lib.lua.tables").dedup_list(raw)
+    _cache_ns.set("roots", deduped)
+    cb(deduped)
   end
 
   if is_windows() then
@@ -182,14 +192,21 @@ function M.is_windows()
   return is_windows()
 end
 
----Every mount point / drive letter for this platform, session-cached.
----Asynchronous because discovery shells out (PowerShell on Windows, `df` on
----POSIX) -- see `run_captured`'s note on why that must not block.
+---Every mount point / drive letter for this platform, cached for
+---`DRIVES_CACHE_TTL_SECONDS` (PERF-42). Asynchronous because discovery shells
+---out (PowerShell on Windows, `df` on POSIX) -- see `run_captured`'s note on
+---why that must not block.
 ---Exported so a source that needs a "search everything" root list does not
 ---have to duplicate the platform detection.
 ---@param cb fun(roots: string[])
 function M.roots(cb)
   get_roots(cb)
+end
+
+---Force the next `M.roots()`/`M.get()` call to re-probe rather than serve
+---the cached list, ahead of the TTL. No-op if nothing was cached yet.
+function M.clear()
+  _cache_ns.clear()
 end
 
 ---The drive/mount-point source, as `pickers.sources` expects it.
