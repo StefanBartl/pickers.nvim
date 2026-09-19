@@ -21,6 +21,12 @@
 ---
 --- Call order stays irrelevant for correctness -- both engines deep-merge the
 --- tables involved (see `pickers.keys.patch` and `pickers.history.patch`).
+---
+--- lib.nvim is a hard dependency (see pickers.bindings.util); this requires
+--- lib.nvim.bindings.autocmd the same way, with no standalone fallback
+--- (LUA-01).
+
+local lib_autocmd = require("lib.nvim.bindings.autocmd")
 
 local M = {}
 
@@ -63,17 +69,11 @@ function M.run(module, fn)
     fn()
   end
 
-  local ok, lib_autocmd = pcall(require, "lib.nvim.bindings.autocmd")
-  if ok and type(lib_autocmd) == "table" and type(lib_autocmd.create) == "function" then
-    id = lib_autocmd.create("User", on_lazy_load, {
-      group = "pickers.nvim",
-      pattern = "LazyLoad",
-      desc = "pickers.nvim: patch " .. module .. " once lazy.nvim loads it",
-    })
-  else
-    -- lib-docs: fallback
-    id = vim.api.nvim_create_autocmd("User", { pattern = "LazyLoad", callback = on_lazy_load })
-  end
+  id = lib_autocmd.create("User", on_lazy_load, {
+    group = "pickers.nvim",
+    pattern = "LazyLoad",
+    desc = "pickers.nvim: patch " .. module .. " once lazy.nvim loads it",
+  })
 end
 
 return M

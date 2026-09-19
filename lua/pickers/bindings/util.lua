@@ -1,25 +1,28 @@
 ---@module 'pickers.bindings.util'
 ---@brief Shared helpers for registering keymaps and user-commands.
+---@description
+--- lib.nvim is a hard dependency of this plugin (plugin/pickers.lua bare-
+--- requires lib.nvim.bindings.usercmd.composer at load time, so pickers.nvim
+--- cannot load at all without it) -- these two wrappers require it the same
+--- way every other binding module here does, with no standalone fallback
+--- to hold consistent (LUA-01).
+
+local lib_map = require("lib.nvim.bindings.keymap")
+local lib_usercmd = require("lib.nvim.bindings.usercmd")
 
 local M = {}
 
----Register a single normal-mode keymap, preferring lib.nvim.bindings.keymap if available.
+---Register a single normal-mode keymap via lib.nvim.bindings.keymap.
 ---@param lhs  string|nil
 ---@param rhs  function
 ---@param desc string
 function M.map(lhs, rhs, desc)
   if not lhs then return end
-  local ok, lib_map = pcall(require, "lib.nvim.bindings.keymap")
-  if ok and vim.is_callable(lib_map) then
-    lib_map("n", lhs, rhs, { desc = desc })
-  else
-    vim.keymap.set("n", lhs, rhs, { desc = desc, silent = true })
-  end
+  lib_map("n", lhs, rhs, { desc = desc })
 end
 
----Create a user command with consistent defaults, preferring lib.nvim.bindings.usercmd
----(which wraps the callback in pcall + notify). Falls back to the raw API when
----lib.nvim is unavailable so pickers still works standalone.
+---Create a user command with consistent defaults via lib.nvim.bindings.usercmd
+---(which wraps the callback in pcall + notify).
 ---@param name     string
 ---@param fn       fun(opts: table)
 ---@param desc     string
@@ -28,12 +31,7 @@ end
 function M.usercmd(name, fn, desc, nargs, complete)
   local opts = { desc = desc, nargs = nargs or "*" }
   if complete then opts.complete = complete end
-  local ok, lib_usercmd = pcall(require, "lib.nvim.bindings.usercmd")
-  if ok and type(lib_usercmd) == "table" and type(lib_usercmd.create) == "function" then
-    lib_usercmd.create(name, fn, opts)
-  else
-    vim.api.nvim_create_user_command(name, fn, opts)
-  end
+  lib_usercmd.create(name, fn, opts)
 end
 
 ---Convert snake_case name to PascalCase for compat command names.
