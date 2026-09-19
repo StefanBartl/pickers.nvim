@@ -155,6 +155,9 @@ end
 
 composer.register_type("PICKERS_TAB_GROUP", {
   desc = "a pickers.tabs group name",
+  validate = function(raw)
+    return true, raw, nil
+  end,
   complete = function()
     return require("pickers.tabs").names()
   end,
