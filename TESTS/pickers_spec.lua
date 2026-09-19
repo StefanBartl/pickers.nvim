@@ -1091,6 +1091,263 @@ do
   vim.fn.delete(path)
 end
 
+-- ── pickers.sources.github — gh argv + JSON -> items (pure) ─────────────────
+do
+  local gh = require("pickers.sources.github")
+  local argv = gh.command("issue", "all", 5)
+  check(
+    "github.command: gh issue list",
+    argv[1] == "gh" and argv[2] == "issue" and argv[3] == "list"
+  )
+  check("github.command: state + limit", has(argv, "all") and has(argv, "5"))
+  check("github.command: pr", gh.command("pr")[2] == "pr")
+  local json = vim.json.encode({
+    {
+      number = 12,
+      title = "Broken thing",
+      state = "OPEN",
+      url = "https://x/12",
+      author = { login = "ann" },
+    },
+    { number = 7, title = "Old", state = "CLOSED", url = "https://x/7" },
+    { title = "no number, skipped" },
+  })
+  local items, err = gh.parse(json, "issue")
+  check("github.parse: two items", items ~= nil and #items == 2 and err == nil)
+  check(
+    "github.parse: text carries number/state/title/author",
+    items[1].text:find("#12", 1, true) ~= nil
+      and items[1].text:find("open", 1, true) ~= nil
+      and items[1].text:find("@ann", 1, true) ~= nil,
+    items[1].text
+  )
+  check(
+    "github.parse: fields",
+    items[2].number == 7 and items[2].url == "https://x/7" and items[2].kind == "issue"
+  )
+  local bad, bad_err = gh.parse("not json", "pr")
+  check("github.parse: bad JSON reported", bad == nil and bad_err ~= nil)
+
+  -- pick() hands the items to the given engine's pick_item.
+  local got
+  local fake_engine = {
+    pick_item = function(opts)
+      got = opts
+    end,
+  }
+  local orig_fetch = gh.fetch
+  gh.fetch = function(_, _, cb)
+    cb(items, nil)
+  end
+  gh.pick("issue", "open", fake_engine)
+  gh.fetch = orig_fetch
+  check(
+    "github.pick: prompt + items to pick_item",
+    got ~= nil and got.prompt:find("Issues", 1, true) ~= nil and #got.items == 2
+  )
+end
+
+-- ── pickers.browse — directory entries + the picker flow on a fake engine ───
+do
+  local browse = require("pickers.browse")
+  local broot = vim.fn.tempname()
+  vim.fn.mkdir(broot .. "/sub", "p")
+  vim.fn.writefile({ "x" }, broot .. "/b.txt")
+  vim.fn.writefile({ "y" }, broot .. "/A.lua")
+  vim.fn.writefile({ "z" }, broot .. "/.hidden")
+
+  local entries = browse.entries(broot)
+  local texts = vim.tbl_map(function(e)
+    return e.text
+  end, entries)
+  check(
+    "browse.entries: .. first, dirs, files (case-insensitive), actions last",
+    texts[1] == "../"
+      and texts[2] == "sub/"
+      and texts[3] == ".hidden"
+      and texts[4] == "A.lua"
+      and texts[5] == "b.txt"
+      and texts[6] == "[+] new file…",
+    vim.inspect(texts)
+  )
+  check(
+    "browse.entries: file entries carry `file` for the preview",
+    entries[5].file == entries[5].path
+  )
+  check(
+    "browse.entries: hidden = false drops dotfiles",
+    #browse.entries(broot, { hidden = false, actions = false }) == 4
+  )
+  check("browse.entries: unreadable dir -> empty", #browse.entries(broot .. "/nope") == 0)
+
+  -- The flow: pick a dir -> reopened there; pick a file -> edited.
+  local prompts, last_opts = {}, nil
+  local fake_engine = {
+    pick_item = function(opts)
+      prompts[#prompts + 1] = opts.prompt
+      last_opts = opts
+    end,
+  }
+  browse.open(broot, { engine_mod = fake_engine })
+  check(
+    "browse.open: prompt names the dir",
+    #prompts == 1 and prompts[1]:find("Browse", 1, true) ~= nil
+  )
+  local sub
+  for _, e in ipairs(last_opts.items) do
+    if e.text == "sub/" then sub = e end
+  end
+  last_opts.on_select(sub)
+  check(
+    "browse.open: picking a dir reopens there",
+    #prompts == 2 and last_opts.items[1].text == "../"
+  )
+  last_opts.on_select(last_opts.items[1])
+  check("browse.open: .. goes back up", #prompts == 3)
+  local file
+  for _, e in ipairs(last_opts.items) do
+    if e.text == "b.txt" then file = e end
+  end
+  last_opts.on_select(file)
+  check(
+    "browse.open: picking a file edits it",
+    vim.fs.normalize(vim.api.nvim_buf_get_name(0)) == vim.fs.normalize(broot .. "/b.txt")
+  )
+
+  -- Operations.
+  check(
+    "browse.new_dir",
+    browse.new_dir(broot .. "/made") and vim.fn.isdirectory(broot .. "/made") == 1
+  )
+  local ok_r = browse.rename(broot .. "/b.txt", broot .. "/c.txt")
+  check(
+    "browse.rename",
+    ok_r
+      and vim.fn.filereadable(broot .. "/c.txt") == 1
+      and vim.fn.filereadable(broot .. "/b.txt") == 0
+  )
+  check(
+    "browse.rename: buffer follows",
+    vim.fs.normalize(vim.api.nvim_buf_get_name(0)) == vim.fs.normalize(broot .. "/c.txt")
+  )
+  local ok_r2, err_r2 = browse.rename(broot .. "/c.txt", broot .. "/A.lua")
+  check("browse.rename: refuses to overwrite", ok_r2 == false and err_r2 ~= nil)
+  vim.cmd("enew!")
+  check(
+    "browse.delete: file",
+    browse.delete(broot .. "/c.txt") and vim.fn.filereadable(broot .. "/c.txt") == 0
+  )
+  check(
+    "browse.delete: dir",
+    browse.delete(broot .. "/made") and vim.fn.isdirectory(broot .. "/made") == 0
+  )
+  vim.fn.delete(broot, "rf")
+end
+
+-- ── pickers.tabs — groups, switch, query carry-over, title suffix ────────────
+do
+  local tabs = require("pickers.tabs")
+  local config = require("pickers.config")
+  check("tabs: default groups", has(tabs.names(), "default") and has(tabs.names(), "git"))
+  config.apply({ tabs = { groups = { mine = { "cwd files", "builtin buffers" }, git = false } } })
+  check(
+    "tabs: apply adds a group and drops one",
+    has(tabs.names(), "mine") and not has(tabs.names(), "git")
+  )
+  check("tabs: unknown group -> nil", tabs.targets("nope") == nil)
+
+  -- command.handle stubbed: record the fargs + query each run gets.
+  local command = require("pickers.command")
+  local orig_handle = command.handle
+  local runs = {}
+  command.handle = function(opts)
+    runs[#runs + 1] = { fargs = opts.fargs, query = opts.query }
+  end
+  check("tabs: no state before open", tabs.current() == nil and tabs.title_suffix() == "")
+  tabs.open("mine")
+  check(
+    "tabs.open: runs the first target",
+    #runs == 1 and table.concat(runs[1].fargs, " ") == "cwd files" and runs[1].query == nil
+  )
+  check("tabs: title suffix", tabs.title_suffix() == " [1/2 cwd files]", tabs.title_suffix())
+  check("tabs.next: switches", tabs.next("foo") == true)
+  vim.wait(50, function()
+    return #runs == 2
+  end)
+  check(
+    "tabs.next: next target with the query",
+    #runs == 2 and table.concat(runs[2].fargs, " ") == "builtin buffers" and runs[2].query == "foo",
+    vim.inspect(runs[2])
+  )
+  tabs.next("bar")
+  vim.wait(50, function()
+    return #runs == 3
+  end)
+  check("tabs.next: wraps around", #runs == 3 and table.concat(runs[3].fargs, " ") == "cwd files")
+  tabs.prev()
+  vim.wait(50, function()
+    return #runs == 4
+  end)
+  check(
+    "tabs.prev: back to the last target",
+    #runs == 4 and table.concat(runs[4].fargs, " ") == "builtin buffers"
+  )
+  tabs.reset()
+  check("tabs.switch: nothing active -> false", tabs.switch(1) == false)
+  command.handle = orig_handle
+  config.apply({
+    tabs = {
+      groups = {
+        git = { "builtin git_branches", "builtin git_commits", "builtin git_stash" },
+        mine = false,
+      },
+    },
+  })
+
+  -- The query reaches the files action through command.handle.
+  local files = require("pickers.actions.files")
+  local orig_run = files.run
+  local seen_source
+  files.run = function(source)
+    seen_source = source
+  end
+  local orig_load = require("pickers.engines").load
+  require("pickers.engines").load = function()
+    return { pick_files = function() end }
+  end
+  command.handle({ fargs = { "cwd", "files" }, query = "carried" })
+  require("pickers.engines").load = orig_load
+  files.run = orig_run
+  check(
+    "command.handle: query lands on the source",
+    seen_source ~= nil and seen_source.query == "carried"
+  )
+
+  -- keys: the new opt-in actions resolve unbound by default and bind when set.
+  local keys = require("pickers.keys")
+  local r = keys.resolve(config.get())
+  check("keys: tab_next unbound by default", r.tab_next ~= nil and #r.tab_next.lhs == 0)
+  config.apply({ keys = { tab_next = "<Tab>", tab_prev = "<S-Tab>" } })
+  r = keys.resolve(config.get())
+  check("keys: tab_next bound", has(r.tab_next.lhs, "<Tab>"))
+  local ts = require("pickers.keys.adapters.telescope").mappings(r)
+  local sw = require("pickers.keys.adapters.snacks").win(r)
+  local acts = keys.snacks_actions()
+  check(
+    "keys/snacks: tab_next in win keys + actions",
+    sw.input.keys["<Tab>"] ~= nil and type(acts.tab_next) == "function"
+  )
+  check(
+    "keys/fzf: tab_next reported as skipped",
+    has(require("pickers.keys.adapters.fzf").skipped(r), "tab_next")
+  )
+  check(
+    "keys/telescope: tab_next maps to a function (or telescope absent)",
+    ts.i["<Tab>"] == nil or type(ts.i["<Tab>"]) == "function"
+  )
+  config.apply({ keys = { tab_next = false, tab_prev = false } })
+end
+
 -- ── :Pickers completion (composer) — needs lib.nvim; skip cleanly if absent ─
 -- Registers the real :Pickers command (as plugin/pickers.lua would) and drives
 -- its actual completion via getcompletion(), exercising the composer route
@@ -1242,7 +1499,10 @@ do
     "builtins: explorer telescope uses a run-invoker",
     type(explorer.telescope.run) == "function"
   )
-  check("builtins: explorer has no fzf impl", explorer.fzf == false)
+  check(
+    "builtins: explorer on fzf is the in-house browser",
+    type(explorer.fzf) == "table" and type(explorer.fzf.run) == "function"
+  )
   check(
     "builtins.run: explorer run-invoker path does not throw",
     pcall(builtins.run, "explorer", nil, "telescope")
@@ -1259,7 +1519,10 @@ do
     git_log_line.telescope == false and git_log_line.fzf == false
   )
   check("builtins: lsp_declarations has no telescope impl", lsp_decl.telescope == false)
-  check("builtins: gh_issue is snacks-only", gh_issue.telescope == false and gh_issue.fzf == false)
+  check(
+    "builtins: gh_issue runs on every engine",
+    type(gh_issue.telescope.run) == "function" and type(gh_issue.fzf.run) == "function"
+  )
 
   -- supported_engines()
   local gd_engines = builtins.supported_engines("git_diff")

@@ -38,6 +38,9 @@ local ACTION_TO_FZF = {
   history_back = false,
   history_forward = false,
   mouse_confirm = false,
+  -- pickers.tabs: a Lua switch, which `keymap.builtin` cannot run.
+  tab_next = false,
+  tab_prev = false,
 }
 
 --- Build the `keymap.builtin` table.

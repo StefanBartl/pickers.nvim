@@ -123,6 +123,8 @@ All of these live in the augroup `"pickers.nvim"` when lib.nvim is present; with
 | `vsplit` | `<C-v>` | patched | native `ctrl-v`, not ours | export only¹ |
 | `tab` | `<C-t>` | patched | native `ctrl-t`, not ours | export only¹ |
 | `mouse_confirm` | `<2-LeftMouse>` | patched (telescope's only gap) | native (fzf's own mouse handling) | export only¹ (native default too) |
+| `tab_next` | *(off, opt-in)* | patched (a pickers.tabs function) | — (fzf gap: no Lua in `keymap.builtin`) | export only¹ + `keys.snacks_actions()` |
+| `tab_prev` | *(off, opt-in)* | patched (a pickers.tabs function) | — (fzf gap) | export only¹ + `keys.snacks_actions()` |
 
 ¹ snacks: pickers.nvim doesn't own `Snacks.setup()`, so nothing is auto-registered there — merge `require("pickers.keys").snacks_win()` into your own `snacks.setup({ picker = { win = ... } })`.
 

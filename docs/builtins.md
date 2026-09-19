@@ -38,7 +38,8 @@ support it when you hit one.
 | `projects` | `projects` | — | — |
 | `notifications` | `notifications` | — | — |
 | `buffers` | `buffers` | `buffers` | `buffers` |
-| `explorer` | `explorer` | `file_browser` (extension) | — |
+| `explorer` | `explorer` | `file_browser` (extension) | `pickers.browse` (in-house) |
+| `browse` | `pickers.browse` | `pickers.browse` | `pickers.browse` |
 | `git_files` | `git_files` | `git_files` | `git_files` |
 | `marks` | `marks` | `marks` | `marks` |
 | `jumps` | `jumps` | `jumplist` | `jumps` |
@@ -65,10 +66,10 @@ support it when you hit one.
 | `git_status` | `git_status` | `git_status` | `git_status` |
 | `git_stash` | `git_stash` | `git_stash` | `git_stash` |
 | `git_diff` | `git_diff` | — | `git_diff` |
-| `gh_issue` | `gh_issue` | — | — |
-| `gh_issue_all` | `gh_issue` (`state="all"`) | — | — |
-| `gh_pr` | `gh_pr` | — | — |
-| `gh_pr_all` | `gh_pr` (`state="all"`) | — | — |
+| `gh_issue` | `gh_issue` | `pickers.sources.github` (`gh` CLI) | `pickers.sources.github` (`gh` CLI) |
+| `gh_issue_all` | `gh_issue` (`state="all"`) | `pickers.sources.github` | `pickers.sources.github` |
+| `gh_pr` | `gh_pr` | `pickers.sources.github` | `pickers.sources.github` |
+| `gh_pr_all` | `gh_pr` (`state="all"`) | `pickers.sources.github` | `pickers.sources.github` |
 | `lines` | `lines` | `current_buffer_fuzzy_find` | `blines` |
 | `grep_buffers` | `grep_buffers` | `live_grep` (`grep_open_files=true`) | `lines` |
 | `commands` | `commands` | `commands` | `commands` |

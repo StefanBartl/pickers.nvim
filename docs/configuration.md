@@ -379,3 +379,22 @@ quickfix = {
   },
 },
 ```
+
+## Tabs
+
+Tab groups cycled from inside a picker — see [FEATURES/TABS.md](FEATURES/TABS.md).
+A group given in `setup()` replaces the default group of the same name
+wholesale; `false` drops one.
+
+```lua
+tabs = {
+  groups = {
+    default = { "cwd files", "cwd grep", "builtin buffers" },
+    git = { "builtin git_branches", "builtin git_commits", "builtin git_stash" },
+  },
+},
+keys = {
+  tab_next = false,   -- e.g. "<Tab>"; opt-in, telescope + snacks
+  tab_prev = false,   -- e.g. "<S-Tab>"
+},
+```

@@ -59,6 +59,26 @@ local SKIP = {
   cheatsheet = true,
 }
 
+--- The pickers.nvim-side actions snacks resolves by name from the `win`
+--- keys: `tab_next`/`tab_prev` close the picker and reopen the next target
+--- of the active pickers.tabs group with the typed pattern as its query.
+---@return table<string, fun(picker: table)>
+function M.actions()
+  local function switch(delta)
+    return function(picker)
+      local query = ""
+      pcall(function()
+        query = picker.input and picker.input.filter and picker.input.filter.pattern or ""
+      end)
+      pcall(function()
+        picker:close()
+      end)
+      require("pickers.tabs").switch(delta, query)
+    end
+  end
+  return { tab_next = switch(1), tab_prev = switch(-1) }
+end
+
 ---@param resolved table<string, { lhs: string[], modes: string[] }>
 ---@return { input: { keys: table }, list: { keys: table }, preview: { keys: table } }
 function M.win(resolved)

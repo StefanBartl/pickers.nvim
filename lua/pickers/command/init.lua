@@ -66,7 +66,9 @@ end
 ---@param source          Pickers.Source
 ---@param engine_mod      table
 ---@param find_all  table|nil  search-flag override (files action only)
-local function dispatch_action(action, source, engine_mod, find_all)
+---@param query    string|nil  initial query for the picker (pickers.tabs carries it across a switch)
+local function dispatch_action(action, source, engine_mod, find_all, query)
+  if query and query ~= "" then source.query = query end
   require("pickers.last").set(action, source)
   if action == "grep" then
     require("pickers.actions.grep").run(source, engine_mod)
@@ -91,13 +93,14 @@ end
 ---@param action          Pickers.Action|nil
 ---@param engine_mod      table
 ---@param force_find_all  table|nil
-local function after_source(source, action, engine_mod, force_find_all)
+---@param query           string|nil
+local function after_source(source, action, engine_mod, force_find_all, query)
   if not source then return end
   if action then
-    dispatch_action(action, source, engine_mod, force_find_all)
+    dispatch_action(action, source, engine_mod, force_find_all, query)
   else
     require("pickers.ui.action_picker").open(function(chosen)
-      if chosen then dispatch_action(chosen, source, engine_mod, force_find_all) end
+      if chosen then dispatch_action(chosen, source, engine_mod, force_find_all, query) end
     end)
   end
 end
@@ -108,7 +111,8 @@ end
 ---@param action          Pickers.Action|nil
 ---@param engine_mod      table
 ---@param force_find_all  table|nil
-local function run_standard_scope(scope, action, engine_mod, force_find_all)
+---@param query           string|nil
+local function run_standard_scope(scope, action, engine_mod, force_find_all, query)
   local cfg = require("pickers.config").get()
   local ok, src_mod = pcall(require, "pickers.sources." .. scope)
   if not ok or not src_mod then
@@ -120,11 +124,11 @@ local function run_standard_scope(scope, action, engine_mod, force_find_all)
   -- folder / repos / wkdbooks need engine_mod for their sub-pickers
   if scope == "folder" or scope == "repos" or scope == "wkdbooks" then
     src_mod.get(cfg, function(source)
-      after_source(source, action, engine_mod, force_find_all)
+      after_source(source, action, engine_mod, force_find_all, query)
     end, engine_mod)
   else
     src_mod.get(cfg, function(source)
-      after_source(source, action, engine_mod, force_find_all)
+      after_source(source, action, engine_mod, force_find_all, query)
     end)
   end
 end
@@ -135,17 +139,18 @@ end
 ---@param action          Pickers.Action|nil
 ---@param engine_mod      table
 ---@param force_find_all  table|nil
-local function run_collection_scope(coll, action, engine_mod, force_find_all)
+---@param query           string|nil
+local function run_collection_scope(coll, action, engine_mod, force_find_all, query)
   local cfg = require("pickers.config").get()
   require("pickers.sources.collection").get(coll, cfg, function(source)
-    after_source(source, action, engine_mod, force_find_all)
+    after_source(source, action, engine_mod, force_find_all, query)
   end, engine_mod)
 end
 
 -- ── Public: handle ────────────────────────────────────────────────────────────
 
 ---Entry point called by the :Pickers user command.
----@param opts { fargs: string[], engine?: Pickers.Engine }  `engine` overrides
+---@param opts { fargs: string[], engine?: Pickers.Engine, query?: string }  `query` seeds the picker's prompt (files/grep/smart)  `engine` overrides
 ---the configured default for this call only (falls back to auto-detect if
 ---not installed, via `pickers.engines.load`'s own fallback logic) -- used by
 ---`pickers.mappings`' per-entry engine override; unset (the default) for
@@ -237,7 +242,7 @@ function M.handle(opts)
       )
       action = nil
     end
-    run_standard_scope(scope, action, engine_mod, find_all_override(arg3))
+    run_standard_scope(scope, action, engine_mod, find_all_override(arg3), opts.query)
     return
   end
 
@@ -252,7 +257,7 @@ function M.handle(opts)
       )
       action = nil
     end
-    run_collection_scope(coll, action, engine_mod, find_all_override(arg3))
+    run_collection_scope(coll, action, engine_mod, find_all_override(arg3), opts.query)
     return
   end
 

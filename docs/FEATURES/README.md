@@ -14,6 +14,9 @@ the engine underneath. This plugin makes it one grammar instead.
 | **Engines** | telescope.nvim, fzf-lua or snacks.nvim, auto-detected. The grammar does not change when the engine does |
 | **Collections** | Your own named scopes, so a set of directories you work in becomes one word |
 | **Quickfix** | The `:copen` window itself, with a preview float that follows the cursor and the refine filter stack over the list (`zf`/`zF`/`p`) |
+| **Tabs** | Named groups of `:Pickers` targets cycled from inside a picker with the query carried along (`tab_next`/`tab_prev`, opt-in) |
+| **Browse** | A directory browser on the engine's item picker, with new/rename/delete rows — and fzf-lua's `explorer` |
+| **GitHub** | Issues and pull requests on every engine: snacks natively, telescope and fzf-lua through the `gh` CLI |
 
 pickers.nvim consolidates what used to be seven separate picker modules into
 one plugin: a single `:Pickers` command over three interchangeable engines
@@ -39,6 +42,10 @@ appears once, where a reader would look for it.
   shortening.
 - **[QUICKFIX](QUICKFIX.md)** — the quickfix/location window upgraded in
   place: a cursor-following preview float and `pickers.refine` over the list.
+- **[TABS](TABS.md)** — tab groups: `:Pickers` targets cycled from inside a
+  picker, the query travelling along.
+- **[BROWSE](BROWSE.md)** — one directory per list with the file operations
+  as rows; the in-house explorer, and fzf-lua's only one.
 - **[PERSISTENCE](PERSISTENCE.md)** — history, frecency, and reopening what you
   just had.
 - **[IMAGES](IMAGES.md)** — png/jpg entries drawn as pictures in the preview

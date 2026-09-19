@@ -153,6 +153,13 @@ local function collection_route(name)
   }
 end
 
+composer.register_type("PICKERS_TAB_GROUP", {
+  desc = "a pickers.tabs group name",
+  complete = function()
+    return require("pickers.tabs").names()
+  end,
+})
+
 ---Register (or re-register) :Pickers, including one route per collection in cfg.
 ---A collection whose name collides with a built-in scope (or an earlier
 ---collection, duplicate names) is skipped — first-match-wins, mirroring the
@@ -170,6 +177,24 @@ function M.register(cfg)
   used.dir = true
   routes[#routes + 1] = builtin_route()
   used.builtin = true
+  routes[#routes + 1] = {
+    path = { "tabs" },
+    desc = "Open a tab group: its first target, then tab_next/tab_prev cycle the rest (pickers.tabs)",
+    args = { { name = "group", type = "PICKERS_TAB_GROUP", optional = true } },
+    run = function(ctx)
+      require("pickers.tabs").open(ctx.args.group or "default")
+    end,
+  }
+  used.tabs = true
+  routes[#routes + 1] = {
+    path = { "browse" },
+    desc = "Browse a directory on the engine's item picker, with new/rename/delete rows (pickers.browse)",
+    args = { { name = "dir", type = "PATH", optional = true } },
+    run = function(ctx)
+      require("pickers.browse").open(ctx.args.dir)
+    end,
+  }
+  used.browse = true
 
   for _, coll in ipairs(cfg.collections or {}) do
     local name = coll.name

@@ -204,3 +204,16 @@ empty prompt. fzf-lua has no resume concept, so this is a documented no-op
 `notify.warn` there — see [docs/builtins.md](builtins.md).
 
 See also [docs/cheatsheet.md](cheatsheet.md) for a condensed, single-page version of this reference.
+
+## `:Pickers tabs [group]`
+
+Open a tab group (default `default`): its first target runs, and the opt-in
+in-picker keys `tab_next`/`tab_prev` cycle the rest with the query carried
+along. Groups complete with `<Tab>`. See [FEATURES/TABS.md](FEATURES/TABS.md).
+
+## `:Pickers browse [dir]`
+
+Browse `dir` (default: the cwd) on the engine's item picker: directories
+first, `../` up, new/rename/delete rows. Also `:Pickers builtin browse`, and
+what `:Pickers builtin explorer` runs on fzf-lua. See
+[FEATURES/BROWSE.md](FEATURES/BROWSE.md).
