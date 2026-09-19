@@ -3739,6 +3739,77 @@ do
   package.loaded["lazy.core.config"] = prev_lazy
 end
 
+-- ── pickers.keys.adapters.telescope — M.patch() merges, never replaces ─────
+-- (LUA-90) telescope's own setup() does NOT deep-merge defaults.mappings (it
+-- is a plain first_non_null() pick, unlike layout_config/history/
+-- cache_picker/preview -- see telescope.config's get()), so a naive second
+-- setup() call from pickers.nvim would silently discard the user's entire
+-- defaults.mappings block. Mocked end to end (no real telescope.nvim
+-- required, same technique as the when_loaded suite above) so this pins the
+-- contract on every CI platform, not just a dev box with telescope on the
+-- runtimepath.
+do
+  local prev_telescope = package.loaded["telescope"]
+  local prev_config = package.loaded["telescope.config"]
+  local prev_actions = package.loaded["telescope.actions"]
+  local prev_layout = package.loaded["telescope.actions.layout"]
+
+  local user_fn = function() end
+  local any_fn = function() end
+  local captured
+
+  -- Simulates telescope.config.values.mappings already reflecting the
+  -- user's own prior `telescope.setup()` call (telescope merges scalar/
+  -- table-of-tables config into `config.values` internally on every call).
+  package.loaded["telescope.config"] = {
+    values = { mappings = { i = { ["<C-x>"] = user_fn }, n = { ["<C-y>"] = user_fn } } },
+  }
+  package.loaded["telescope"] = {
+    setup = function(opts)
+      captured = opts
+    end,
+  }
+  -- Any action/layout lookup resolves to a distinct stub function, so
+  -- pickers' own bind() calls in M.mappings() succeed regardless of which
+  -- action names it asks for.
+  package.loaded["telescope.actions"] = setmetatable({}, {
+    __index = function()
+      return any_fn
+    end,
+  })
+  package.loaded["telescope.actions.layout"] = setmetatable({}, {
+    __index = function()
+      return any_fn
+    end,
+  })
+
+  local resolved = require("pickers.keys").resolve(require("pickers.config").get())
+  require("pickers.keys.adapters.telescope").patch(resolved)
+
+  check("keys.telescope.patch: called telescope.setup()", captured ~= nil)
+  check(
+    "keys.telescope.patch: user's own insert-mode mapping survives (LUA-90)",
+    captured and captured.defaults.mappings.i["<C-x>"] == user_fn
+  )
+  check(
+    "keys.telescope.patch: user's own normal-mode mapping survives (LUA-90)",
+    captured and captured.defaults.mappings.n["<C-y>"] == user_fn
+  )
+  check(
+    "keys.telescope.patch: pickers' own preview_scroll_down still bound",
+    captured and captured.defaults.mappings.i["<PageDown>"] == any_fn
+  )
+  check(
+    "keys.telescope.patch: pickers' own history_back still bound",
+    captured and captured.defaults.mappings.i["<C-p>"] == any_fn
+  )
+
+  package.loaded["telescope"] = prev_telescope
+  package.loaded["telescope.config"] = prev_config
+  package.loaded["telescope.actions"] = prev_actions
+  package.loaded["telescope.actions.layout"] = prev_layout
+end
+
 -- ── entry_actions.extract — telescope/snacks path-from-item fallback chains ─
 -- Mirrors the existing entry_actions.extract.fzf suite for the other two
 -- engines' extractors.

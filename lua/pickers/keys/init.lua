@@ -239,9 +239,12 @@ end
 --- `vim.schedule` only defers to the end of the current event-loop iteration,
 --- which is still startup, so `require("telescope")` ran there anyway and
 --- pulled in its whole module tree (measured: ~117ms, and it dragged
---- telescope-github.nvim and pdfport.nvim along with it). `defaults.mappings`
---- deep-merges regardless of call order, so waiting doesn't change the end
---- result — see `pickers.keys.adapters.telescope`. Snacks is not patched
+--- telescope-github.nvim and pdfport.nvim along with it). The telescope
+--- adapter's own `patch()` deep-merges `defaults.mappings` itself (reading
+--- and folding into whatever is already configured, rather than relying on
+--- telescope to do it), so as long as the user's own `telescope.setup()`
+--- call runs before this one, waiting longer wouldn't change the end result
+--- either — see `pickers.keys.adapters.telescope`. Snacks is not patched
 --- here — pickers.nvim does not own `Snacks.setup()`; use `keys.snacks_win()`.
 ---@param cfg Pickers.Config|nil
 function M.patch(cfg)
