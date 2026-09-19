@@ -43,6 +43,9 @@ function M.setup(opts)
   -- Mark as setup so the VimEnter fallback in plugin/pickers.lua is skipped.
   vim.g.pickers_nvim_setup_called = true
 
+  -- Reset before merging: a second setup() call in the same Lua state must
+  -- replace the first cleanly, not compose on top of it (LUA-87).
+  require("pickers.config").reset()
   require("pickers.config").apply(opts)
   local cfg = require("pickers.config").get()
   require("pickers.bindings").setup(cfg)
