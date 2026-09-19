@@ -16,7 +16,8 @@ function M.run(source, engine_mod, override)
 
   engine_mod.pick_files({
     roots = source.roots,
-    prompt = source.prompt,
+    prompt = source.prompt .. require("pickers.tabs").title_suffix(),
+    query = source.query,
     find_command = source.find_command,
     find = find,
   })

@@ -88,6 +88,7 @@
 ---@field smart?         Pickers.SmartConfig
 ---@field display?       Pickers.DisplayConfig
 ---@field images?        Pickers.ImagesConfig
----@field quickfix?      Pickers.QuickfixConfig  # preview float + refine filter in the quickfix window (pickers.quickfix)
+---@field quickfix?      Pickers.QuickfixConfig
+---@field tabs?          Pickers.TabsConfig  # tab groups cycled from inside a picker (pickers.tabs)  # preview float + refine filter in the quickfix window (pickers.quickfix)
 
 return {}

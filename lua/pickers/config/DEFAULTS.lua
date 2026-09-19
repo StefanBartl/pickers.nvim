@@ -225,6 +225,16 @@ local M = {
     enabled = true,
   },
 
+  -- Tab groups (pickers.tabs): named lists of `:Pickers` argument strings
+  -- cycled from inside a picker with the opt-in `keys.tab_next`/`tab_prev`,
+  -- the typed query carried along. `:Pickers tabs <group>` opens one.
+  tabs = {
+    groups = {
+      default = { "cwd files", "cwd grep", "builtin buffers" },
+      git = { "builtin git_branches", "builtin git_commits", "builtin git_stash" },
+    },
+  },
+
   -- The quickfix/location window, upgraded in place: a preview float that
   -- follows the cursor and the pickers.refine filter stack over the list
   -- (`zf` refine, `zF` restore, `p` preview on/off). Buffer-local, from a

@@ -202,6 +202,16 @@ function M.apply(opts)
     if type(opts.images.enabled) == "boolean" then cfg.images.enabled = opts.images.enabled end
   end
 
+  -- A group list replaces the default group of the same name wholesale (a
+  -- list is not something to merge element by element); other groups stay.
+  if type(opts.tabs) == "table" and type(opts.tabs.groups) == "table" then
+    for name, targets in pairs(opts.tabs.groups) do
+      if type(name) == "string" and (type(targets) == "table" or targets == false) then
+        cfg.tabs.groups[name] = targets or nil
+      end
+    end
+  end
+
   -- Deep-merge quickfix over defaults; a key set to `false` unbinds it, so
   -- `false` has to survive the merge (tbl_deep_extend keeps it).
   if type(opts.quickfix) == "table" then

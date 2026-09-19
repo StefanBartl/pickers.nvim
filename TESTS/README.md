@@ -24,7 +24,9 @@ name classifier, `plugin_spec()`'s engine-ownership builder, the builtin
 registry, the in-picker keys and their three per-engine adapters, the entry
 actions, the `smart` scorer and its frecency boost, the `repos`/`system`
 sources, the quickfix window's preview float and refine filter (against a
-real `:copen` over a temp file), and `:Pickers` tab-completion.
+real `:copen` over a temp file), the `gh` source's argv and JSON parsing, the
+directory browser's listing and flow on a fake engine, the tab groups'
+switching and query carry-over, and `:Pickers` tab-completion.
 
 Two of them exist because the failure they pin is invisible at runtime rather
 than because the code looked risky:

@@ -42,6 +42,24 @@ local ACTION_TO_TS_LAYOUT = {
   preview_toggle = "toggle_preview",
 }
 
+--- action name → a pickers.nvim function taking the prompt buffer: the
+--- tab-group switch closes the picker and reopens the next target with the
+--- current line as its query (pickers.tabs).
+local ACTION_TO_FN = {
+  tab_next = function(prompt_bufnr)
+    local state = require("telescope.actions.state")
+    local query = state.get_current_line()
+    require("telescope.actions").close(prompt_bufnr)
+    require("pickers.tabs").next(query)
+  end,
+  tab_prev = function(prompt_bufnr)
+    local state = require("telescope.actions.state")
+    local query = state.get_current_line()
+    require("telescope.actions").close(prompt_bufnr)
+    require("pickers.tabs").prev(query)
+  end,
+}
+
 --- Build telescope `defaults.mappings` (`{ i = {...}, n = {...} }`).
 --- Values are the resolved `telescope.actions`/`telescope.actions.layout`
 --- functions; when telescope is not installed this returns `{ i = {}, n = {} }`.
@@ -74,6 +92,9 @@ function M.mappings(resolved)
     for action, ts_name in pairs(ACTION_TO_TS_LAYOUT) do
       bind(action, layout[ts_name])
     end
+  end
+  for action, fn in pairs(ACTION_TO_FN) do
+    bind(action, fn)
   end
 
   return out

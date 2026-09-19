@@ -26,6 +26,31 @@ local notify = require("lib.nvim.notify").create("[pickers.builtins]")
 
 local M = {}
 
+---@internal
+---A `run` for the gh_* builtins: pickers.sources.github on one engine.
+---@param kind "issue"|"pr"
+---@param state string
+---@param engine_name string
+---@return fun(opts: table|nil)
+local function github_run(kind, state, engine_name)
+  return function(opts)
+    local engine_mod = require("pickers.engines." .. engine_name)
+    require("pickers.sources.github").pick(kind, (opts and opts.state) or state, engine_mod)
+  end
+end
+
+---@internal
+---A `run` for the browse builtin (and fzf-lua's explorer): pickers.browse.
+---@param engine_name string
+---@return fun(opts: table|nil)
+local function browse_run(engine_name)
+  return function(opts)
+    require("pickers.browse").open(opts and opts.cwd or nil, {
+      engine_mod = require("pickers.engines." .. engine_name),
+    })
+  end
+end
+
 ---@type table<string, Pickers.Builtins.Entry>
 M.REGISTRY = {
   -- ── Find ──────────────────────────────────────────────────────────────────
@@ -102,30 +127,34 @@ M.REGISTRY = {
     fzf = { fn = "git_diff" },
   },
 
-  -- ── GitHub (snacks-only: no telescope/fzf-lua core equivalent) ───────────
+  -- ── GitHub ───────────────────────────────────────────────────────────────
+  -- snacks has native sources (they preview the body); telescope and
+  -- fzf-lua go through pickers.sources.github: `gh <kind> list --json`
+  -- into the engine's own item picker, a pick opens the entry in the
+  -- browser. Needs `gh` on $PATH and a cwd inside a GitHub repo.
   gh_issue = {
-    desc = "GitHub issues, open (snacks-only)",
+    desc = "GitHub issues, open",
     snacks = { fn = "gh_issue" },
-    telescope = false,
-    fzf = false,
+    telescope = { run = github_run("issue", "open", "telescope") },
+    fzf = { run = github_run("issue", "open", "fzf") },
   },
   gh_issue_all = {
-    desc = "GitHub issues, all states (snacks-only)",
+    desc = "GitHub issues, all states",
     snacks = { fn = "gh_issue", opts = { state = "all" } },
-    telescope = false,
-    fzf = false,
+    telescope = { run = github_run("issue", "all", "telescope") },
+    fzf = { run = github_run("issue", "all", "fzf") },
   },
   gh_pr = {
-    desc = "GitHub pull requests, open (snacks-only)",
+    desc = "GitHub pull requests, open",
     snacks = { fn = "gh_pr" },
-    telescope = false,
-    fzf = false,
+    telescope = { run = github_run("pr", "open", "telescope") },
+    fzf = { run = github_run("pr", "open", "fzf") },
   },
   gh_pr_all = {
-    desc = "GitHub pull requests, all states (snacks-only)",
+    desc = "GitHub pull requests, all states",
     snacks = { fn = "gh_pr", opts = { state = "all" } },
-    telescope = false,
-    fzf = false,
+    telescope = { run = github_run("pr", "all", "telescope") },
+    fzf = { run = github_run("pr", "all", "fzf") },
   },
 
   -- ── Buffers / files ───────────────────────────────────────────────────────
@@ -135,10 +164,17 @@ M.REGISTRY = {
     telescope = { fn = "buffers" },
     fzf = { fn = "buffers" },
   },
+  browse = {
+    desc = "Directory browser on the engine's item picker: one directory per "
+      .. "list, dirs first, `..` up, new/rename/delete rows (pickers.browse)",
+    snacks = { run = browse_run("snacks") },
+    telescope = { run = browse_run("telescope") },
+    fzf = { run = browse_run("fzf") },
+  },
   explorer = {
-    desc = "File explorer / browser (fzf-lua has no explorer — falls back to "
-      .. "the file picker's parent-dir navigation; telescope uses the "
-      .. "telescope-file-browser.nvim extension, which must be installed)",
+    desc = "File explorer / browser (snacks: its tree explorer; telescope: the "
+      .. "telescope-file-browser.nvim extension, which must be installed; "
+      .. "fzf-lua has no explorer, so it gets pickers.browse)",
     -- snacks ships a real tree explorer as a picker source.
     snacks = { fn = "explorer" },
     -- telescope's file browser is an *extension*, not a `telescope.builtin.*`
@@ -164,8 +200,8 @@ M.REGISTRY = {
         ext.file_browser(opts or {})
       end,
     },
-    -- fzf-lua has no file-manager/explorer picker.
-    fzf = false,
+    -- fzf-lua has no file-manager/explorer picker: the in-house browser.
+    fzf = { run = browse_run("fzf") },
   },
   git_files = {
     desc = "Git-tracked files (ls-files)",

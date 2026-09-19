@@ -118,6 +118,13 @@ M.ACTIONS = {
   -- Read-only keymap cheatsheet (pickers.cheatsheet). NOT "<C-?>" -- see the
   -- @description block above.
   cheatsheet = { default = "<C-/>", modes = { "i", "n" } },
+  -- Opt-in (false = unbound): switch to the next/previous target of the
+  -- active pickers.tabs group, the typed query carried along. Unbound by
+  -- default because <Tab> is telescope's multi-select toggle -- a host that
+  -- wants tab groups picks the key. telescope + snacks only: fzf-lua's
+  -- `keymap.builtin` cannot run Lua (see pickers.keys.adapters.fzf).
+  tab_next = { default = false, modes = { "i", "n" } },
+  tab_prev = { default = false, modes = { "i", "n" } },
 }
 
 --- Stable iteration order (pairs() is unordered; adapters and tests want
@@ -138,6 +145,8 @@ M.ORDER = {
   "tab",
   "mouse_confirm",
   "cheatsheet",
+  "tab_next",
+  "tab_prev",
 }
 
 --- Normalise one raw config value into a list of lhs strings.
@@ -187,6 +196,14 @@ end
 ---@return { input: { keys: table }, list: { keys: table }, preview: { keys: table } }
 function M.snacks_win(cfg)
   return require("pickers.keys.adapters.snacks").win(M.resolve(cfg))
+end
+
+--- Snacks `actions` table for `require("snacks").setup({ picker = { actions = ... } })`:
+--- the pickers.nvim-side functions behind `tab_next`/`tab_prev`, which snacks
+--- resolves by the action *name* the `win` keys reference.
+---@return table<string, fun(picker: table)>
+function M.snacks_actions()
+  return require("pickers.keys.adapters.snacks").actions()
 end
 
 --- Telescope `defaults.mappings` table (`{ i = {...}, n = {...} }`).
