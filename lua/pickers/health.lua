@@ -26,10 +26,15 @@ function M.check()
     vim.health.error("lib.nvim not found", { "Add 'StefanBartl/lib.nvim' as a dependency" })
   end
 
-  -- lib.nvim.bindings.usercmd.composer: required — the :Pickers command layer is built
-  -- on it, with no raw-API fallback (unlike the compat aliases in
-  -- bindings/util.lua, which still degrade gracefully without lib.nvim).
-  if pcall(require, "lib.nvim.bindings.usercmd.composer") then
+  -- lib.nvim.bindings.usercmd.composer: required -- the :Pickers command layer
+  -- is built directly on it, like every other lib.nvim binding pickers.nvim
+  -- uses (bindings/util.lua, bindings/autocmds.lua, engines/when_loaded.lua):
+  -- lib.nvim is a hard dependency (plugin/pickers.lua's own bare require
+  -- already makes that true), so there is no standalone/degraded mode to
+  -- preserve. The module reference is kept so the final checkhealth() call
+  -- below can reuse it instead of requiring it a second time.
+  local ok_composer, composer = pcall(require, "lib.nvim.bindings.usercmd.composer")
+  if ok_composer then
     vim.health.ok("lib.nvim.bindings.usercmd.composer available (:Pickers command layer)")
   else
     vim.health.error(
@@ -245,7 +250,10 @@ function M.check()
     deps_health.report_for("pickers.nvim")
   end
 
-  require("lib.nvim.bindings.usercmd.composer").checkhealth("Pickers")
+  -- Already reported as missing above when absent -- skip rather than
+  -- require() it again and crash the whole report a second time over the
+  -- same cause.
+  if ok_composer then composer.checkhealth("Pickers") end
 end
 
 return M
