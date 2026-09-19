@@ -6,6 +6,11 @@
 --- the default keymaps and compat user-commands here. setup() sets
 --- vim.g.pickers_nvim_setup_called = true before this fires, so the fallback is
 --- only taken when bindings have not been registered yet.
+---
+--- lib.nvim is a hard dependency (see pickers.bindings.util); this requires
+--- lib.nvim.bindings.autocmd the same way, with no standalone fallback (LUA-01).
+
+local lib_autocmd = require("lib.nvim.bindings.autocmd")
 
 local M = {}
 
@@ -21,19 +26,11 @@ function M.register()
     end
   end
 
-  -- Prefer lib.nvim.bindings.autocmd (named augroup + pcall-wrapped callback); fall back
-  -- to the raw API so the fallback still fires without lib.nvim.
-  local ok, lib_autocmd = pcall(require, "lib.nvim.bindings.autocmd")
-  if ok and type(lib_autocmd) == "table" and type(lib_autocmd.create) == "function" then
-    lib_autocmd.create("VimEnter", callback, {
-      group = "pickers.nvim",
-      once = true,
-      desc = "pickers.nvim: register default bindings when setup() was not called",
-    })
-  else
-    -- lib-docs: fallback
-    vim.api.nvim_create_autocmd("VimEnter", { once = true, callback = callback })
-  end
+  lib_autocmd.create("VimEnter", callback, {
+    group = "pickers.nvim",
+    once = true,
+    desc = "pickers.nvim: register default bindings when setup() was not called",
+  })
 end
 
 return M
