@@ -23,6 +23,7 @@ function M.run(source, engine_mod, extra_args)
   engine_mod.live_grep({
     roots = source.roots,
     prompt = source.prompt,
+    query = source.query,
     additional_args = args,
     find = find,
   })

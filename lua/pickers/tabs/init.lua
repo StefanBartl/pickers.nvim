@@ -106,7 +106,7 @@ local function run_current(query)
   if not state then return end
   local target = state.targets[state.index]
   local fargs = vim.split(target, "%s+", { trimempty = true })
-  require("pickers.command").handle({ fargs = fargs, query = query })
+  require("pickers.command").handle({ fargs = fargs, query = query, from_tabs = true })
 end
 
 ---Open `group` (default "default") at target `index` (default 1).

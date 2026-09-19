@@ -150,12 +150,20 @@ end
 -- ── Public: handle ────────────────────────────────────────────────────────────
 
 ---Entry point called by the :Pickers user command.
----@param opts { fargs: string[], engine?: Pickers.Engine, query?: string }  `query` seeds the picker's prompt (files/grep/smart)  `engine` overrides
+---@param opts { fargs: string[], engine?: Pickers.Engine, query?: string, from_tabs?: boolean }
+---`query` seeds the picker's prompt (files/grep/smart)  `engine` overrides
 ---the configured default for this call only (falls back to auto-detect if
 ---not installed, via `pickers.engines.load`'s own fallback logic) -- used by
 ---`pickers.mappings`' per-entry engine override; unset (the default) for
----every other caller, which resolves the engine normally.
+---every other caller, which resolves the engine normally. `from_tabs` is set
+---only by `pickers.tabs`' own `run_current` -- every other caller opens a
+---picker outside any tab group, which forgets one left active by a group
+---that was closed some other way than `tab_next`/`tab_prev` (Esc, a plain
+---`:q`, ...) -- otherwise it would keep answering `tab_next`/`tab_prev` (and
+---showing the `[i/n ...]` prompt suffix) for pickers that were never part of
+---that group.
 function M.handle(opts)
+  if not opts.from_tabs then require("pickers.tabs").reset() end
   local engine_mod = require("pickers.engines").load(opts.engine)
   if not engine_mod then return end
 

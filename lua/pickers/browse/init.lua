@@ -120,6 +120,18 @@ local function ask(prompt, default, cb)
   end)
 end
 
+---@internal
+---Whether `name` is safe to join onto a directory as a single new path
+---segment for new_file/new_dir/rename: no path separator (a bare name
+---typed into "New file in <dir>: " must not reach outside `dir`, e.g.
+---`../../etc/passwd` or `C:\Windows\...`) and not `.`/`..`.
+---@param name string
+---@return boolean
+local function safe_name(name)
+  if name == "" or name == "." or name == ".." then return false end
+  return not name:find("[/\\]")
+end
+
 ---Create and edit `path` (parents made), via fileops when present.
 ---@param path string
 ---@return boolean ok
@@ -209,15 +221,28 @@ local function run_action(entry, opts)
   end
   if entry.action == "new_file" then
     ask("New file in " .. dir .. ": ", nil, function(name)
+      if not safe_name(name) then
+        notify.error("new file: invalid name " .. name)
+        return
+      end
       M.new_file(dir .. "/" .. name)
     end)
   elseif entry.action == "new_dir" then
     ask("New directory in " .. dir .. ": ", nil, function(name)
+      if not safe_name(name) then
+        notify.error("new directory: invalid name " .. name)
+        return
+      end
       if M.new_dir(dir .. "/" .. name) then reopen() end
     end)
   elseif entry.action == "rename" then
     pick_entry(dir, "Rename which?", opts.engine_mod, function(e)
       ask("Rename to: ", e.text:gsub("/$", ""), function(name)
+        if not safe_name(name) then
+          notify.error("rename: invalid name " .. name)
+          reopen()
+          return
+        end
         local ok, err = M.rename(e.path, dir .. "/" .. name)
         if not ok then notify.error("rename: " .. tostring(err)) end
         reopen()
