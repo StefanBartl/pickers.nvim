@@ -104,6 +104,207 @@ local function normalise_history(raw, current)
   return result
 end
 
+---Validate and normalise the `smart` sub-config, merging into `current`.
+---Was previously a blind `vim.tbl_deep_extend` (same leniency as `cfg.find`),
+---which let a wrong-type `limit`/`timeout`/`weights.*` reach
+---`pickers.smart.score` and `vim.system():wait()` unchecked -- both crash on
+---a non-number there (ERR-22): `smart.limit = "20"` throws "attempt to
+---compare string with number" in `score.rank`'s trim step, and
+---`smart.weights.filename = "abc"` throws "attempt to perform arithmetic on
+---a string value" in `score.score_file`, on every keystroke of the smart
+---action once configured. Reproduced directly against `pickers.smart.score`
+---before this fix; both keep the previous value with a warning after it.
+---@internal
+---@param raw table
+---@param current Pickers.SmartConfig
+---@return Pickers.SmartConfig
+local function normalise_smart(raw, current)
+  local result = vim.deepcopy(current)
+
+  if type(raw.weights) == "table" then
+    for _, field in ipairs({ "filename", "content", "both" }) do
+      local v = raw.weights[field]
+      if v ~= nil then
+        if type(v) == "number" then
+          result.weights[field] = v
+        else
+          notify.warn(
+            string.format(
+              "Invalid smart.weights.%s %s, keeping %s",
+              field,
+              vim.inspect(v),
+              result.weights[field]
+            )
+          )
+        end
+      end
+    end
+  end
+
+  if raw.limit ~= nil then
+    if type(raw.limit) == "number" and raw.limit > 0 then
+      result.limit = math.floor(raw.limit)
+    else
+      notify.warn(
+        string.format("Invalid smart.limit %s, keeping %s", vim.inspect(raw.limit), result.limit)
+      )
+    end
+  end
+
+  if raw.timeout ~= nil then
+    if type(raw.timeout) == "number" and raw.timeout > 0 then
+      result.timeout = raw.timeout
+    else
+      notify.warn(
+        string.format(
+          "Invalid smart.timeout %s, keeping %s",
+          vim.inspect(raw.timeout),
+          result.timeout
+        )
+      )
+    end
+  end
+
+  if type(raw.frecency) == "table" then
+    if type(raw.frecency.enabled) == "boolean" then
+      result.frecency.enabled = raw.frecency.enabled
+    end
+
+    if raw.frecency.weight ~= nil then
+      if type(raw.frecency.weight) == "number" then
+        result.frecency.weight = raw.frecency.weight
+      else
+        notify.warn(
+          string.format(
+            "Invalid smart.frecency.weight %s, keeping %s",
+            vim.inspect(raw.frecency.weight),
+            result.frecency.weight
+          )
+        )
+      end
+    end
+
+    if raw.frecency.dir ~= nil then
+      if type(raw.frecency.dir) == "string" and raw.frecency.dir ~= "" then
+        result.frecency.dir = raw.frecency.dir
+      else
+        notify.warn(
+          string.format(
+            "Invalid smart.frecency.dir %s, keeping %s",
+            vim.inspect(raw.frecency.dir),
+            vim.inspect(result.frecency.dir)
+          )
+        )
+      end
+    end
+  end
+
+  if type(raw.dedup_grep_rows) == "boolean" then result.dedup_grep_rows = raw.dedup_grep_rows end
+
+  return result
+end
+
+---Validate and normalise the `quickfix` sub-config, merging into `current`.
+---Was previously a blind `vim.tbl_deep_extend`, which let a wrong-type
+---`preview.height`/`context`/`delay_ms` reach `pickers.quickfix`'s
+---`math.max`/arithmetic/`<=` comparisons unchecked -- all three crash on a
+---non-number there (ERR-22), on the very first `CursorMoved` in any
+---quickfix window (preview is on by default): `delay_ms = "40"` throws
+---"attempt to compare string with number" in the debounce check, even
+---though "40" is a numeral string, because Lua's `<=` never coerces
+---strings the way its arithmetic operators do. Reproduced directly with
+---`math.max`/arithmetic/`<=` against a string before this fix; each field
+---keeps its previous value with a warning instead.
+---@internal
+---@param raw table
+---@param current Pickers.QuickfixConfig
+---@return Pickers.QuickfixConfig
+local function normalise_quickfix(raw, current)
+  local result = vim.deepcopy(current)
+
+  if type(raw.enabled) == "boolean" then result.enabled = raw.enabled end
+
+  if type(raw.preview) == "table" then
+    local p, rp = raw.preview, result.preview
+
+    if type(p.enabled) == "boolean" then rp.enabled = p.enabled end
+
+    if p.height ~= nil then
+      if type(p.height) == "number" and p.height > 0 then
+        rp.height = math.floor(p.height)
+      else
+        notify.warn(
+          string.format(
+            "Invalid quickfix.preview.height %s, keeping %s",
+            vim.inspect(p.height),
+            rp.height
+          )
+        )
+      end
+    end
+
+    if p.context ~= nil then
+      if type(p.context) == "number" and p.context >= 0 then
+        rp.context = math.floor(p.context)
+      else
+        notify.warn(
+          string.format(
+            "Invalid quickfix.preview.context %s, keeping %s",
+            vim.inspect(p.context),
+            rp.context
+          )
+        )
+      end
+    end
+
+    if p.border ~= nil then
+      if type(p.border) == "string" and p.border ~= "" then
+        rp.border = p.border
+      else
+        notify.warn(
+          string.format(
+            "Invalid quickfix.preview.border %s, keeping %q",
+            vim.inspect(p.border),
+            rp.border
+          )
+        )
+      end
+    end
+
+    if p.delay_ms ~= nil then
+      if type(p.delay_ms) == "number" and p.delay_ms >= 0 then
+        rp.delay_ms = math.floor(p.delay_ms)
+      else
+        notify.warn(
+          string.format(
+            "Invalid quickfix.preview.delay_ms %s, keeping %s",
+            vim.inspect(p.delay_ms),
+            rp.delay_ms
+          )
+        )
+      end
+    end
+  end
+
+  if type(raw.keys) == "table" then
+    local k, rk = raw.keys, result.keys
+    for _, name in ipairs({ "filter", "restore", "toggle_preview" }) do
+      local v = k[name]
+      if v ~= nil then
+        if v == false or (type(v) == "string" and v ~= "") then
+          rk[name] = v
+        else
+          notify.warn(
+            string.format("Invalid quickfix.keys.%s %s, keeping previous", name, vim.inspect(v))
+          )
+        end
+      end
+    end
+  end
+
+  return result
+end
+
 ---Validate and normalise the `keys` sub-config, merging into `current`.
 ---Each action accepts a single lhs string, a list of lhs strings, or `false`
 ---to unbind it. Invalid values are rejected with a warning and left unchanged.
@@ -166,10 +367,13 @@ local TOP_LEVEL_OPTS = {
 }
 
 -- Sub-tables merged wholesale via `vim.tbl_deep_extend` below (find, keymaps,
--- usercmds, smart(+weights/frecency), quickfix(+preview/keys), tabs) would
--- otherwise absorb a typo'd key silently -- no per-field validation catches
--- it the way normalise_history/normalise_keys/the inline display/images
--- checks already do for their own tables.
+-- usercmds, tabs) would otherwise absorb a typo'd key silently -- no
+-- per-field validation catches it the way normalise_history/normalise_keys/
+-- normalise_smart/normalise_quickfix/the inline display/images checks
+-- already do for their own tables. smart and quickfix are listed here too:
+-- normalise_smart/normalise_quickfix validate each field's VALUE (ERR-22),
+-- but still rely on this table to catch an unknown KEY (ERR-50) before that,
+-- same as every other nested table below.
 ---@type table<string, string[]>
 local NESTED_OPTS = {
   find = { "hidden", "no_ignore", "follow", "exclude" },
@@ -358,10 +562,9 @@ function M.apply(opts)
     end
   end
 
-  -- Deep-merge smart over defaults (weights/limit/timeout); same leniency as
-  -- cfg.find -- not validated field-by-field.
+  -- ERR-22: field-by-field, not a blind deep-merge -- see normalise_smart.
   if type(sanitized.smart) == "table" then
-    cfg.smart = vim.tbl_deep_extend("force", cfg.smart, sanitized.smart)
+    cfg.smart = normalise_smart(sanitized.smart, cfg.smart)
   end
 
   if type(sanitized.display) == "table" then
@@ -386,10 +589,10 @@ function M.apply(opts)
     end
   end
 
-  -- Deep-merge quickfix over defaults; a key set to `false` unbinds it, so
-  -- `false` has to survive the merge (tbl_deep_extend keeps it).
+  -- ERR-22: field-by-field, not a blind deep-merge -- see normalise_quickfix.
+  -- A key.* set to `false` unbinds it; normalise_quickfix keeps that too.
   if type(sanitized.quickfix) == "table" then
-    cfg.quickfix = vim.tbl_deep_extend("force", cfg.quickfix, sanitized.quickfix)
+    cfg.quickfix = normalise_quickfix(sanitized.quickfix, cfg.quickfix)
   end
 end
 
