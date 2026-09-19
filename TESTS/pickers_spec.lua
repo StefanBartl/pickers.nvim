@@ -1188,6 +1188,111 @@ do
   quickfix.attach(qfbuf)
   check("quickfix: disabled -> not attached", vim.b[qfbuf].pickers_quickfix_attached ~= true)
   config.apply({ quickfix = { enabled = true } })
+  vim.cmd("copen")
+  qfwin = vim.api.nvim_get_current_win()
+
+  -- Fix: an external replacement of the list (a fresh :grep, an LSP
+  -- references list, ...) must not be clobbered by a stale remembered
+  -- "original", and apply()/restore() must be able to tell the two apart.
+  vim.fn.setqflist({}, "r", {
+    title = "Spec2",
+    items = {
+      { filename = path, lnum = 20, text = "local line_20 = 20" },
+      { filename = path, lnum = 5, text = "local line_5 = 5" },
+      { filename = path, lnum = 33, text = "other text" },
+    },
+  })
+  quickfix.apply(qfwin) -- reseed the original
+  h.stack[#h.stack + 1] = { field = "text", term = "line_", mode = "substr", negate = false }
+  quickfix.apply(qfwin)
+  check("quickfix: filter active before an external replace", h:is_active())
+  vim.fn.setqflist({}, "r", {
+    title = "External",
+    items = { { filename = path, lnum = 33, text = "other text" } },
+  })
+  quickfix.restore(qfwin)
+  local ext = vim.fn.getqflist({ items = 1, title = 1 })
+  check(
+    "quickfix: restore does not clobber an externally-replaced list",
+    #ext.items == 1 and ext.title == "External",
+    ext.title
+  )
+  check("quickfix: restore still clears the stack", not h:is_active())
+  h.stack[#h.stack + 1] = { field = "text", term = "other", mode = "substr", negate = false }
+  local shown2, total2 = quickfix.apply(qfwin)
+  check(
+    "quickfix: apply after an external replace starts from the NEW list",
+    shown2 == 1 and total2 == 1,
+    shown2 .. "/" .. total2
+  )
+  quickfix.restore(qfwin)
+
+  -- Fix: a stale bufnr on an item CACHED in `originals[qfbuf]` (a plain Lua
+  -- table snapshot -- unlike getqflist()'s own bufnr field, Neovim does not
+  -- retroactively fix it up when the buffer is later wiped) must fall back
+  -- to item.filename when the refine handle filters it, not throw from
+  -- nvim_buf_get_name on an invalid buffer id. This is exactly what
+  -- handle_for()'s `path` field does on every apply()/filter().
+  local scratch = vim.fn.bufadd(path)
+  vim.fn.bufload(scratch)
+  vim.api.nvim_buf_delete(scratch, { force = true })
+  h.stack[#h.stack + 1] = { field = "path", term = ".lua", mode = "substr", negate = false }
+  local ok_apply, kept = pcall(h.apply, h, { { bufnr = scratch, filename = path, text = "x" } })
+  h:clear()
+  check("quickfix: refine's path field survives a stale item bufnr", ok_apply, tostring(kept))
+
+  -- Disk-read path (no loaded buffer): correct window, and a read that
+  -- would run past EOF returns fewer lines instead of erroring.
+  vim.fn.setqflist({}, "r", {
+    title = "Disk read",
+    items = { { filename = path, lnum = 33, text = "other text" } },
+  })
+  quickfix.preview(qfwin)
+  local dbuf = vim.api.nvim_win_get_buf(quickfix.preview_win(qfbuf))
+  local dlines = vim.api.nvim_buf_get_lines(dbuf, 0, -1, false)
+  check(
+    "quickfix: disk-read preview starts at context lines above lnum",
+    dlines[1] == "local line_29 = 29",
+    dlines[1]
+  )
+  vim.fn.setqflist({}, "r", {
+    title = "Disk read near EOF",
+    items = { { filename = path, lnum = 40, text = "local line_40 = 40" } },
+  })
+  quickfix.preview(qfwin)
+  local ebuf = vim.api.nvim_win_get_buf(quickfix.preview_win(qfbuf))
+  local elines = vim.api.nvim_buf_get_lines(ebuf, 0, -1, false)
+  check(
+    "quickfix: disk read near EOF returns fewer lines instead of erroring",
+    #elines == 5 and elines[#elines] == "local line_40 = 40",
+    #elines .. " " .. tostring(elines[#elines])
+  )
+
+  -- Fix: the debounce timer is closed (not left for GC) when the qf buffer
+  -- is wiped while a preview is still pending.
+  config.apply({ quickfix = { preview = { delay_ms = 1000 } } })
+  quickfix.attach(qfbuf)
+  check("quickfix: re-attached with the new config", vim.b[qfbuf].pickers_quickfix_attached == true)
+  local closed, started = false, false
+  local real_new_timer = vim.uv.new_timer
+  vim.uv.new_timer = function()
+    return {
+      start = function()
+        started = true
+      end,
+      stop = function() end,
+      close = function()
+        closed = true
+      end,
+    }
+  end
+  vim.api.nvim_exec_autocmds("CursorMoved", { buffer = qfbuf })
+  vim.uv.new_timer = real_new_timer
+  check("quickfix: CursorMoved armed the debounce timer", started)
+  vim.api.nvim_exec_autocmds("BufWipeout", { buffer = qfbuf })
+  check("quickfix: pending debounce timer is closed on BufWipeout", closed)
+  config.apply({ quickfix = { preview = { delay_ms = 0 } } })
+
   vim.fn.delete(path)
 end
 
@@ -1314,6 +1419,44 @@ do
     vim.fs.normalize(vim.api.nvim_buf_get_name(0)) == vim.fs.normalize(broot .. "/b.txt")
   )
 
+  -- Fix: a name typed into "New file/directory in <dir>:"/"Rename to:"
+  -- must not escape `dir` via a path separator or `..` -- these used to be
+  -- joined onto `dir` with no validation at all.
+  local orig_input = vim.ui.input
+  local before_buf = vim.api.nvim_buf_get_name(0)
+  browse.open(broot, { engine_mod = fake_engine })
+  local new_file_action, new_dir_action
+  for _, e in ipairs(last_opts.items) do
+    if e.action == "new_file" then new_file_action = e end
+    if e.action == "new_dir" then new_dir_action = e end
+  end
+
+  vim.ui.input = function(_, cb)
+    cb("../escaped.txt")
+  end
+  last_opts.on_select(new_file_action)
+  check(
+    "browse: new_file rejects a name that would escape the directory",
+    vim.api.nvim_buf_get_name(0) == before_buf
+  )
+
+  vim.ui.input = function(_, cb)
+    cb("../escaped_dir")
+  end
+  last_opts.on_select(new_dir_action)
+  check(
+    "browse: new_dir rejects a name that would escape the directory",
+    vim.fn.isdirectory(vim.fs.normalize(broot .. "/../escaped_dir")) == 0
+  )
+
+  vim.ui.input = function(_, cb)
+    cb("gooddir")
+  end
+  last_opts.on_select(new_dir_action)
+  check("browse: new_dir still allows a plain name", vim.fn.isdirectory(broot .. "/gooddir") == 1)
+  vim.fn.delete(broot .. "/gooddir", "rf")
+  vim.ui.input = orig_input
+
   -- Operations.
   check(
     "browse.new_dir",
@@ -1422,6 +1565,34 @@ do
     "command.handle: query lands on the source",
     seen_source ~= nil and seen_source.query == "carried"
   )
+
+  -- Fix: a picker opened outside the tab machinery forgets a group left
+  -- active by some other closing path (Esc, :q, ...) than tab_next/prev --
+  -- command.handle is the one entry point every launcher funnels through.
+  do
+    command.handle = function() end
+    tabs.open("git")
+    check("tabs: state set by open()", tabs.current() ~= nil)
+    command.handle = orig_handle
+    require("pickers.engines").load = function()
+      return { pick_files = function() end }
+    end
+    files.run = function() end
+    command.handle({ fargs = { "cwd", "files" } })
+    check("command.handle: forgets a stale tab group opened by other means", tabs.current() == nil)
+
+    command.handle = function() end
+    tabs.open("git")
+    command.handle = orig_handle
+    command.handle({ fargs = { "builtin", "buffers" }, from_tabs = true })
+    check(
+      "command.handle: from_tabs=true does not reset the group it is continuing",
+      tabs.current() ~= nil
+    )
+    require("pickers.engines").load = orig_load
+    files.run = orig_run
+    tabs.reset()
+  end
 
   -- keys: the new opt-in actions resolve unbound by default and bind when set.
   local keys = require("pickers.keys")
@@ -3386,6 +3557,12 @@ do
     has(captured.additional_args, "-tlua") and has(captured.additional_args, "--fixed-strings")
   )
   check("actions.grep: global cfg.find untouched by override", config.get().find.hidden == true)
+
+  -- Fix: `source.query` (set by dispatch_action from tabs' query carry-over,
+  -- same as files/smart) reaches the engine, seeding the prompt instead of
+  -- being silently dropped.
+  grep.run({ roots = { "/tmp" }, prompt = "cwd> ", query = "TODO" }, fake_engine)
+  check("actions.grep: query forwarded to the engine", captured.query == "TODO")
 
   config.apply({ find = { hidden = true, no_ignore = false, follow = true } })
 end

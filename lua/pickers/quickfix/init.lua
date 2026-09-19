@@ -125,6 +125,34 @@ local function set_list(win, items, title)
 end
 
 ---@internal
+---The current changedtick of the list `win` shows -- bumped by every
+---setqflist()/setloclist() write, including a foreign one, so comparing it
+---against a value captured earlier detects "something replaced this list
+---since then" without caring what that something was.
+---@param win integer
+---@return integer
+local function list_tick(win)
+  if is_loclist(win) then return vim.fn.getloclist(win, { changedtick = 0 }).changedtick or 0 end
+  return vim.fn.getqflist({ changedtick = 0 }).changedtick or 0
+end
+
+---@internal
+---A display name for `item`: its buffer's real name when the buffer is
+---still valid, `item.filename` otherwise. `nvim_buf_get_name` throws on a
+---bufnr that no longer refers to a valid buffer (e.g. :bwipeout-ed while
+---its number is still recorded on a stale quickfix/location entry).
+---@param item table
+---@return string
+local function item_name(item)
+  local bufnr = item.bufnr
+  if bufnr and bufnr > 0 and vim.api.nvim_buf_is_valid(bufnr) then
+    local ok, name = pcall(vim.api.nvim_buf_get_name, bufnr)
+    if ok then return name end
+  end
+  return item.filename or ""
+end
+
+---@internal
 ---The entry under the cursor of `win`, or nil.
 ---@param win integer
 ---@return table|nil
@@ -177,14 +205,34 @@ local function source_lines(item, height, context)
     local lines = vim.api.nvim_buf_get_lines(bufnr, first - 1, last, false)
     return lines, first, vim.bo[bufnr].filetype
   end
-  local name = (bufnr and bufnr > 0) and vim.api.nvim_buf_get_name(bufnr) or (item.filename or "")
+  local name = item_name(item)
   if name == "" or vim.fn.filereadable(name) ~= 1 then return {}, first, "" end
-  local ok, all = pcall(vim.fn.readfile, name, "", last)
-  if not ok then return {}, first, "" end
-  local lines = {}
-  for i = first, math.min(last, #all) do
-    lines[#lines + 1] = all[i]
-  end
+  -- `readfile(name, "", last)` used to materialise every line from the
+  -- start of the file through `last` into one Lua table even though only
+  -- `height` of them are ever kept -- for a match deep in a large file
+  -- that is a large, repeated allocation on every debounced cursor move.
+  -- Reading (and discarding) one line at a time instead keeps only the
+  -- window actually shown in memory; the lines before `first` are still
+  -- scanned, since a plain text file has no line index to seek by.
+  local ok, lines = pcall(function()
+    local f = io.open(name, "r")
+    if not f then return nil end
+    for _ = 1, first - 1 do
+      if not f:read("l") then
+        f:close()
+        return {}
+      end
+    end
+    local out = {}
+    for _ = first, last do
+      local l = f:read("l")
+      if not l then break end
+      out[#out + 1] = l
+    end
+    f:close()
+    return out
+  end)
+  if not ok or not lines then return {}, first, "" end
   local ft = vim.filetype.match({ filename = name }) or ""
   return lines, first, ft
 end
@@ -235,9 +283,7 @@ function M.preview(win)
     end
   end
 
-  local name = (item.bufnr or 0) > 0 and vim.api.nvim_buf_get_name(item.bufnr)
-    or (item.filename or "")
-  local title = (" %s:%d "):format(vim.fn.fnamemodify(name, ":~:."), item.lnum or 0)
+  local title = (" %s:%d "):format(vim.fn.fnamemodify(item_name(item), ":~:."), item.lnum or 0)
   local width = vim.api.nvim_win_get_width(win)
   local wcfg = {
     relative = "win",
@@ -308,10 +354,7 @@ local function handle_for(qfbuf)
   if h then return h end
   h = require("pickers.refine").new({
     fields = {
-      path = function(it)
-        if (it.bufnr or 0) > 0 then return vim.api.nvim_buf_get_name(it.bufnr) end
-        return it.filename
-      end,
+      path = item_name,
       text = function(it)
         return it.text
       end,
@@ -330,14 +373,21 @@ function M.apply(win)
   win = win or vim.api.nvim_get_current_win()
   local qfbuf = vim.api.nvim_win_get_buf(win)
   local h = handle_for(qfbuf)
-  local items, title = list_of(win)
   local orig = originals[qfbuf]
-  if not orig then
+  if not orig or orig.tick ~= list_tick(win) then
+    -- Nothing remembered yet, or the list changed since we last wrote to
+    -- it -- a fresh :grep, an LSP references list, anything not from our
+    -- own apply()/restore() -- so the remembered "original" is for a list
+    -- that is gone; start over from what is actually showing now, and
+    -- drop clauses that were built against it.
+    local items, title = list_of(win)
     orig = { items = items, title = title }
     originals[qfbuf] = orig
+    h:clear()
   end
   local kept = h:apply(orig.items)
   set_list(win, kept, h:title(orig.title, #kept, #orig.items))
+  orig.tick = list_tick(win)
   return #kept, #orig.items
 end
 
@@ -349,10 +399,13 @@ function M.restore(win)
   local orig = originals[qfbuf]
   local h = handles[qfbuf]
   if h then h:clear() end
-  if orig then
+  if orig and orig.tick == list_tick(win) then
+    -- Only restore when nothing else has touched the list since we last
+    -- wrote to it -- otherwise this would clobber a list (e.g. a fresh
+    -- :grep) that has nothing to do with our own remembered original.
     set_list(win, orig.items, orig.title)
-    originals[qfbuf] = nil
   end
+  originals[qfbuf] = nil
 end
 
 ---Open the refine prompt for the list in `win`, applying on change.
@@ -441,6 +494,15 @@ function M.attach(qfbuf)
     group = group,
     buffer = qfbuf,
     callback = function()
+      -- The debounce timer is a libuv handle, not a Lua value -- it stays
+      -- alive at the event-loop level until explicitly closed, so the
+      -- last pending/fired one for this buffer must be stopped here too,
+      -- not just left for garbage collection.
+      if timer then
+        timer:stop()
+        timer:close()
+        timer = nil
+      end
       originals[qfbuf] = nil
       handles[qfbuf] = nil
       local pb = preview_bufs[qfbuf]
