@@ -76,6 +76,12 @@ function M.plugin_spec(opts)
     return {
       {
         "StefanBartl/pickers.nvim",
+        -- Required: pickers.nvim registers :Pickers, its default keymaps and
+        -- compat commands from config() -- with no cmd/ft/event/keys trigger
+        -- of its own, a spec list built under `defaults.lazy = true` would
+        -- resolve this to lazy with nothing to ever load it (LUA-93). Same
+        -- requirement as the hand-written spec in docs/installation.md.
+        lazy = false,
         dependencies = { "StefanBartl/lib.nvim" },
         config = function()
           require("pickers").setup(picker_opts)
@@ -103,6 +109,10 @@ function M.plugin_spec(opts)
   return {
     {
       engine_plugin.repo,
+      -- Loaded together with the pickers.nvim entry below (its `dependencies`
+      -- lists this repo, and that entry is eager) -- explicit here too rather
+      -- than relying on that implicitly (LUA-93).
+      lazy = false,
       dependencies = engine_plugin.dependencies,
       config = function()
         require(engine_plugin.setup_module).setup(opts.engine_opts or {})
@@ -110,6 +120,8 @@ function M.plugin_spec(opts)
     },
     {
       "StefanBartl/pickers.nvim",
+      -- Required -- see the same field in the non-own_engine branch above.
+      lazy = false,
       dependencies = { "StefanBartl/lib.nvim", engine_plugin.repo },
       config = function()
         require("pickers").setup(picker_opts)
