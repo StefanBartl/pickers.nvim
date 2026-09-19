@@ -224,6 +224,26 @@ local M = {
   images = {
     enabled = true,
   },
+
+  -- The quickfix/location window, upgraded in place: a preview float that
+  -- follows the cursor and the pickers.refine filter stack over the list
+  -- (`zf` refine, `zF` restore, `p` preview on/off). Buffer-local, from a
+  -- `FileType qf` autocmd; no engine involved. See pickers.quickfix.
+  quickfix = {
+    enabled = true,
+    preview = {
+      enabled = true,
+      height = 12,
+      context = 4,
+      border = "rounded",
+      delay_ms = 40,
+    },
+    keys = {
+      filter = "zf",
+      restore = "zF",
+      toggle_preview = "p",
+    },
+  },
 }
 
 return M

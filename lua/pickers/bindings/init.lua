@@ -35,6 +35,11 @@ function M.setup(cfg)
   -- never called setup() — keys default to enabled, so they should apply either
   -- way. Unlike history (opt-in), this honours "same keys for every picker".
   if not cfg.keys or cfg.keys.enable ~= false then require("pickers.keys").patch(cfg) end
+
+  -- The quickfix window's preview + filter: a FileType qf trigger, so it
+  -- applies to every list however it was filled (:grep, :make, an LSP
+  -- reference list, a picker's send-to-qf).
+  require("pickers.quickfix").setup(cfg)
 end
 
 return M

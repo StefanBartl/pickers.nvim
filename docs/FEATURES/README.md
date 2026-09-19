@@ -13,6 +13,7 @@ the engine underneath. This plugin makes it one grammar instead.
 | **Native pickers** | `:Pickers builtin <name>` reaches the engine's own pickers — git branches, log, status and diff, every LSP list, diagnostics, help, marks, buffers, registers — dispatching straight into the resolved engine |
 | **Engines** | telescope.nvim, fzf-lua or snacks.nvim, auto-detected. The grammar does not change when the engine does |
 | **Collections** | Your own named scopes, so a set of directories you work in becomes one word |
+| **Quickfix** | The `:copen` window itself, with a preview float that follows the cursor and the refine filter stack over the list (`zf`/`zF`/`p`) |
 
 pickers.nvim consolidates what used to be seven separate picker modules into
 one plugin: a single `:Pickers` command over three interchangeable engines
@@ -36,6 +37,8 @@ appears once, where a reader would look for it.
   building block for narrowing a big result list by stacked clauses.
 - **[UI](UI.md)** — the pickers that pick a picker, the result count, path
   shortening.
+- **[QUICKFIX](QUICKFIX.md)** — the quickfix/location window upgraded in
+  place: a cursor-following preview float and `pickers.refine` over the list.
 - **[PERSISTENCE](PERSISTENCE.md)** — history, frecency, and reopening what you
   just had.
 - **[IMAGES](IMAGES.md)** — png/jpg entries drawn as pictures in the preview

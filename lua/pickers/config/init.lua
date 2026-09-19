@@ -201,6 +201,12 @@ function M.apply(opts)
   if type(opts.images) == "table" then
     if type(opts.images.enabled) == "boolean" then cfg.images.enabled = opts.images.enabled end
   end
+
+  -- Deep-merge quickfix over defaults; a key set to `false` unbinds it, so
+  -- `false` has to survive the merge (tbl_deep_extend keeps it).
+  if type(opts.quickfix) == "table" then
+    cfg.quickfix = vim.tbl_deep_extend("force", cfg.quickfix, opts.quickfix)
+  end
 end
 
 return M

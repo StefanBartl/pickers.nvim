@@ -973,6 +973,124 @@ do
   check("extract.fzf: icon glyph removed", not stripped:find("239", 1, true))
 end
 
+-- ── quickfix: preview float + refine filter over a real :copen ──────────────
+do
+  local quickfix = require("pickers.quickfix")
+  local config = require("pickers.config")
+
+  -- Defaults and the deep-merge that keeps a `false` key.
+  local cfg = config.get()
+  check("quickfix: on by default", cfg.quickfix and cfg.quickfix.enabled == true)
+  check(
+    "quickfix: default keys",
+    cfg.quickfix.keys.filter == "zf" and cfg.quickfix.keys.restore == "zF"
+  )
+  config.apply({ quickfix = { keys = { toggle_preview = false }, preview = { height = 6 } } })
+  check("quickfix: apply merges preview.height", config.get().quickfix.preview.height == 6)
+  check("quickfix: apply keeps a false key", config.get().quickfix.keys.toggle_preview == false)
+  config.apply({
+    quickfix = { keys = { toggle_preview = "p" }, preview = { height = 12, delay_ms = 0 } },
+  })
+
+  -- A temp file with known lines, a quickfix list pointing into it.
+  local path = vim.fn.tempname() .. ".lua"
+  local lines = {}
+  for i = 1, 40 do
+    lines[i] = ("local line_%d = %d"):format(i, i)
+  end
+  vim.fn.writefile(lines, path)
+  vim.fn.setqflist({}, "r", {
+    title = "Spec",
+    items = {
+      { filename = path, lnum = 20, text = "local line_20 = 20" },
+      { filename = path, lnum = 5, text = "local line_5 = 5" },
+      { filename = path, lnum = 33, text = "other text" },
+    },
+  })
+  quickfix.setup(config.get())
+  vim.cmd("copen")
+  local qfwin = vim.api.nvim_get_current_win()
+  local qfbuf = vim.api.nvim_get_current_buf()
+  check("quickfix: attached on FileType qf", vim.b[qfbuf].pickers_quickfix_attached == true)
+  check("quickfix: zf bound in the list", vim.fn.maparg("zf", "n", false, true).buffer == 1)
+
+  -- Preview for the entry under the cursor: file lines around lnum, target highlighted.
+  vim.api.nvim_win_set_cursor(qfwin, { 1, 0 })
+  check("quickfix: preview drawn", quickfix.preview(qfwin) == true)
+  local pwin = quickfix.preview_win(qfbuf)
+  check("quickfix: preview window exists", pwin ~= nil and vim.api.nvim_win_is_valid(pwin))
+  local pbuf = vim.api.nvim_win_get_buf(pwin)
+  local plines = vim.api.nvim_buf_get_lines(pbuf, 0, -1, false)
+  check(
+    "quickfix: preview starts `context` lines above",
+    plines[1] == "local line_16 = 16",
+    plines[1]
+  )
+  check("quickfix: preview has `height` lines", #plines == 12, tostring(#plines))
+  local marks = vim.api.nvim_buf_get_extmarks(
+    pbuf,
+    vim.api.nvim_create_namespace("pickers_quickfix"),
+    0,
+    -1,
+    { details = true }
+  )
+  check("quickfix: target line highlighted", #marks == 1 and marks[1][2] == 4, vim.inspect(marks))
+  local pcfg = vim.api.nvim_win_get_config(pwin)
+  check(
+    "quickfix: preview anchored to the list window",
+    pcfg.relative == "win" and pcfg.focusable == false
+  )
+
+  -- Second entry: lnum 5 -> first shown line is 1.
+  vim.api.nvim_win_set_cursor(qfwin, { 2, 0 })
+  quickfix.preview(qfwin)
+  plines = vim.api.nvim_buf_get_lines(pbuf, 0, -1, false)
+  check("quickfix: preview clamps to the file start", plines[1] == "local line_1 = 1", plines[1])
+
+  -- Toggle off closes, toggle on redraws.
+  check("quickfix: toggle_preview off", quickfix.toggle_preview() == false)
+  check("quickfix: preview closed", quickfix.preview_win(qfbuf) == nil)
+  check("quickfix: toggle_preview on", quickfix.toggle_preview() == true)
+  check("quickfix: preview back", quickfix.preview_win(qfbuf) ~= nil)
+
+  -- Filter through the refine handle, non-destructively, then restore.
+  quickfix.apply(qfwin) -- empty stack: remembers the original, keeps all three
+  local h = quickfix.handle(qfbuf)
+  check("quickfix: refine handle created", h ~= nil)
+  h.stack[#h.stack + 1] = { field = "text", term = "line_", mode = "substr", negate = false }
+  local shown, total = quickfix.apply(qfwin)
+  check("quickfix: apply filters the list", shown == 2 and total == 3, shown .. "/" .. total)
+  local q = vim.fn.getqflist({ items = 1, title = 1 })
+  check("quickfix: list replaced", #q.items == 2 and q.items[2].lnum == 5)
+  check(
+    "quickfix: title shows the stack",
+    q.title:find("text~line_", 1, true) ~= nil and q.title:find("(2/3)", 1, true) ~= nil,
+    q.title
+  )
+  h.stack[#h.stack + 1] = { field = "text", term = "20", mode = "substr", negate = false }
+  shown = quickfix.apply(qfwin)
+  check("quickfix: a second clause filters the ORIGINAL list", shown == 1)
+  quickfix.restore(qfwin)
+  q = vim.fn.getqflist({ items = 1, title = 1 })
+  check("quickfix: restore puts the full list back", #q.items == 3 and q.title == "Spec", q.title)
+  check("quickfix: restore clears the stack", not h:is_active())
+
+  -- Leaving the list closes the preview; disabling stops attaching.
+  vim.cmd("wincmd p")
+  vim.api.nvim_exec_autocmds("WinLeave", { buffer = qfbuf })
+  check("quickfix: preview closed on WinLeave", quickfix.preview_win(qfbuf) == nil)
+  vim.cmd("cclose")
+  -- The qf buffer is reused across :cclose/:copen, so attach() is asked
+  -- directly, with the per-buffer marker cleared and the feature off.
+  config.apply({ quickfix = { enabled = false } })
+  quickfix.setup(config.get())
+  vim.api.nvim_buf_del_var(qfbuf, "pickers_quickfix_attached")
+  quickfix.attach(qfbuf)
+  check("quickfix: disabled -> not attached", vim.b[qfbuf].pickers_quickfix_attached ~= true)
+  config.apply({ quickfix = { enabled = true } })
+  vim.fn.delete(path)
+end
+
 -- ── :Pickers completion (composer) — needs lib.nvim; skip cleanly if absent ─
 -- Registers the real :Pickers command (as plugin/pickers.lua would) and drives
 -- its actual completion via getcompletion(), exercising the composer route
