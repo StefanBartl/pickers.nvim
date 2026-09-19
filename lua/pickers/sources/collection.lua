@@ -20,12 +20,13 @@ local M = {}
 ---@param only_git boolean
 ---@param exclude  string[]|nil  exact basenames to hide
 ---@return string[]  absolute paths
+---@return string|nil err  Set only when `fs_scandir` itself failed (permissions, a broken mount, an I/O error) -- distinguishes that from a genuinely empty result (ERR-11).
 local function list_subdirs(dir, prefix, only_git, exclude)
   local stat = vim.uv.fs_stat(dir)
   if not stat or stat.type ~= "directory" then return {} end
 
-  local handle = vim.uv.fs_scandir(dir)
-  if not handle then return {} end
+  local handle, scandir_err = vim.uv.fs_scandir(dir)
+  if not handle then return {}, scandir_err end
 
   local excluded = {}
   for _, name in ipairs(exclude or {}) do
@@ -59,6 +60,7 @@ end
 ---@param only_git boolean
 ---@param exclude  string[]|nil  exact basenames to hide
 ---@return string[]  absolute paths
+---@return string|nil err  See the internal `list_subdirs` -- set only on a real scan failure, not on a genuinely empty result.
 function M.list_subdirs(dir, prefix, only_git, exclude)
   return list_subdirs(dir, prefix, only_git, exclude)
 end
@@ -101,12 +103,18 @@ function M.get(coll, _cfg, callback, engine_mod)
   local prefix = coll.prefix
   local plen = #prefix
   local only_git = coll.only_git == true
-  local subdirs = list_subdirs(dir, prefix, only_git, coll.exclude)
+  local subdirs, scandir_err = list_subdirs(dir, prefix, only_git, coll.exclude)
 
   if #subdirs == 0 then
-    local info = (prefix == "") and "no subdirs found"
-      or ("no subdirs with prefix '" .. prefix .. "' found")
-    notify.warn("[" .. coll.name .. "] " .. info .. " in: " .. dir)
+    if scandir_err then
+      -- Scanning itself failed (permissions, a broken mount, an I/O error) --
+      -- a real error, not "no matches", so it must not read like one (ERR-11).
+      notify.error("[" .. coll.name .. "] could not scan " .. dir .. ": " .. scandir_err)
+    else
+      local info = (prefix == "") and "no subdirs found"
+        or ("no subdirs with prefix '" .. prefix .. "' found")
+      notify.warn("[" .. coll.name .. "] " .. info .. " in: " .. dir)
+    end
     callback(nil)
     return
   end
