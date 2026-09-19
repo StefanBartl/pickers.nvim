@@ -71,7 +71,19 @@ function M.preview_fn()
       if fell_back then return end
       fell_back = true
       images.clear()
-      return require("snacks.picker.preview").file(ctx)
+      -- `on_done` can fire after the picker (and its preview window/buffer)
+      -- has already closed -- the generation ticket only guards a NEW
+      -- preview replacing this one, not a closed one, and this adapter has
+      -- no teardown hook to invalidate it early (unlike the telescope
+      -- adapter's `teardown`). `ctx.buf`/`ctx.win` are live proxies into
+      -- snacks' own preview state at that point, so re-checked handles would
+      -- still be stale by the time snacks' own previewer reads them; pcall
+      -- this foreign call instead of letting that race surface as a stray
+      -- "Invalid buffer id" error with no connection to anything the user
+      -- did (ERR-33/ERR-01).
+      pcall(function()
+        require("snacks.picker.preview").file(ctx)
+      end)
     end
 
     if images.is_previewable(file) then
