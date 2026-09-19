@@ -243,7 +243,7 @@ end
 ---Open a directory picker. Snacks has no native dir source (neither do
 ---telescope/fzf — both shell out to `fd --type d` themselves); match that
 ---precedent, then hand the results to Snacks.picker.select.
----@param opts { prompt: string, cwd: string|nil, on_select: fun(string) }
+---@param opts { prompt: string, cwd: string|nil, on_select: fun(path: string) }
 function M.pick_dir(opts)
   local ok, Picker = pcall(require, "snacks.picker")
   if not ok then

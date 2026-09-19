@@ -293,7 +293,7 @@ function M.pick_item(opts)
 end
 
 ---Open a directory picker.
----@param opts { prompt: string, cwd: string|nil, on_select: fun(string) }
+---@param opts { prompt: string, cwd: string|nil, on_select: fun(path: string) }
 function M.pick_dir(opts)
   local ok, _, pickers, finders, conf, actions, action_state
   ok, _, pickers, finders, conf, actions, action_state = load_telescope()
