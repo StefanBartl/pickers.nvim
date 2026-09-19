@@ -19,6 +19,8 @@
 --- does not apply when the active engine is snacks. See docs/configuration.md
 --- ("History" section) for the user-facing explanation.
 
+local notify = require("lib.nvim.notify").create("[pickers.history]")
+
 local M = {}
 
 ---Resolve (and ensure) the history directory.
@@ -28,7 +30,22 @@ function M.dir(cfg)
   local dir = (cfg.history.dir and cfg.history.dir ~= "") and cfg.history.dir
     or (vim.fn.stdpath("data") .. "/pickers.nvim/history")
   dir = vim.fs.normalize(dir)
-  vim.fn.mkdir(dir, "p")
+  -- `history.dir` is a user-supplied path (read verbatim after expand_path in
+  -- config/init.lua); mkdir on it is a filesystem-boundary call and can raise
+  -- (E739) on a read-only mount or a parent that is itself a file (ERR-01).
+  -- Called from every picker open while history.enabled -- not a hot loop,
+  -- so a pcall here is free -- and a warning naming the actual path beats
+  -- E739 aborting the picker before it even opens.
+  local ok, err = pcall(vim.fn.mkdir, dir, "p")
+  if not ok then
+    notify.warn(
+      string.format(
+        "could not create history.dir %q (%s) -- picker history will not persist this session",
+        dir,
+        tostring(err)
+      )
+    )
+  end
   return dir
 end
 
