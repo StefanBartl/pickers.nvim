@@ -60,6 +60,8 @@ do
       { name = "", dir = "/x" }, -- invalid: empty name → dropped
       ---@diagnostic disable-next-line: missing-fields -- being invalid is the point
       { dir = "/y" }, -- invalid: no name    → dropped
+      -- invalid: "-" makes the derived :{Pascal}Files command illegal (ERR-22)
+      { name = "my-notes", dir = "/z" },
       { name = "proj", dir = "/tmp/proj", prefix = "", only_git = true, find = { hidden = false } },
     },
     keymaps = { cwd_grep = "<leader>zz" },
@@ -68,6 +70,15 @@ do
 
   check("apply: engine set", cfg.engine == "fzf", tostring(cfg.engine))
   check("apply: invalid collections dropped", #cfg.collections == 2, "#=" .. #cfg.collections)
+  check(
+    "apply: a name that would produce an illegal command name is dropped too",
+    not vim.tbl_contains(
+      vim.tbl_map(function(c)
+        return c.name
+      end, cfg.collections),
+      "my-notes"
+    )
+  )
   check("apply: first collection name", cfg.collections[1] and cfg.collections[1].name == "notes")
   check("apply: only_git normalised", cfg.collections[2] and cfg.collections[2].only_git == true)
   check("apply: prefix empty-string kept", cfg.collections[2] and cfg.collections[2].prefix == "")
@@ -219,6 +230,30 @@ do
     "sources.collection: find passed through to Source",
     resolved and resolved.find and resolved.find.hidden == false
   )
+
+  -- list_subdirs: a real scan failure must be distinguishable from a
+  -- genuinely empty directory -- both used to collapse into a bare `{}` with
+  -- the error from fs_scandir discarded entirely (ERR-11).
+  local empty_dir = vim.fn.tempname()
+  vim.fn.mkdir(empty_dir, "p")
+  local paths, scan_err = collection_source.list_subdirs(empty_dir, "", false, nil)
+  check("list_subdirs: a real empty directory reports no error", scan_err == nil)
+  check("list_subdirs: and returns no paths", #paths == 0)
+
+  local orig_scandir = vim.uv.fs_scandir
+  vim.uv.fs_scandir = function(_dir)
+    return nil, "EACCES: permission denied: simulated"
+  end
+  local paths2, scan_err2 = collection_source.list_subdirs(empty_dir, "", false, nil)
+  check(
+    "list_subdirs: a scandir failure is reported distinctly",
+    scan_err2 ~= nil,
+    tostring(scan_err2)
+  )
+  check("list_subdirs: and still returns no paths", #paths2 == 0)
+  vim.uv.fs_scandir = orig_scandir
+
+  vim.fn.delete(empty_dir, "rf")
 end
 
 -- ── pickers.last / pickers.command.dispatch — :PickersRepeat state ──────────
@@ -390,6 +425,10 @@ do
     "plugin_spec: deps are just lib.nvim",
     #plain[1].dependencies == 1 and plain[1].dependencies[1] == "StefanBartl/lib.nvim"
   )
+  check(
+    "plugin_spec: own_engine=false entry is explicitly lazy=false (LUA-93)",
+    plain[1].lazy == false
+  )
 
   local real_setup = pickers.setup
   local captured_opts
@@ -421,6 +460,14 @@ do
     "plugin_spec: pickers entry depends on both lib.nvim and the engine",
     has(snacks_spec[2].dependencies, "StefanBartl/lib.nvim")
       and has(snacks_spec[2].dependencies, "folke/snacks.nvim")
+  )
+  check(
+    "plugin_spec: own_engine=true engine entry is explicitly lazy=false (LUA-93)",
+    snacks_spec[1].lazy == false
+  )
+  check(
+    "plugin_spec: own_engine=true pickers entry is explicitly lazy=false (LUA-93)",
+    snacks_spec[2].lazy == false
   )
 
   -- engine entry's config() calls the engine's own setup() with engine_opts
@@ -479,6 +526,59 @@ do
       return cwd_i and notes_i and cwd_i < notes_i
     end)()
   )
+end
+
+-- ── config.apply — unknown-key validation, before the merge (ERR-50) ────────
+do
+  local config = require("pickers.config")
+
+  -- Baseline to diff against below.
+  config.apply({ engine = "auto", find = { hidden = true }, smart = { limit = 2000 } })
+
+  -- Top-level typo: dropped, does not land anywhere in cfg.
+  ---@diagnostic disable-next-line: assign-type-mismatch
+  local ok_top = pcall(config.apply, { engien = "fzf" })
+  check("apply: a top-level typo does not throw", ok_top)
+  check("apply: a top-level typo does not change engine", config.get().engine == "auto")
+
+  -- Nested-and-dropped: display.path_shortern (typo of path_shorten) used to
+  -- vanish silently; smart.limmit (typo of limit) used to be ABSORBED into
+  -- cfg.smart via the blind vim.tbl_deep_extend merge -- the nastier half,
+  -- since the wrong key would sit in the live config table.
+  ---@diagnostic disable-next-line: assign-type-mismatch
+  local ok_nested = pcall(config.apply, {
+    display = { path_shortern = true },
+    ---@diagnostic disable-next-line: assign-type-mismatch
+    smart = { limmit = 500 },
+  })
+  check("apply: a nested typo does not throw", ok_nested)
+  local cfg = config.get()
+  check("apply: display typo does not flip path_shorten", cfg.display.path_shorten == false)
+  check("apply: smart typo does not change limit", cfg.smart.limit == 2000)
+  check("apply: smart typo is not itself absorbed into cfg.smart", cfg.smart.limmit == nil)
+
+  config.apply({ engine = "auto", find = { hidden = true }, smart = { limit = 2000 } })
+end
+
+-- ── config.reset — a second setup() must not compose on the first (LUA-87) ──
+do
+  local config = require("pickers.config")
+
+  config.apply({ engine = "fzf", find = { no_ignore = true } })
+  local before = config.get()
+  check("reset: apply() alone still accumulates (unchanged)", before.engine == "fzf")
+  check("reset: and the override is live", before.find.no_ignore == true)
+
+  config.reset()
+  config.apply({}) -- the "pickers.setup({}) after pickers.setup({engine=...})" case
+  local after = config.get()
+  check(
+    "reset: a plain apply({}) after reset() is back to the default engine",
+    after.engine == "auto"
+  )
+  check("reset: and find is back to its default too", after.find.no_ignore == false)
+
+  config.apply({ engine = "auto", find = { hidden = true } })
 end
 
 -- ── config.apply — removed selected_index shape is ignored, not applied ─────
@@ -1596,6 +1696,17 @@ do
   check("history.dir: uses override", dir == vim.fs.normalize(base), dir)
   check("history.dir: creates the directory", vim.fn.isdirectory(dir) == 1)
 
+  -- ERR-01: an mkdir failure (e.g. history.dir on a read-only mount) must
+  -- not raise E739 out of every picker open -- it now warns and still
+  -- returns the path instead.
+  local orig_mkdir = vim.fn.mkdir
+  vim.fn.mkdir = function(_dir, _flags)
+    error("E739: Cannot create directory: simulated failure")
+  end
+  local ok_dir, dir_or_err = pcall(history.dir, cfg)
+  check("history.dir: an mkdir failure does not throw", ok_dir, tostring(dir_or_err))
+  vim.fn.mkdir = orig_mkdir
+
   local topts = history.telescope_opts(cfg)
   check("history.telescope_opts: path under dir", topts.path == dir .. "/telescope.txt", topts.path)
   check("history.telescope_opts: limit passed through", topts.limit == 42)
@@ -1637,6 +1748,44 @@ do
 
   local rg_none = search.rg_args({}, nil, "foo")
   check("search.rg_args: no exclude → no extra -g beyond .git", not has(rg_none, "!*.log"))
+end
+
+-- ── pickers.smart.search — M.collect: broken run vs. real zero matches (ERR-11) ─
+do
+  package.loaded["pickers.smart.search"] = nil
+  local search = require("pickers.smart.search")
+
+  local orig_system = vim.system
+  local orig_executable = vim.fn.executable
+  -- rg absent on purpose: keeps this test to the fd/files half only.
+  vim.fn.executable = function(name)
+    return (name == "fd") and 1 or 0
+  end
+
+  local next_result
+  vim.system = function(_cmd, _opts)
+    return {
+      wait = function()
+        return next_result
+      end,
+    }
+  end
+
+  next_result = { code = 0, signal = 0, stdout = "" }
+  local files, _, problems = search.collect({ roots = { "/r" }, query = "nomatch" })
+  check("search.collect: a clean empty run reports no problems", #problems == 0)
+  check("search.collect: and returns no files", #files == 0)
+
+  -- A killed/errored run looks just as empty to a caller that only checks
+  -- #files/#greps -- `problems` is what tells the two apart (ERR-11).
+  next_result = { code = 1, signal = 9, stdout = "" }
+  local files2, _, problems2 = search.collect({ roots = { "/r" }, query = "nomatch" })
+  check("search.collect: a killed run is reported as a problem", #problems2 == 1)
+  check("search.collect: files stays empty either way", #files2 == 0)
+
+  vim.system = orig_system
+  vim.fn.executable = orig_executable
+  package.loaded["pickers.smart.search"] = nil
 end
 
 -- ── pickers.smart.frecency — opt-in recency/frequency ranking boost ─────────
@@ -2259,6 +2408,29 @@ do
   check("pick_item/fzf: plain strings — no preview function set", captured.opts.preview == nil)
   captured.opts.actions["default"]({ "alpha" })
   check("pick_item/fzf: plain strings — on_select gets the raw string", got == "alpha")
+
+  -- No item anywhere in this call carries `file` (legal -- see Pickers.Item's
+  -- own doc), so this stays on the no-preview path -- PRIN-25: fzf-lua's
+  -- contents table must still get plain strings, and on_select must still
+  -- get back the EXACT original table, not fzf's raw selected line.
+  local table_items_no_file = { { text = "Tmpl A" }, { text = "Tmpl B" } }
+  local got_table_item
+  fzf_engine.pick_item({
+    items = table_items_no_file,
+    prompt = "Templates",
+    on_select = function(item)
+      got_table_item = item
+    end,
+  })
+  check(
+    "pick_item/fzf: table items without file — fzf sees plain display text",
+    captured.items[1] == "Tmpl A" and captured.items[2] == "Tmpl B"
+  )
+  captured.opts.actions["default"]({ "Tmpl B" })
+  check(
+    "pick_item/fzf: table items without file — on_select gets back the EXACT original table",
+    got_table_item == table_items_no_file[2]
+  )
 
   local items = { { text = "Tmpl A", file = "/tmp/a.lua" }, { text = "Tmpl B" } }
   fzf_engine.pick_item({ items = items, prompt = "Templates", on_select = function() end })
@@ -3654,6 +3826,11 @@ end
 do
   package.loaded["pickers.sources.drives"] = nil
   local drives = require("pickers.sources.drives")
+  -- The cache now lives in lib.nvim.cache.memory's shared, cross-reload
+  -- namespace store (PERF-42), not a plain module-local -- clear it so this
+  -- block starts from a real cache miss regardless of what an earlier test
+  -- run left behind.
+  drives.clear()
 
   local is_win = drives.is_windows()
   check(
@@ -3707,8 +3884,8 @@ do
     "#=" .. tostring(got and #got)
   )
 
-  -- Session cache: "drives don't change during a session" (module comment)
-  -- -- a second call must be served from the cache, not shell out again.
+  -- TTL cache (PERF-42): a second call within the TTL is served from the
+  -- cache, not shelled out again.
   seen_cmd = nil
   local got2
   drives.roots(function(r)
@@ -3717,6 +3894,19 @@ do
   check("drives.roots: second call is served synchronously (cached)", got2 ~= nil)
   check("drives.roots: a cache hit does not shell out again", seen_cmd == nil)
   check("drives.roots: cached result is the same table", got2 == got)
+
+  -- M.clear() forces the next call to re-probe rather than wait out the TTL.
+  drives.clear()
+  next_stdout = is_win and (win_drive .. "\\\r\n") or "Mounted on\n/\n"
+  seen_cmd = nil
+  local got3
+  drives.roots(function(r)
+    got3 = r
+  end)
+  vim.wait(2000, function()
+    return got3 ~= nil
+  end)
+  check("drives.clear: forces the next call to shell out again", seen_cmd ~= nil)
 
   -- M.get(): the cached roots become a Pickers.Source with the expected
   -- prompt and noise-exclusion globs.
@@ -3731,6 +3921,7 @@ do
     source ~= nil and has(source.additional_args, "!.git/")
   )
 
+  drives.clear()
   vim.system = orig_system
   package.loaded["pickers.sources.drives"] = nil
 end
@@ -4208,19 +4399,14 @@ do
   local ok_smoke = pcall(health.check)
   check("health.check: does not raise when lib.nvim is fully present", ok_smoke)
 
-  -- BUG: the dependency section's "not found" branch for
-  -- lib.nvim.bindings.usercmd.composer (line ~32) reports it missing via an
-  -- ordinary `vim.health.error()` and carries on -- the same graceful
-  -- pattern every other missing-dependency check in this function uses. But
-  -- the very last line of `M.check()` unconditionally does
-  -- `require("lib.nvim.bindings.usercmd.composer").checkhealth("Pickers")`,
-  -- OUTSIDE any pcall, calling straight into the exact module the section
-  -- above just reported as absent. On a real "not found" that require
-  -- throws again -- this time uncaught -- so `:checkhealth pickers` crashes
-  -- outright instead of finishing the report, in precisely the situation
-  -- where the user most needs a coherent one. Same "health.lua's
-  -- dependency-missing branch calls into the missing dependency
-  -- unconditionally afterwards" family already found in four other repos.
+  -- Regression test: the dependency section's "not found" branch for
+  -- lib.nvim.bindings.usercmd.composer reports it missing via an ordinary
+  -- `vim.health.error()` and carries on -- the same graceful pattern every
+  -- other missing-dependency check in this function uses. `M.check()` now
+  -- reuses that same pcall result for the final `checkhealth("Pickers")`
+  -- call instead of requiring the module a second time outside any pcall,
+  -- so a real "not found" no longer crashes the whole report a second time
+  -- over the same, already-reported cause.
   local prev_loaded = package.loaded["lib.nvim.bindings.usercmd.composer"]
   package.loaded["lib.nvim.bindings.usercmd.composer"] = nil
   package.preload["lib.nvim.bindings.usercmd.composer"] = function()
@@ -4229,10 +4415,10 @@ do
 
   local ok_missing = pcall(health.check)
   check(
-    "BUG: health.check() crashes (instead of finishing the report) when "
-      .. "lib.nvim.bindings.usercmd.composer is missing, even though the "
-      .. "earlier dependency check already reported it as missing",
-    not ok_missing
+    "health.check: finishes the report (does not raise) when "
+      .. "lib.nvim.bindings.usercmd.composer is missing, after already "
+      .. "reporting it as missing in the dependency section",
+    ok_missing
   )
 
   package.preload["lib.nvim.bindings.usercmd.composer"] = nil
@@ -4258,6 +4444,7 @@ do
 
   local fake_cfg
   package.loaded["pickers.config"] = {
+    reset = function() end,
     apply = function() end,
     get = function()
       return fake_cfg
