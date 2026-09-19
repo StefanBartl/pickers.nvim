@@ -4,5 +4,6 @@
   "runtime.pathStrict": true,
   "diagnostics.globals": ["vim"],
   "workspace.checkThirdParty": false,
+  "workspace.ignoreDir": [".claude", ".deps"],
   "telemetry.enable": false
 }
