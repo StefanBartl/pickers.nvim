@@ -400,7 +400,7 @@ function M.pick_item(opts)
 end
 
 ---Open a directory picker (used by folder source).
----@param opts { prompt: string, cwd: string|nil, on_select: fun(string) }
+---@param opts { prompt: string, cwd: string|nil, on_select: fun(path: string) }
 function M.pick_dir(opts)
   local ok, fzf = pcall(require, "fzf-lua")
   if not ok then
