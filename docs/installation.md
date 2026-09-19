@@ -107,10 +107,16 @@ something else has already loaded the plugin.
 ## Optional: engine ownership + auto-install
 
 By default pickers.nvim only *detects* whichever engine you already declared
-and configured yourself (the spec above) — it never calls
-`Snacks.setup()`/`telescope.setup()`/`fzf-lua.setup()` for you, so your own
-engine config (dashboard, extensions, winopts, …) is never fought over by a
-second competing `setup()` call.
+and configured yourself (the spec above). It never calls `Snacks.setup()` at
+all — there is no patch mechanism for snacks; see `keys.snacks_win()` in
+docs/keymaps.md for the export-and-merge-yourself model it uses instead. For
+telescope and fzf-lua it stops short of full ownership too, but not all the
+way to "never calls setup()": the opt-in key/history patches
+(`keys.enable`/`history.enabled`, on and off by default respectively — see
+docs/keymaps.md and the "History" section below) do call `telescope.setup()`/
+`fzf-lua.setup()` a second time, deep-merging their own values in rather than
+replacing your config wholesale. Nothing else — dashboard, extensions,
+winopts, … — is ever touched.
 
 If you'd rather have pickers.nvim install **and** configure the engine too —
 zero engine config of your own — use `require("pickers").plugin_spec()` in
