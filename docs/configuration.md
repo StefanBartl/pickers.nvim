@@ -356,3 +356,26 @@ separately whether PDF pages can be rasterized.
 
 Full details, and why each engine draws the line where it does, in
 [FEATURES/IMAGES.md](FEATURES/IMAGES.md).
+
+## Quickfix
+
+The quickfix/location window's preview float and refine filter — see
+[FEATURES/QUICKFIX.md](FEATURES/QUICKFIX.md). On by default; no engine involved.
+
+```lua
+quickfix = {
+  enabled = true,
+  preview = {
+    enabled = true,     -- the float above the list
+    height = 12,        -- rows
+    context = 4,        -- lines shown above the entry's line
+    border = "rounded",
+    delay_ms = 40,      -- debounce after CursorMoved
+  },
+  keys = {              -- buffer-local in the list window; false unbinds
+    filter = "zf",
+    restore = "zF",
+    toggle_preview = "p",
+  },
+},
+```

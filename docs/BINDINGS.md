@@ -87,6 +87,14 @@ All of these live in the augroup `"pickers.nvim"` when lib.nvim is present; with
 | `VimEnter` | none | `lua/pickers/bindings/autocmds.lua` (registered from `plugin/pickers.lua`) | Register default keymaps/usercmds at startup when the user did *not* call `setup()` (guarded by `vim.g.pickers_nvim_setup_called`). Fires once. |
 | `User` | `LazyLoad` | `lua/pickers/engines/when_loaded.lua` | Deferred engine wiring: patch the in-picker keys, result count and history options into telescope or fzf-lua once lazy.nvim reports that engine loaded, instead of `require`-ing it at `setup()` time. One is registered per engine that still has to be patched, and each deletes itself as soon as its own engine arrives. Not registered at all when the engine is already loaded, or when lazy.nvim is absent (a `vim.schedule` takes over there). |
 
+**`quickfix`** (on by default, `cfg.quickfix.enabled`):
+
+| Event(s) | Pattern / buffer | Source File | Description |
+| --- | --- | --- | --- |
+| `FileType` | `qf` (augroup `pickers.nvim.quickfix`) | `lua/pickers/quickfix/init.lua` | Attach the preview autocmds and the `zf`/`zF`/`p` keys to a quickfix or location buffer, once per buffer |
+| `CursorMoved`, `BufEnter`, `WinEnter` | that buffer (augroup `pickers.nvim.quickfix.<buf>`) | `lua/pickers/quickfix/init.lua` | Redraw the preview float for the entry under the cursor, debounced by `quickfix.preview.delay_ms` |
+| `BufLeave`, `WinLeave`, `BufWinLeave`, `BufWipeout` | that buffer | `lua/pickers/quickfix/init.lua` | Close the preview; on wipeout also forget the remembered full list and the refine stack |
+
 **`smart.frecency`** (opt-in, only registered when `cfg.smart.frecency.enabled == true`):
 
 | Event(s) | Buffer (pattern) | Source File | Description |
@@ -117,6 +125,16 @@ All of these live in the augroup `"pickers.nvim"` when lib.nvim is present; with
 | `mouse_confirm` | `<2-LeftMouse>` | patched (telescope's only gap) | native (fzf's own mouse handling) | export only¹ (native default too) |
 
 ¹ snacks: pickers.nvim doesn't own `Snacks.setup()`, so nothing is auto-registered there — merge `require("pickers.keys").snacks_win()` into your own `snacks.setup({ picker = { win = ... } })`.
+
+### Quickfix-window keys (`quickfix.keys`)
+
+Buffer-local to a quickfix or location buffer, bound by the `FileType qf` autocmd above. Each accepts a lhs string or `false`.
+
+| Action (`config`) | Default | Does |
+| --- | --- | --- |
+| `filter` | `zf` | Open `pickers.refine`'s prompt over the list (fields `path`, `text`); the list is replaced by what the stack keeps, its title shows the stack |
+| `restore` | `zF` | Put the full list back and clear the stack |
+| `toggle_preview` | `p` | Preview float on/off for the session |
 
 `create_file`/`open_background` run pickers.nvim-specific logic (`lua/pickers/entry_actions/`), not a built-in engine action — merge them into your own engine `setup()` manually via `entry_actions/adapters/{telescope,fzf,snacks}.lua`'s `get_mappings()` (telescope), `get_actions()` (fzf-lua), or `get_actions()` + `get_keys()` + `get_input_keys()` (snacks).
 

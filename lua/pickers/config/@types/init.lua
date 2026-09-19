@@ -88,5 +88,6 @@
 ---@field smart?         Pickers.SmartConfig
 ---@field display?       Pickers.DisplayConfig
 ---@field images?        Pickers.ImagesConfig
+---@field quickfix?      Pickers.QuickfixConfig  # preview float + refine filter in the quickfix window (pickers.quickfix)
 
 return {}
