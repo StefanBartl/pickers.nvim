@@ -336,7 +336,19 @@ function M.pick_item(opts)
   end
 
   if not has_preview then
-    fzf.fzf_exec(opts.items, {
+    -- `opts.items` may still be `Pickers.Item` tables even with no `file` set
+    -- anywhere (`file` is optional -- see the type doc) -- fzf-lua's contents
+    -- table wants plain strings, and `on_select` must get back the EXACT
+    -- entry that was in `items` (PRIN-25: narrow the input before the
+    -- foreign-API call, same as the has_preview branch below already does).
+    local lines, by_line = {}, {}
+    for i, it in ipairs(opts.items) do
+      local text = (type(it) == "table") and it.text or it
+      lines[i] = text
+      by_line[text] = it
+    end
+
+    fzf.fzf_exec(lines, {
       prompt = opts.prompt,
       fzf_opts = vim.tbl_extend(
         "force",
@@ -347,7 +359,7 @@ function M.pick_item(opts)
       winopts = { on_create = setup_double_esc },
       actions = {
         ["default"] = function(selected)
-          if selected and selected[1] then opts.on_select(selected[1]) end
+          if selected and selected[1] then opts.on_select(by_line[selected[1]] or selected[1]) end
         end,
       },
     })
