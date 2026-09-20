@@ -2,18 +2,20 @@
 
 ## Requirements
 
-**Hard required:**
+### Hard required
+
 - Neovim **0.10+** — `vim.uv` and `vim.system` are used unguarded (directory
   navigation, the collection and repo sources, and the `smart` action's `rg`/
   `fd` calls all depend on them)
 - [lib.nvim](https://github.com/StefanBartl/lib.nvim)
 
-**One of (auto-detected, telescope preferred, then fzf-lua, then snacks.nvim):**
+### One of (auto-detected, telescope preferred, then fzf-lua, then snacks.nvim)
+
 - [telescope.nvim](https://github.com/nvim-telescope/telescope.nvim)
 - [fzf-lua](https://github.com/ibhagwan/fzf-lua)
 - [snacks.nvim](https://github.com/folke/snacks.nvim) (picker module)
 
-**Optional, each detected at runtime and degrading to nothing when absent:**
+### Optional, each detected at runtime and degrading to nothing when absent
 
 | | |
 | --- | --- |

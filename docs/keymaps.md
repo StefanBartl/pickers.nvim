@@ -77,7 +77,7 @@ require("pickers").setup({
 })
 ```
 
-**Name resolution:**
+### Name resolution
 
 | Name shape | Dispatches to |
 |---|---|
