@@ -8,7 +8,7 @@ the engine underneath. This plugin makes it one grammar instead.
 | Area | Does |
 | --- | --- |
 | **One command** | `:Pickers <scope> <action>` — pick either half interactively, or name both. Every argument completes with `<Tab>` |
-| **Scopes** | Where to look: `cwd`, `config`, `folder`, `repos`, `wkdbooks`, `system`, `drives`, and `dir` with its own navigation forms — a depth, a git root, an alias, or an explicit path |
+| **Scopes** | Where to look: `cwd`, `config`, `folder`, `repos`, `system`, `drives`, and `dir` with its own navigation forms — a depth, a git root, an alias, or an explicit path |
 | **Actions** | What to do there: `files`, `grep`, and `smart`, plus per-call flags (`hidden`, `follow`, `all`) that apply to that call only |
 | **Native pickers** | `:Pickers builtin <name>` reaches the engine's own pickers — git branches, log, status and diff, every LSP list, diagnostics, help, marks, buffers, registers — dispatching straight into the resolved engine |
 | **Engines** | telescope.nvim, fzf-lua or snacks.nvim, auto-detected. The grammar does not change when the engine does |

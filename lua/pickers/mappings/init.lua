@@ -13,8 +13,8 @@
 ---   <scope>_files | <scope>_grep | <scope>_smart -> pickers.command.handle
 ---   <scope>_find_all                            -> pickers.command.handle
 ---                                                   with the "all" modifier
---- `<scope>` is any built-in scope (cwd/config/folder/repos/wkdbooks/system/
---- drives) or a user-defined collection name. `dir` is deliberately NOT
+--- `<scope>` is any built-in scope (cwd/config/folder/repos/system/drives)
+--- or a user-defined collection name. `dir` is deliberately NOT
 --- supported here -- same limitation as the "find all" escape hatch (see
 --- `pickers.command`'s module @brief) -- its nav argument doesn't fit this
 --- flat `<scope>_<action>` shape.
@@ -42,7 +42,6 @@ local BASE_SCOPES = {
   config = true,
   folder = true,
   repos = true,
-  wkdbooks = true,
   system = true,
   drives = true,
 }

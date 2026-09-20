@@ -6,7 +6,7 @@ every scope tab-completes.
 
 ## Built-in scopes
 
-Eight, each a module under `sources/` that returns roots. Two of them
+Seven, each a module under `sources/` that returns roots. Two of them
 (`folder`, `repos`) are two-step: they open a picker to choose the root first,
 then run the action inside it.
 
@@ -16,7 +16,6 @@ then run the action inside it.
 | `config` | the Neovim config directory |
 | `folder` | pick a folder interactively, then search in it |
 | `repos` | pick a repository under `repos_dir`, then search in it |
-| `wkdbooks` | pick a prefixed subdirectory, then search in it |
 | `system` | a systemwide `fd` search, prompting for the query |
 | `drives` | every mounted drive, discovered once per session and cached |
 | `dir` | a directory reached by navigation — see below |
@@ -56,7 +55,7 @@ keymaps.
 Three shapes, from the same config field:
 
 - **A direct root** — `{ name = "notes", dir = "…" }` searches that directory.
-- **Prefix-filtered subdirectories** — adding `prefix = "wkdbook-"` turns it
+- **Prefix-filtered subdirectories** — adding `prefix = "journal-"` turns it
   into a two-step scope: pick one matching subdirectory, then search inside it.
   An empty prefix means all subdirectories.
 - **Git-only subdirectories** — `only_git = true` narrows that list to the ones

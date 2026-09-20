@@ -34,7 +34,6 @@ different key.
 | `config` | `vim.fn.stdpath("config")` |
 | `folder` | Interactive folder pick |
 | `repos` | Pick git repo from `repos_dir` |
-| `wkdbooks` | Pick `wkdbook-*` subdir from `repos_dir/WKDBooks` |
 | `system` | `fd` systemwide (prompts for query) |
 | `drives` | All mount points / drive letters |
 | `dir` | Depth / alias / explicit path |
@@ -79,10 +78,6 @@ config key per entry, is in [BINDINGS.md](BINDINGS.md#1-keymaps-keymaps).
 | `:FindOnSystem` | `:Pickers system files` |
 | `:RepoFiles [repo]` | `:Pickers repos files` (`[repo]` tab-completes from `REPOS_DIR` and skips the repo picker) |
 | `:RepoGrep [repo]` | `:Pickers repos grep` (`[repo]` tab-completes from `REPOS_DIR` and skips the repo picker) |
-| `:WkdBookFiles` | `:Pickers wkdbooks files` |
-| `:WkdBookGrep` | `:Pickers wkdbooks grep` |
-| `:PluginsBookFiles [plugin]` | `:Pickers plugins_book files` (`[plugin]` tab-completes and skips the picker) |
-| `:PluginsBookGrep [plugin]` | `:Pickers plugins_book grep` (`[plugin]` tab-completes and skips the picker) |
 | `:PickersRepeat` | Replay the last dispatched scope/action, empty prompt |
 | `:PickersScopes` | List every resolvable scope as text, without a picker |
 | `:PickersResume` | `:Pickers builtin resume` — the engine's own last session, prompt and all |

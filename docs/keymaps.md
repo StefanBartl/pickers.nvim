@@ -85,8 +85,8 @@ require("pickers").setup({
 | `<scope>_files` / `<scope>_grep` / `<scope>_smart` | `:Pickers <scope> <action>` |
 | `<scope>_find_all` | `:Pickers <scope> files all` (see the escape hatch above) |
 
-`<scope>` is any built-in scope (`cwd`/`config`/`folder`/`repos`/`wkdbooks`/
-`system`/`drives`) or a user-defined collection name — `notes_lua_grep`
+`<scope>` is any built-in scope (`cwd`/`config`/`folder`/`repos`/`system`/
+`drives`) or a user-defined collection name — `notes_lua_grep`
 resolves to collection `notes_lua`, action `grep` (the LAST `_files`/
 `_grep`/`_smart`/`_find_all` suffix is stripped, so scope names may contain
 underscores). `dir` is **not** supported — its nav argument doesn't fit this

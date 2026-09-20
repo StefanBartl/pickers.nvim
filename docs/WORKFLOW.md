@@ -200,7 +200,7 @@ have a few defined, the daily pattern is almost never `:Pickers <name>
 what you'd actually bind a key to.
 
 The `prefix` field is what turns one collection definition into a
-picker-of-pickers: `prefix = "wkdbook-"` (or `prefix = ""` for "every
+picker-of-pickers: `prefix = "journal-"` (or `prefix = ""` for "every
 immediate subdir") means the collection scope itself opens a subdir picker
 first, *then* runs files/grep/smart inside whatever you picked — one
 collection definition covering an unbounded number of actual directories,

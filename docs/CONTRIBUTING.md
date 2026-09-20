@@ -55,7 +55,7 @@ means.
 
 | Path | Contains |
 | --- | --- |
-| `lua/pickers/sources/` | One file per scope: cwd, config, folder, repos, wkdbooks, system, drives, collection |
+| `lua/pickers/sources/` | One file per scope: cwd, config, folder, repos, system, drives, collection |
 | `lua/pickers/actions/` | `files`, `grep`, `smart`, and `dir` navigation |
 | `lua/pickers/builtins/` | The `:Pickers builtin <name>` registry over the engines' own pickers |
 | `lua/pickers/engines/` | `telescope.lua`, `fzf.lua`, `snacks.lua`, and `when_loaded.lua` — the lazy resolution |

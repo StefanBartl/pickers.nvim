@@ -6,7 +6,6 @@
 | `config` | `stdpath("config")` |
 | `folder` | A folder you pick interactively |
 | `repos` | A git repository under `repos_dir` |
-| `wkdbooks` | A `wkdbook-*` subdirectory under `repos_dir/WKDBooks` |
 | `system` | Systemwide via `fd`, prompting for the query |
 | `drives` | Every mount point or drive letter |
 | `dir <nav>` | `1`…`N` levels up, `git`, `home`, `cwd`, `root`, an alias, or `path=<dir>` |

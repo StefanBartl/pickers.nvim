@@ -14,19 +14,18 @@ require("pickers").setup({
   deps_popup = true,
 
   -- Root directory that contains git repositories. Optional — only needed
-  -- for the "repos"/"wkdbooks" scopes; nil is fine otherwise. Defaults to
-  -- $REPOS_DIR via lib.nvim's env snapshot if that's set on your machine —
-  -- this author's own convention, not a Neovim/OS standard. Set explicitly
-  -- to override.
+  -- for the "repos" scope; nil is fine otherwise. Defaults to $REPOS_DIR via
+  -- lib.nvim's env snapshot if that's set on your machine — this author's
+  -- own convention, not a Neovim/OS standard. Set explicitly to override.
   repos_dir = nil,
 
   -- User-defined named scopes (see docs/collections.md)
   collections = {
     { name = "notes",    dir = vim.env.REPOS_DIR .. "/Notes",
       keys = { files = "<leader>mnf", grep = "<leader>mng" } },
-    { name = "wkdbooks", dir = vim.env.REPOS_DIR .. "/WKDBooks",
-      prefix = "wkdbook-",
-      keys = { files = "<leader>wkf", grep = "<leader>wkg" } },
+    { name = "journals", dir = vim.env.REPOS_DIR .. "/Journals",
+      prefix = "journal-",
+      keys = { files = "<leader>jnf", grep = "<leader>jng" } },
   },
 
   -- Add or override named dir aliases (merged with built-ins: cwd/home/root/git)

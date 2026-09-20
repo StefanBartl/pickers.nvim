@@ -35,7 +35,7 @@ local M = {}
 
 -- ── Constants ─────────────────────────────────────────────────────────────────
 
-local BASE_SCOPES = { "cwd", "config", "folder", "repos", "wkdbooks", "system", "drives", "dir" }
+local BASE_SCOPES = { "cwd", "config", "folder", "repos", "system", "drives", "dir" }
 
 local BASE_SCOPES_SET = {}
 for _, s in ipairs(BASE_SCOPES) do
@@ -121,8 +121,8 @@ local function run_standard_scope(scope, action, engine_mod, force_find_all, que
     )
     return
   end
-  -- folder / repos / wkdbooks need engine_mod for their sub-pickers
-  if scope == "folder" or scope == "repos" or scope == "wkdbooks" then
+  -- folder / repos need engine_mod for their sub-pickers
+  if scope == "folder" or scope == "repos" then
     src_mod.get(cfg, function(source)
       after_source(source, action, engine_mod, force_find_all, query)
     end, engine_mod)

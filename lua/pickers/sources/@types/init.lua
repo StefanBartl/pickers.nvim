@@ -9,7 +9,6 @@
 ---| '"config"'     # Neovim config directory (stdpath "config")
 ---| '"folder"'     # Interactively picked folder via engine dir-picker
 ---| '"repos"'      # One repo selected from REPOS_DIR
----| '"wkdbooks"'   # One wkdbook selected from wkdbooks_dir
 ---| '"system"'     # Systemwide fd search (interactive query)
 ---| '"drives"'     # All mount points / drive letters
 ---| '"dir"'        # Depth / alias / explicit-path navigation
