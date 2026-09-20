@@ -31,6 +31,12 @@
 --- the store with it and writes it back in the new one; from then on the file
 --- is ordinary and the migration path never runs again, because the shape it
 --- looks for is no longer there.
+---
+--- lib.nvim is a hard dependency (see pickers.bindings.util); this requires
+--- lib.nvim.bindings.autocmd the same way, with no standalone fallback
+--- (LUA-01).
+
+local lib_autocmd = require("lib.nvim.bindings.autocmd")
 
 local M = {}
 
@@ -140,22 +146,14 @@ function M.patch(cfg)
     M.flush(cfg)
   end
 
-  local ok, lib_autocmd = pcall(require, "lib.nvim.bindings.autocmd")
-  if ok and type(lib_autocmd) == "table" and type(lib_autocmd.create) == "function" then
-    lib_autocmd.create("BufReadPost", on_buf_read, {
-      group = "pickers.nvim",
-      desc = "pickers.nvim: record smart-action frecency visit",
-    })
-    lib_autocmd.create("VimLeavePre", on_leave, {
-      group = "pickers.nvim",
-      desc = "pickers.nvim: flush smart-action frecency store",
-    })
-  else
-    -- lib-docs: fallback
-    vim.api.nvim_create_autocmd("BufReadPost", { callback = on_buf_read })
-    -- lib-docs: fallback
-    vim.api.nvim_create_autocmd("VimLeavePre", { callback = on_leave })
-  end
+  lib_autocmd.create("BufReadPost", on_buf_read, {
+    group = "pickers.nvim",
+    desc = "pickers.nvim: record smart-action frecency visit",
+  })
+  lib_autocmd.create("VimLeavePre", on_leave, {
+    group = "pickers.nvim",
+    desc = "pickers.nvim: flush smart-action frecency store",
+  })
 end
 
 ---Build the `abspath -> weighted bonus` lookup table `score.rank` expects,
