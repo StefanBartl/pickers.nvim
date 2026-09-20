@@ -46,13 +46,13 @@ into `:checkhealth pickers`. Turn the popup off in this plugin's own spec with
     require("pickers").setup({
       engine    = "auto",            -- "auto" | "telescope" | "fzf" | "snacks"
       -- repos_dir already defaults to $REPOS_DIR (via lib.nvim) when set, used
-      -- by the "repos"/"wkdbooks" scopes — omitted here, set it only to override
+      -- by the "repos" scope — omitted here, set it only to override
       collections = {
         { name = "notes", dir = vim.env.REPOS_DIR .. "/Notes",
           keys = { files = "<leader>mnf", grep = "<leader>mng" } },
-        { name = "wkdbooks", dir = vim.env.REPOS_DIR .. "/WKDBooks",
-          prefix = "wkdbook-",
-          keys = { files = "<leader>wkf", grep = "<leader>wkg" } },
+        { name = "journals", dir = vim.env.REPOS_DIR .. "/Journals",
+          prefix = "journal-",
+          keys = { files = "<leader>jnf", grep = "<leader>jng" } },
       },
     })
   end,
@@ -77,7 +77,7 @@ If startup time matters and you only want the plugin loaded on first use:
     "Pickers",
     "DirPicker", "FindConfig", "GrepConfig", "FindInFolder",
     "LiveGrep", "AllDrives", "AllDrivesGrep", "FindOnSystem",
-    "RepoFiles", "RepoGrep", "WkdBookFiles", "WkdBookGrep",
+    "RepoFiles", "RepoGrep",
     "PickersRepeat", "PickersScopes", "PickersResume",
   },
   keys = {

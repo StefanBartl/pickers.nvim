@@ -19,7 +19,7 @@ function M.register(coll)
   local smart_cmd = pascal .. "Smart"
   local name = coll.name
 
-  -- Skip if the compat command already exists (e.g. WkdBookFiles from usrcmds)
+  -- Skip if the compat command already exists (e.g. a hardcoded usrcmds alias)
   if vim.fn.exists(":" .. files_cmd) ~= 2 then
     util.usercmd(files_cmd, function(_)
       require("pickers.command").handle({ fargs = { name, "files" } })

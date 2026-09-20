@@ -76,13 +76,13 @@ A fuller spec -- the complete key list is |pickers-config|: >lua
   require("pickers").setup({
     engine = "auto",  -- "auto" | "telescope" | "fzf" | "snacks"
     -- repos_dir already defaults to $REPOS_DIR (via lib.nvim) when set, used
-    -- by the "repos"/"wkdbooks" scopes -- omitted here, set it only to override
+    -- by the "repos" scope -- omitted here, set it only to override
     collections = {
       { name = "notes",    dir = vim.env.REPOS_DIR .. "/Notes",
         keys = { files = "<leader>mnf", grep = "<leader>mng" } },
-      { name = "wkdbooks", dir = vim.env.REPOS_DIR .. "/WKDBooks",
-        prefix = "wkdbook-",
-        keys = { files = "<leader>wkf", grep = "<leader>wkg" } },
+      { name = "journals", dir = vim.env.REPOS_DIR .. "/Journals",
+        prefix = "journal-",
+        keys = { files = "<leader>jnf", grep = "<leader>jng" } },
     },
     depth_aliases = {
       work = function() return "/home/user/work" end,
@@ -161,7 +161,7 @@ toggle keymaps/usercmds.
 :Pickers [{scope} files all]
 :Pickers dir [{nav} [{action}]]
 
-  scope    One of: cwd config folder repos wkdbooks system drives dir
+  scope    One of: cwd config folder repos system drives dir
            or any user-defined collection name (see |pickers-collections|)
   action   One of: files grep smart      (smart: see |pickers-smart|)
   nav      (dir only) alias name, integer depth, or path=<dir>
@@ -190,7 +190,7 @@ Examples: >
   :Pickers drives grep        " live grep across all drives
   :Pickers system files       " systemwide fd search (prompts for query)
   :Pickers notes files        " find files in 'notes' collection
-  :Pickers wkdbooks grep      " pick wkdbook subdir → live grep
+  :Pickers journals grep      " pick journal subdir → live grep (prefix-filtered collection)
 <
 
 Tab-completion is supported for all arguments.
@@ -216,12 +216,6 @@ folder~
 repos~
   Lists all git repositories inside `repos_dir`, lets you pick one, then
   opens the engine picker inside that repo.  Requires `repos_dir` to be set.
-
-wkdbooks~
-  Lists subdirectories inside `repos_dir/WKDBooks` whose name starts with
-  "wkdbook-", lets you pick one, then opens the engine picker inside it.
-  This built-in scope is a thin wrapper around the Collections system
-  (see |pickers-collections|).
 
 system~
   Opens `vim.ui.input` for a search specification:
@@ -262,11 +256,11 @@ Configuration: >lua
       dir  = vim.env.REPOS_DIR .. "/Notes",
       keys = { files = "<leader>mnf", grep = "<leader>mng" } },
 
-    -- Prefix-filtered subdirs: show only dirs starting with "wkdbook-"
-    { name   = "wkdbooks",
-      dir    = vim.env.REPOS_DIR .. "/WKDBooks",
-      prefix = "wkdbook-",
-      keys   = { files = "<leader>wkf", grep = "<leader>wkg" } },
+    -- Prefix-filtered subdirs: show only dirs starting with "journal-"
+    { name   = "journals",
+      dir    = vim.env.REPOS_DIR .. "/Journals",
+      prefix = "journal-",
+      keys   = { files = "<leader>jnf", grep = "<leader>jng" } },
 
     -- All subdirs (empty string): list every immediate subdir
     { name = "projects", dir = "/home/user/projects", prefix = "" },
@@ -476,14 +470,9 @@ with configs that used the original individual modules:
   :FindOnSystem       → :Pickers system files
   :RepoFiles [repo]   → :Pickers repos files (or files in [repo] directly)
   :RepoGrep [repo]    → :Pickers repos grep  (or grep in [repo] directly)
-  :WkdBookFiles       → :Pickers wkdbooks files
-  :WkdBookGrep        → :Pickers wkdbooks grep
-  :PluginsBookFiles [plugin] → :Pickers plugins_book files (or files in [plugin] directly)
-  :PluginsBookGrep [plugin]  → :Pickers plugins_book grep  (or grep in [plugin] directly)
 
 [repo] tab-completes from REPOS_DIR and, when given, skips the repo picker and
-jumps straight into files/grep for that repo. [plugin] tab-completes from the
-"plugins_book" collection's dir the same way.
+jumps straight into files/grep for that repo.
 
 Every collection additionally gets :{PascalName}Files / Grep / Smart — see
 |pickers-collections|.

@@ -52,7 +52,6 @@ uses under the hood; see [docs/keymaps.md](keymaps.md#declarative-mappings-per-e
 | `config` | — | `grep` | live grep in nvim config |
 | `folder` | — | `files` | pick a folder → find files |
 | `repos` | — | `files` | pick a repo → find files |
-| `wkdbooks` | — | `grep` | pick a wkdbook → live grep |
 | `system` | — | `files` | fd systemwide search (prompt) |
 | `drives` | — | `grep` | live grep across all drives |
 | `dir` | _(none)_ | _(none)_ | nav picker → action picker |
@@ -60,7 +59,7 @@ uses under the hood; see [docs/keymaps.md](keymaps.md#declarative-mappings-per-e
 | `dir` | `git` | `files` | git root → find files |
 | `dir` | `path=/tmp` | `grep` | explicit path → live grep |
 | `notes` _(collection)_ | — | `files` | find files in collection root |
-| `wkdbooks` _(collection)_ | — | `grep` | pick subdir → live grep |
+| `journals` _(collection, prefix-filtered)_ | — | `grep` | pick subdir → live grep |
 
 Tab-completion is supported for all arguments, including collection names
 (once `setup()` — or the `VimEnter` fallback — has registered them; see
@@ -128,7 +127,6 @@ telescope/fzf-lua/snacks because all three drive the same core
 | `config` | `vim.fn.stdpath("config")` |
 | `folder` | Interactively picked directory |
 | `repos` | One git repo selected from `repos_dir` |
-| `wkdbooks` | One wkdbook selected from `repos_dir/WKDBooks` |
 | `system` | Systemwide `fd` search (prompts for query) |
 | `drives` | All mount points / drive letters (session-cached) |
 | `dir` | Depth / alias / explicit-path navigation |
@@ -163,10 +161,6 @@ All commands from the original modules are preserved as aliases:
 | `:FindOnSystem` | `:Pickers system files` |
 | `:RepoFiles [repo]` | `:Pickers repos files` (or jump straight to `[repo]`, tab-completed) |
 | `:RepoGrep [repo]` | `:Pickers repos grep` (or jump straight to `[repo]`, tab-completed) |
-| `:WkdBookFiles` | `:Pickers wkdbooks files` |
-| `:WkdBookGrep` | `:Pickers wkdbooks grep` |
-| `:PluginsBookFiles [plugin]` | `:Pickers plugins_book files` (or jump straight to `[plugin]`, tab-completed) |
-| `:PluginsBookGrep [plugin]` | `:Pickers plugins_book grep` (or jump straight to `[plugin]`, tab-completed) |
 
 Each user-defined collection also gets a `:{PascalName}Smart` command
 (alongside `:{PascalName}Files` / `:{PascalName}Grep`) → `:Pickers {name} smart`.

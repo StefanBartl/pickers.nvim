@@ -8,7 +8,6 @@ local BASE_SCOPES = {
   "config",
   "folder",
   "repos",
-  "wkdbooks",
   "system",
   "drives",
   "dir",

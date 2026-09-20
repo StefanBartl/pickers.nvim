@@ -61,15 +61,15 @@ lazy.nvim → `vim.schedule`, lazy.nvim → one-shot `User LazyLoad`); the
 telescope/snacks entry-path extractors (mirroring the existing fzf one);
 `open_background`'s empty-path guard and its opt-in `open_background_show`
 window switch (a real scratch buffer, not a fake bufnr, since the window API
-does not tolerate one); the `folder`/`plugins_book`/`wkdbooks` sources;
+does not tolerate one); the `folder` source;
 `ui.action_picker`'s `ui.kit`/`vim.ui.select` fallback; `pickers.smart`'s own
 `defaults()`/`config()` merge and its frecency-gated `query()` orchestration
 over stubbed `search`/`score`/`frecency`; and the binding layer's compat
 commands — `bindings.collections`' skip-if-registered guard and optional
 per-collection keymaps, `bindings.usrcmds`' direct-dispatch-vs-fallback split
-for `:RepoFiles`/`:PluginsBookFiles`, `bindings.autocmds`' `setup()`-was-
-already-called guard — down to `bindings.setup()`'s and the top-level
-`setup()`'s own enable-flag gating of every sub-registrar.
+for `:RepoFiles`, `bindings.autocmds`' `setup()`-was-already-called guard —
+down to `bindings.setup()`'s and the top-level `setup()`'s own enable-flag
+gating of every sub-registrar.
 
 Deliberately left untested: `sources.config`/`sources.cwd`, which are one
 line each with no branch to exercise. The `keys.adapters.*` modules have no

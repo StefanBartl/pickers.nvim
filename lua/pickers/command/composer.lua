@@ -16,7 +16,7 @@ local composer = require("lib.nvim.bindings.usercmd.composer")
 
 local M = {}
 
-local BASE_SCOPES = { "cwd", "config", "folder", "repos", "wkdbooks", "system", "drives" }
+local BASE_SCOPES = { "cwd", "config", "folder", "repos", "system", "drives" }
 local ACTION_VALUES = { "files", "grep", "smart" }
 
 ---Prefix-filter a candidate list (case-sensitive, matches composer's own convention).

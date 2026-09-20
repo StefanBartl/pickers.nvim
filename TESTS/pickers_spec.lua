@@ -2446,7 +2446,7 @@ end
 -- alongside the other stubbed fzf-lua/telescope live_grep checks)
 
 -- ── pick_item(): Pickers.Item preview extension, all three engines ─────────
--- Items may be plain strings (unchanged behaviour — repos/wkdbooks sources
+-- Items may be plain strings (unchanged behaviour — repos/collection sources
 -- still pass those) or `Pickers.Item` tables `{ text, file? }`. When at least
 -- one item carries `file`, each engine attaches its own native preview;
 -- `on_select` always receives back the EXACT original entry, never a
@@ -3966,104 +3966,6 @@ do
   vim.fn.delete(tmp, "rf")
 end
 
--- ── pickers.sources.plugins_book — list_names/resolve/complete over a collection ─
-do
-  local config = require("pickers.config")
-  local plugins_book = require("pickers.sources.plugins_book")
-
-  local base = vim.fn.tempname()
-  vim.fn.mkdir(base .. "/cascade.nvim", "p")
-  vim.fn.mkdir(base .. "/markdown.nvim", "p")
-  vim.fn.mkdir(base .. "/TEMPLATES", "p")
-
-  config.apply({ collections = {} })
-  check(
-    "plugins_book.list_names: no collection -> empty",
-    vim.tbl_isempty(plugins_book.list_names(config.get()))
-  )
-  check(
-    "plugins_book.resolve: no collection -> nil",
-    plugins_book.resolve(config.get(), "cascade.nvim") == nil
-  )
-
-  config.apply({
-    collections = { { name = "plugins_book", dir = base, prefix = "", exclude = { "TEMPLATES" } } },
-  })
-  local cfg = config.get()
-
-  local names = plugins_book.list_names(cfg)
-  check("plugins_book.list_names: finds cascade.nvim", has(names, "cascade.nvim"))
-  check("plugins_book.list_names: finds markdown.nvim", has(names, "markdown.nvim"))
-  check("plugins_book.list_names: excludes TEMPLATES", not has(names, "TEMPLATES"))
-  check("plugins_book.list_names: sorted", names[1] <= names[#names])
-
-  check("plugins_book.resolve: known plugin", plugins_book.resolve(cfg, "cascade.nvim") ~= nil)
-  check("plugins_book.resolve: unknown plugin -> nil", plugins_book.resolve(cfg, "nope") == nil)
-  check("plugins_book.resolve: excluded name -> nil", plugins_book.resolve(cfg, "TEMPLATES") == nil)
-  check("plugins_book.resolve: empty name -> nil", plugins_book.resolve(cfg, "") == nil)
-
-  local completed = plugins_book.complete("casc")
-  check("plugins_book.complete: prefix match", has(completed, "cascade.nvim"))
-  check("plugins_book.complete: prefix excludes non-match", not has(completed, "markdown.nvim"))
-  check("plugins_book.complete: empty arglead -> all names", #plugins_book.complete("") == #names)
-
-  vim.fn.delete(base, "rf")
-  config.apply({ collections = {} })
-end
-
--- ── pickers.sources.wkdbooks — collection lookup, repos_dir fallback, error ─
-do
-  local config = require("pickers.config")
-
-  local prev_collection = package.loaded["pickers.sources.collection"]
-  local captured
-  package.loaded["pickers.sources.collection"] = {
-    get = function(coll, _cfg, callback, _engine)
-      captured = coll
-      callback({ roots = { coll.dir }, prompt = coll.name .. "> " })
-    end,
-  }
-  package.loaded["pickers.sources.wkdbooks"] = nil
-  local wkdbooks = require("pickers.sources.wkdbooks")
-
-  -- "wkdbooks" collection present: used as-is, no fallback synthesis.
-  config.apply({
-    collections = { { name = "wkdbooks", dir = "/x/wkdbooks", prefix = "wkdbook-" } },
-    repos_dir = "/should/not/be/used",
-  })
-  wkdbooks.get(config.get(), function() end, {})
-  check("wkdbooks: uses the configured collection dir", captured.dir == "/x/wkdbooks")
-  check("wkdbooks: uses the configured collection prefix", captured.prefix == "wkdbook-")
-
-  -- No "wkdbooks" collection, but repos_dir set: synthesizes one.
-  config.apply({ collections = {} })
-  config.apply({ repos_dir = vim.fn.getcwd() })
-  captured = nil
-  wkdbooks.get(config.get(), function() end, {})
-  check(
-    "wkdbooks: falls back to repos_dir/WKDBooks",
-    captured and captured.dir == vim.fn.getcwd() .. "/WKDBooks"
-  )
-  check("wkdbooks: fallback prefix is wkdbook-", captured and captured.prefix == "wkdbook-")
-
-  -- Neither collection nor repos_dir: error, callback(nil), no throw.
-  config.apply({ collections = {} })
-  local cfg = config.get()
-  cfg.repos_dir = nil
-  captured = nil
-  local got = "unset"
-  local ok = pcall(wkdbooks.get, cfg, function(source)
-    got = source
-  end, {})
-  check("wkdbooks: no collection + no repos_dir does not throw", ok)
-  check("wkdbooks: no collection + no repos_dir -> callback(nil)", got == nil)
-  check("wkdbooks: no collection + no repos_dir -> collection.get not called", captured == nil)
-
-  package.loaded["pickers.sources.collection"] = prev_collection
-  package.loaded["pickers.sources.wkdbooks"] = nil
-  config.apply({ collections = {}, repos_dir = vim.fn.getcwd() })
-end
-
 -- ── pickers.sources.drives — cross-platform drives/mount-points source ──────
 -- Round 1 skipped this file: "shells real Get-PSDrive/df via vim.system, no
 -- stable mock surface without replacing the whole process layer". That no
@@ -4358,10 +4260,6 @@ do
     "FindOnSystem",
     "RepoFiles",
     "RepoGrep",
-    "WkdBookFiles",
-    "WkdBookGrep",
-    "PluginsBookFiles",
-    "PluginsBookGrep",
     "PickersRepeat",
     "PickersScopes",
     "PickersResume",
@@ -4412,17 +4310,10 @@ do
     captured and vim.deep_equal(captured.fargs, { "repos", "files" })
   )
 
-  captured = nil
-  vim.cmd("PluginsBookFiles")
-  check(
-    "usrcmds: :PluginsBookFiles (no arg) -> handle({plugins_book, files})",
-    captured and vim.deep_equal(captured.fargs, { "plugins_book", "files" })
-  )
-
   package.loaded["pickers.command"] = prev_command
 
-  -- With a name argument, :RepoFiles/:RepoGrep/:PluginsBook* resolve and
-  -- dispatch straight to the engine, skipping pickers.command.handle.
+  -- With a name argument, :RepoFiles/:RepoGrep resolve and dispatch straight
+  -- to the engine, skipping pickers.command.handle.
   local prev_engines = package.loaded["pickers.engines"]
   local engine_calls
   package.loaded["pickers.engines"] = {

@@ -6,7 +6,7 @@
 ---   pick_files(opts)   → nil
 ---   live_grep(opts)    → nil
 ---   smart(opts)        → nil   (combined grep + find, the `smart` action)
----   pick_item(opts)    → nil   (used by repos / wkdbooks sources)
+---   pick_item(opts)    → nil   (used by repos / collection sources)
 ---   pick_dir(opts)     → nil   (used by folder source)
 ---
 --- Escape behaviour (double-escape to close):
@@ -304,7 +304,7 @@ function M.smart(opts)
   })
 end
 
----Pick one item from a list (used by repos / wkdbooks sources, and by
+---Pick one item from a list (used by repos / collection sources, and by
 ---consumers like filetree.nvim's template picker). Items may be plain
 ---strings (unchanged — exact original code path, zero risk to existing
 ---callers) or `Pickers.Item` tables `{ text, file? }`.

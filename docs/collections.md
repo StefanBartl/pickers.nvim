@@ -14,9 +14,9 @@ collections = {
     keys = { files = "<leader>mnf", grep = "<leader>mng", smart = "<leader>mns" } },
 
   -- Prefix-filtered subdirs — pick one, then search inside it
-  { name = "wkdbooks",    dir = vim.env.REPOS_DIR .. "/WKDBooks",
-    prefix = "wkdbook-",
-    keys = { files = "<leader>wkf", grep = "<leader>wkg" } },
+  { name = "journals",    dir = vim.env.REPOS_DIR .. "/Journals",
+    prefix = "journal-",
+    keys = { files = "<leader>jnf", grep = "<leader>jng" } },
 
   -- All subdirs (empty prefix string) — pick one, then search inside it
   { name = "projects",    dir = "/home/user/projects", prefix = "" },
@@ -25,7 +25,7 @@ collections = {
   { name = "myrepos",     dir = "/home/user/src", prefix = "", only_git = true },
 
   -- Hide specific subdirs by exact basename (applies alongside prefix/only_git)
-  { name = "plugins_book", dir = vim.env.REPOS_DIR .. "/WKDBooks/Development/wkdbook-myplugins",
+  { name = "vendor_docs", dir = "/home/user/vendor-docs",
     prefix = "", exclude = { "ALL", "TEMPLATES", "TOOLS", "_Telemetry" } },
 
   -- Per-collection find override — merged over the global `find` defaults,

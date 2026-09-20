@@ -10,6 +10,29 @@ a changelog.
 
 ---
 
+[x] **Removed the `wkdbooks` built-in scope and the `plugins_book` source —
+  both were this author's own private collections, promoted to hardcoded
+  status instead of staying user config.** `wkdbooks` added nothing the
+  generic `collections` mechanism didn't already provide (it was a thin
+  wrapper synthesizing `{ name = "wkdbooks", dir = repos_dir .. "/WKDBooks",
+  prefix = "wkdbook-" }` when that collection wasn't configured) — removed
+  from `BASE_SCOPES` in `command/composer.lua`/`command/init.lua`, the scope
+  picker, `mappings`' scope set, and the `Pickers.Scope` alias; the
+  `:WkdBookFiles`/`:WkdBookGrep` compat commands are gone with it, since any
+  user who configures a `wkdbooks` collection themselves already gets
+  `:WkdbooksFiles`/`:WkdbooksGrep`/`:WkdbooksSmart` for free from
+  `bindings.collections`. `plugins_book` (direct-jump-by-name over a
+  personal plugin-docs mirror) had no equivalent generic replacement, so it
+  was deleted outright rather than generalized — a `resolve`/`complete` pair
+  like `pickers.sources.repos`' own is there as a template if a future
+  collection wants the same jump-by-name command. Every doc example that
+  used to show `wkdbooks`/`WKDBooks`/`plugins_book` now uses a neutral
+  `journals`/`vendor_docs`-style collection instead, so the shipped plugin
+  and its docs carry no assumption about any particular user's private repo
+  layout.
+
+---
+
 [x] **New in-picker keymap cheatsheet (`pickers.cheatsheet`), a fourteenth
   `keys.*` action.** A read-only floating panel (`ui.kit.viewer`) listing
   every currently-bound `keys.*` action, built straight from
