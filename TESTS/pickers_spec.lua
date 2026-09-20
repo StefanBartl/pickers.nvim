@@ -1628,6 +1628,10 @@ do
   if not ok then
     print("  skip :Pickers completion tests (lib.nvim not on runtimepath)")
   else
+    -- This block's own collection, not leftover state from an earlier one --
+    -- config.reset() above (LUA-87 block) wipes any collection a prior block
+    -- applied, so "notes" has to be configured here to be asserted below.
+    require("pickers.config").apply({ collections = { { name = "notes", dir = "/tmp/notes" } } })
     cmp.register(require("pickers.config").get())
 
     local scopes = vim.fn.getcompletion("Pickers ", "cmdline")
