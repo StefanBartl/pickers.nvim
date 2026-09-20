@@ -50,13 +50,13 @@ action and native picker completing with `<Tab>`.
 Start at [docs/README.md](docs/README.md), which says what is where and which
 question each page answers.
 
-**The Basics**
+### The Basics
 
 - [Requirements](docs/installation.md#requirements) — Neovim version, required plugins and CLI tools.
 - [Installation](docs/installation.md) — the recommended spec and the lazy-loading variant, per plugin manager.
 - [Quickstart](docs/quickstart.md) — the first thing to run after installing.
 
-**Configuration**
+### Configuration
 
 - [What you get with the defaults](docs/what-you-get.md) — the scopes and default keys at a glance.
 - [All options](docs/configuration.md) — every `setup()` option and its default. All of them are optional, so it doubles as the list of what happens if you set nothing.
@@ -64,7 +64,7 @@ question each page answers.
 - [Cheatsheet](docs/cheatsheet.md) — the command syntax, the scopes and the keys on one screen.
 - [Keymaps](docs/keymaps.md) / [Bindings cheatsheet](docs/BINDINGS.md)
 
-**The Rest**
+### The Rest
 
 - [Features](docs/FEATURES/README.md) — one page per area: [engines](docs/FEATURES/ENGINES.md), [scopes](docs/FEATURES/SCOPES.md), [actions](docs/FEATURES/ACTIONS.md), [native pickers](docs/FEATURES/BUILTINS.md), [keys](docs/FEATURES/KEYS.md), [UI](docs/FEATURES/UI.md), [persistence](docs/FEATURES/PERSISTENCE.md), [refine](docs/FEATURES/REFINE.md), [images and PDFs](docs/FEATURES/IMAGES.md).
 - [Built-in pickers](docs/builtins.md) — every `:Pickers builtin <name>`, and the per-engine parity matrix.
