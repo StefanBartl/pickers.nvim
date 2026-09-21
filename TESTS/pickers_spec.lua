@@ -1356,6 +1356,13 @@ end
 do
   local browse = require("pickers.browse")
   local broot = vim.fn.tempname()
+  -- macOS: tempname() says "/var/folders/..." while buffer names resolve to
+  -- "/private/var/folders/...". Resolve both sides before comparing paths.
+  ---@param path string
+  ---@return string
+  local function real(path)
+    return vim.fs.normalize(vim.uv.fs_realpath(path) or path)
+  end
   vim.fn.mkdir(broot .. "/sub", "p")
   vim.fn.writefile({ "x" }, broot .. "/b.txt")
   vim.fn.writefile({ "y" }, broot .. "/A.lua")
@@ -1416,7 +1423,7 @@ do
   last_opts.on_select(file)
   check(
     "browse.open: picking a file edits it",
-    vim.fs.normalize(vim.api.nvim_buf_get_name(0)) == vim.fs.normalize(broot .. "/b.txt")
+    real(vim.api.nvim_buf_get_name(0)) == real(broot .. "/b.txt")
   )
 
   -- Fix: a name typed into "New file/directory in <dir>:"/"Rename to:"
@@ -1471,7 +1478,7 @@ do
   )
   check(
     "browse.rename: buffer follows",
-    vim.fs.normalize(vim.api.nvim_buf_get_name(0)) == vim.fs.normalize(broot .. "/c.txt")
+    real(vim.api.nvim_buf_get_name(0)) == real(broot .. "/c.txt")
   )
   local ok_r2, err_r2 = browse.rename(broot .. "/c.txt", broot .. "/A.lua")
   check("browse.rename: refuses to overwrite", ok_r2 == false and err_r2 ~= nil)
