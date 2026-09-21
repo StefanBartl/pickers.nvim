@@ -162,12 +162,18 @@ end
 ---@return string|nil err
 function M.rename(from, to)
   if vim.uv.fs_stat(to) then return false, "exists: " .. to end
+  -- Resolved before the move (the path is gone afterwards): a buffer may
+  -- spell the same file through a symlink, e.g. macOS /var -> /private/var.
+  local real_from = vim.uv.fs_realpath(from)
   local ok, err = vim.uv.fs_rename(from, to)
   if not ok then return false, tostring(err) end
   -- A buffer showing the old path follows it.
   for _, buf in ipairs(vim.api.nvim_list_bufs()) do
-    if vim.api.nvim_buf_is_loaded(buf) and norm(vim.api.nvim_buf_get_name(buf)) == norm(from) then
-      pcall(vim.api.nvim_buf_set_name, buf, to)
+    if vim.api.nvim_buf_is_loaded(buf) then
+      local name = norm(vim.api.nvim_buf_get_name(buf))
+      if name == norm(from) or (real_from and name == norm(real_from)) then
+        pcall(vim.api.nvim_buf_set_name, buf, to)
+      end
     end
   end
   changed("rename", to)
