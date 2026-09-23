@@ -134,6 +134,10 @@ snacks. See `lua/pickers/keys/`.
 | `tab` | `<C-t>` | ✓ | native (`ctrl-t`) | ✓ |
 | `mouse_confirm` | `<2-LeftMouse>` | ✓ | native (fzf's own mouse handling) | native + patched |
 | `cheatsheet` | `<C-/>` | ✓ | fixed (`f1`) | ✓ |
+| `copy_absolute` | `[a` | ✓ (results only) | fixed (`ctrl-y`) | ✓ (list window only) |
+| `copy_dirname` | `]a` | ✓ (results only) | fixed (`alt-y`) | ✓ (list window only) |
+| `copy_env_rooted` | `[e` | ✓ (results only) | fixed (`alt-r`) | ✓ (list window only) |
+| `markdown_link` | `ML` | ✓ (results only) | fixed (`alt-m`) | ✓ (list window only) |
 
 fzf-lua is the capability gap: its builtin previewer has no horizontal preview
 scroll, its history is fzf's own `--history` bound to `ctrl-p`/`ctrl-n`
@@ -223,6 +227,30 @@ for what those badges actually are, e.g. the "f"/"h" you may have seen in a
 a typed query); snacks users get the same information a different way —
 `?` in the picker's input or list window (normal mode) opens Snacks' own
 **native** keymap help.
+
+**`copy_absolute`/`copy_dirname`/`copy_env_rooted`/`markdown_link`** copy the
+selected entry's path in various formats — the curated subset of
+filetree.nvim's `[a`/`]a`/`[e`/`ML` path-copy family that still makes sense
+on a picker result row (a plain path string, not a `FiletreeNode`). Every
+format writes to both the `"+"` and unnamed `"` registers and does **not**
+close the picker (filetree.nvim's own path-copy features are non-disruptive
+— fzf-lua's action table has to close+resume regardless, approximating the
+same effect). Deliberately not ported: marks/trash keymaps, and the
+recursive/from-marked Markdown-link variants (a result row is one file, not
+a directory subtree). filetree.nvim's `gb` ("add to buffer list") is not
+duplicated either — `open_background` above already is that action here.
+
+These four are **results-window/normal-mode only, never insert mode** —
+unlike every other in-picker key on this page, their default lhs (`[a`,
+`]a`, `[e`, `ML`) are plain printable characters rather than control/special
+keys, so binding them while typing a query would swallow those characters
+out of it. fzf-lua's own `--bind` syntax additionally has no concept of a
+multi-keystroke chord like `[a` (it binds a single logical key, not a
+pending-key state machine), so its bindings are fixed to single physical
+keys instead — `ctrl-y`/`alt-y`/`alt-r`/`alt-m` — same class as its
+`ctrl-a`/`ctrl-o`/`shift-enter`/`f1`. See
+[`lua/pickers/entry_actions/README.md`](../lua/pickers/entry_actions/README.md#path-copy-actions-copy_absolutecopy_dirnamecopy_env_rootedmarkdown_link)
+for the full table and the `$REPOS_DIR` fallback rules for `copy_env_rooted`.
 
 Each action takes a single lhs, a list of lhs, or `false` to unbind it:
 ```lua

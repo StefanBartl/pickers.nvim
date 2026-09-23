@@ -43,6 +43,10 @@ M.DESCRIPTIONS = {
   tab = "Open entry in a new tab",
   mouse_confirm = "Double-click a result to open it",
   cheatsheet = "Show this cheatsheet",
+  copy_absolute = "Copy absolute path",
+  copy_dirname = "Copy parent directory (absolute)",
+  copy_env_rooted = "Copy path with $REPOS_DIR folded in",
+  markdown_link = "Copy as a Markdown link",
 }
 
 ---Build the display lines: one row per action that is actually bound right

@@ -1043,6 +1043,240 @@ do
   config.apply({ keys = { history_back = "<C-p>" } })
 end
 
+-- ── pickers.entry_actions.path_copy — pure formats + register/notify side ──
+do
+  local path_copy = require("pickers.entry_actions.path_copy")
+  local config = require("pickers.config")
+
+  -- Absolute fixtures rooted at the real cwd, NOT a hand-typed "/tmp/..."
+  -- literal: a bare POSIX-style path with no drive letter resolves
+  -- inconsistently through Windows' fnamemodify(":p") depending on how
+  -- many path segments follow it (verified directly -- fnamemodify(
+  -- "/tmp/sub", ":p") and fnamemodify("/tmp/sub/foo.lua", ":p") do NOT
+  -- agree on the same drive-root guess). A real, already-absolute cwd has
+  -- no such ambiguity on either platform.
+  local cwd = (vim.fn.getcwd():gsub("\\", "/"))
+  local function join(rel)
+    return cwd .. "/" .. rel
+  end
+  local repos_root = join("pc_test_repos")
+  local under_root = repos_root .. "/foo.nvim/x.lua"
+  local outside_root = join("pc_test_elsewhere/x.lua")
+
+  -- build(): pure, no register/notify side effects.
+  check(
+    "path_copy.build: absolute matches fnamemodify(':p')",
+    path_copy.build("absolute", join("pc_test_foo.lua")) == join("pc_test_foo.lua")
+  )
+  check(
+    "path_copy.build: dirname is the parent directory",
+    path_copy.build("dirname", join("pc_test_sub/foo.lua")) == join("pc_test_sub")
+  )
+  check(
+    "path_copy.build: markdown_link wraps as [name](relative-path)",
+    (function()
+      local text = path_copy.build("markdown_link", join("pc_test_sub/foo.lua"))
+      return text:match("^%[foo%.lua%]%(") ~= nil
+    end)()
+  )
+  check(
+    "path_copy.build: unknown format returns nil",
+    path_copy.build("bogus", join("pc_test_x")) == nil
+  )
+  check("path_copy.build: empty path returns nil", path_copy.build("absolute", "") == nil)
+
+  -- env_rooted: folds $REPOS_DIR back in when the path is under it (reads
+  -- pickers.config's resolved repos_dir, not vim.env.REPOS_DIR directly).
+  config.apply({ repos_dir = repos_root })
+  check(
+    "path_copy.build: env_rooted folds a path under repos_dir",
+    path_copy.build("env_rooted", under_root) == "$REPOS_DIR/foo.nvim/x.lua"
+  )
+  check(
+    "path_copy.build: env_rooted falls back to absolute when outside repos_dir",
+    path_copy.build("env_rooted", outside_root) == outside_root
+  )
+  check(
+    "path_copy.build: env_rooted at repos_dir itself yields bare $REPOS_DIR",
+    path_copy.build("env_rooted", repos_root) == "$REPOS_DIR"
+  )
+
+  -- Unset repos_dir: falls back to absolute, same as "outside" -- never an
+  -- error (unlike buffer-ctx.nvim's own "repos" filepath mode -- a
+  -- deliberate difference documented in path_copy.lua's module doc: this
+  -- mirrors filetree.nvim's env_rooted, not buffer-ctx.nvim's stricter
+  -- "repos" mode). config.apply() only ever sets repos_dir from a string
+  -- (see its own type guard), so simulating "unset" needs a direct write
+  -- to the live config table (M.get() always returns the same table).
+  config.get().repos_dir = nil
+  check(
+    "path_copy.build: env_rooted falls back to absolute when repos_dir is unset",
+    path_copy.build("env_rooted", under_root) == under_root
+  )
+  config.apply({ repos_dir = repos_root })
+
+  -- run(): register + notify side effects, and the guard branches.
+  check(
+    "path_copy.run: unknown format returns false",
+    path_copy.run("bogus", join("pc_test_x")) == false
+  )
+  check("path_copy.run: nil path returns false", path_copy.run("absolute", nil) == false)
+  check("path_copy.run: empty path returns false", path_copy.run("absolute", "") == false)
+
+  vim.fn.setreg("+", "")
+  vim.fn.setreg('"', "")
+  local expected = join("pc_test_foo.lua")
+  local ok_run = path_copy.run("absolute", expected)
+  check("path_copy.run: absolute returns true", ok_run == true)
+  check("path_copy.run: writes the '+' register", vim.fn.getreg("+") == expected)
+  check("path_copy.run: writes the unnamed register", vim.fn.getreg('"') == expected)
+end
+
+-- ── pickers.keys — path_copy actions: [a/]a/[e/ML, results/normal-mode only ─
+do
+  local config = require("pickers.config")
+  local keys = require("pickers.keys")
+
+  local cfg0 = config.get()
+  check("keys: default copy_absolute", cfg0.keys.copy_absolute == "[a")
+  check("keys: default copy_dirname", cfg0.keys.copy_dirname == "]a")
+  check("keys: default copy_env_rooted", cfg0.keys.copy_env_rooted == "[e")
+  check("keys: default markdown_link", cfg0.keys.markdown_link == "ML")
+
+  local r = keys.resolve(cfg0)
+  check("keys.resolve: copy_absolute lhs", has(r.copy_absolute.lhs, "[a"))
+  check("keys.resolve: markdown_link lhs", has(r.markdown_link.lhs, "ML"))
+  check(
+    "keys.resolve: copy_absolute is results/normal-mode only",
+    has(r.copy_absolute.modes, "n") and not has(r.copy_absolute.modes, "i")
+  )
+  check(
+    "keys.resolve: markdown_link is results/normal-mode only",
+    has(r.markdown_link.modes, "n") and not has(r.markdown_link.modes, "i")
+  )
+
+  -- NESTED_OPTS round-trip: a custom lhs must not be silently dropped as an
+  -- "unknown config key" (ERR-50) -- pins the config/init.lua wiring, not
+  -- just DEFAULTS.lua.
+  config.apply({ keys = { copy_absolute = "<leader>ya" } })
+  check(
+    "keys: copy_absolute custom lhs round-trips through config.apply",
+    config.get().keys.copy_absolute == "<leader>ya"
+  )
+
+  -- telescope/snacks adapters honour keys.resolve() directly (Neovim
+  -- notation); fzf-lua's are fixed regardless of this config (see its own
+  -- suite below) since fzf has no multi-keystroke chord like "[a".
+  local tm = keys.telescope_mappings(config.get())
+  if pcall(require, "telescope.actions") then
+    check("keys.telescope: copy_absolute reflects custom lhs (n)", tm.n["<leader>ya"] ~= nil)
+    check("keys.telescope: copy_absolute NOT bound in insert mode", tm.i["<leader>ya"] == nil)
+  else
+    check("keys.telescope: degrades to empty (telescope absent)", vim.tbl_isempty(tm.n))
+  end
+
+  config.apply({ keys = { copy_absolute = "[a" } })
+
+  -- snacks' generic keys.adapters.snacks.win() must exclude these four --
+  -- they are entry_actions concerns (bound only via
+  -- pickers.entry_actions.adapters.snacks' get_keys(), list window), same
+  -- as create_file/open_background/cheatsheet.
+  local win = keys.snacks_win(config.get())
+  check("keys.snacks: win() excludes copy_absolute", win.input.keys["[a"] == nil)
+  check("keys.snacks: win() excludes copy_absolute (list)", win.list.keys["[a"] == nil)
+  check("keys.snacks: win() excludes markdown_link", win.input.keys["ML"] == nil)
+end
+
+-- ── pickers.entry_actions — path_copy adapters (telescope/fzf/snacks) ──────
+do
+  local config = require("pickers.config")
+
+  -- telescope: get_mappings() binds path_copy in mappings.n only. Unlike
+  -- pickers.keys.adapters.telescope's mappings() (which resolves concrete
+  -- telescope.actions.* function values and so degrades to empty when
+  -- telescope is absent), entry_actions' get_mappings() builds its OWN
+  -- closures (do_copy(fmt), requiring telescope lazily only when actually
+  -- invoked) -- so this table is always fully populated regardless of
+  -- whether telescope.nvim is installed on this runtimepath (same as the
+  -- pre-existing create_file/open_background/cheatsheet checks above,
+  -- which assert unconditionally for the same reason).
+  local ts = require("pickers.entry_actions.adapters.telescope")
+  local tm = ts.get_mappings()
+  check("entry_actions.telescope: copy_absolute bound (n)", tm.n["[a"] ~= nil)
+  check("entry_actions.telescope: copy_absolute NOT bound (i)", tm.i["[a"] == nil)
+  check("entry_actions.telescope: copy_dirname bound (n)", tm.n["]a"] ~= nil)
+  check("entry_actions.telescope: copy_env_rooted bound (n)", tm.n["[e"] ~= nil)
+  check("entry_actions.telescope: markdown_link bound (n)", tm.n["ML"] ~= nil)
+
+  -- fzf: fixed physical keys, unrelated to keys.resolve()'s Neovim notation.
+  local fzf_adapter = require("pickers.entry_actions.adapters.fzf")
+  local fa = fzf_adapter.get_actions()
+  check("entry_actions.fzf: ctrl-y (copy_absolute) present", type(fa["ctrl-y"]) == "function")
+  check("entry_actions.fzf: alt-y (copy_dirname) present", type(fa["alt-y"]) == "function")
+  check("entry_actions.fzf: alt-r (copy_env_rooted) present", type(fa["alt-r"]) == "function")
+  check("entry_actions.fzf: alt-m (markdown_link) present", type(fa["alt-m"]) == "function")
+
+  -- snacks: get_keys() (list window, normal mode) carries them; get_actions()
+  -- carries a desc; get_input_keys() must NOT carry them (printable-lhs
+  -- safety -- see pickers.keys' @description).
+  local snacks_adapter = require("pickers.entry_actions.adapters.snacks")
+  local sk = snacks_adapter.get_keys()
+  check("entry_actions.snacks: copy_absolute key", sk["[a"] == "copy_absolute")
+  check("entry_actions.snacks: markdown_link key", sk["ML"] == "markdown_link")
+  local sik = snacks_adapter.get_input_keys()
+  check("entry_actions.snacks: copy_absolute NOT in input keys", sik["[a"] == nil)
+  check("entry_actions.snacks: markdown_link NOT in input keys", sik["ML"] == nil)
+  local sa = snacks_adapter.get_actions()
+  check(
+    "entry_actions.snacks: copy_absolute carries desc",
+    type(sa.copy_absolute) == "table" and type(sa.copy_absolute.desc) == "string"
+  )
+  check(
+    "entry_actions.snacks: copy_absolute desc reused from pickers.cheatsheet.DESCRIPTIONS",
+    sa.copy_absolute.desc == require("pickers.cheatsheet").DESCRIPTIONS.copy_absolute
+  )
+
+  -- keys.enable=false empties every adapter, path_copy included.
+  config.apply({ keys = { enable = false } })
+  check(
+    "entry_actions.telescope: path_copy empty when keys.enable=false",
+    vim.tbl_isempty(ts.get_mappings().n)
+  )
+  check(
+    "entry_actions.fzf: path_copy empty when keys.enable=false",
+    vim.tbl_isempty(fzf_adapter.get_actions())
+  )
+  check(
+    "entry_actions.snacks: path_copy empty when keys.enable=false",
+    vim.tbl_isempty(snacks_adapter.get_keys())
+  )
+  config.apply({
+    keys = {
+      enable = true,
+      preview_scroll_down = "<PageDown>",
+      history_back = "<C-p>",
+      create_file = "<C-a>",
+      open_background = { "<S-CR>", "<C-o>" },
+      cheatsheet = "<C-/>",
+      copy_absolute = "[a",
+      copy_dirname = "]a",
+      copy_env_rooted = "[e",
+      markdown_link = "ML",
+    },
+  })
+
+  -- cheatsheet lines(): path_copy rows appear, fzf overrides show the fixed
+  -- physical keys rather than the Neovim-notation defaults.
+  local cheatsheet = require("pickers.cheatsheet")
+  local lines = table.concat(cheatsheet.lines(), "\n")
+  check("cheatsheet: lists copy_absolute's default lhs", lines:find("[a", 1, true) ~= nil)
+  local fzf_lines = table.concat(
+    cheatsheet.lines({ create_file = "ctrl-a", cheatsheet = "f1", copy_absolute = "ctrl-y" }),
+    "\n"
+  )
+  check("cheatsheet: fzf override shows ctrl-y, not [a", fzf_lines:find("ctrl%-y") ~= nil)
+end
+
 -- ── pickers.entry_actions.extract.fzf — clean fields vs raw display line ────
 do
   local extract = require("pickers.entry_actions.extract.fzf")

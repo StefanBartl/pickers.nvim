@@ -1,5 +1,7 @@
 ---@module 'pickers.entry_actions.adapters.snacks'
----@brief snacks.nvim entry-action registrations: create_file + open_background + cheatsheet.
+---@brief snacks.nvim entry-action registrations: create_file + open_background +
+---cheatsheet + path_copy (copy_absolute/copy_dirname/copy_env_rooted/
+---markdown_link).
 ---@description
 --- Two-part registration, matching Snacks.picker's own convention: named
 --- actions via `get_actions()` (merged into `opts.actions`), plus separate
@@ -23,6 +25,16 @@ local notify = require("lib.nvim.notify").create("[pickers.entry_actions.adapter
 local extract = require("pickers.entry_actions.extract.snacks")
 local create_file = require("pickers.entry_actions.create_file")
 local open_background = require("pickers.entry_actions.open_background")
+local path_copy = require("pickers.entry_actions.path_copy")
+
+---@internal
+---path_copy format name -> pickers.keys action name.
+local FMT_TO_ACTION = {
+  absolute = "copy_absolute",
+  dirname = "copy_dirname",
+  env_rooted = "copy_env_rooted",
+  markdown_link = "markdown_link",
+}
 
 local M = {}
 
@@ -46,6 +58,19 @@ local function do_create_file(picker, item)
   ---@diagnostic disable-next-line: undefined-field
   picker:close()
   create_file.run(path)
+end
+
+---@internal
+---Path-copy entry action (see pickers.entry_actions.path_copy). Does NOT
+---close the picker -- same non-disruptive "stay in place" behavior as
+---filetree.nvim's own path_copy/markdown_links features.
+---@param fmt string
+---@return fun(picker: any, item: any)
+local function do_copy(fmt)
+  return function(_picker, item)
+    local path = extract(item)
+    path_copy.run(fmt, path)
+  end
 end
 
 ---@internal
@@ -78,16 +103,27 @@ function M.get_actions()
 
   local desc = require("pickers.cheatsheet").DESCRIPTIONS
 
-  return {
+  local actions = {
     create_file = { action = do_create_file, desc = desc.create_file },
     open_background = { action = do_open_background, desc = desc.open_background },
     cheatsheet = { action = do_cheatsheet, desc = desc.cheatsheet },
   }
+  for fmt, action_name in pairs(FMT_TO_ACTION) do
+    actions[action_name] = { action = do_copy(fmt), desc = desc[action_name] }
+  end
+  return actions
 end
 
 ---Key -> action-name bindings for `win.list.keys` (bare-string form; the
 ---snacks list window is normal-mode only), honouring `pickers.keys`' resolved
----`create_file`/`open_background`/`cheatsheet` config.
+---`create_file`/`open_background`/`cheatsheet`/path_copy config.
+---
+---The path_copy actions (copy_absolute/copy_dirname/copy_env_rooted/
+---markdown_link) belong ONLY here, never in `get_input_keys()`: their
+---default lhs (`[a`/`]a`/`[e`/`ML`) are plain printable characters, and the
+---list window -- unlike input -- is never used for typing a query, so
+---binding them there cannot swallow a character out of one. See
+---pickers.keys' @description.
 ---@return table<string, string> keys
 function M.get_keys()
   local resolved = require("pickers.keys").resolve()
@@ -103,6 +139,12 @@ function M.get_keys()
 
   for _, key in ipairs((resolved.cheatsheet or {}).lhs or {}) do
     keys[key] = "cheatsheet"
+  end
+
+  for _, action_name in pairs(FMT_TO_ACTION) do
+    for _, key in ipairs((resolved[action_name] or {}).lhs or {}) do
+      keys[key] = action_name
+    end
   end
 
   return keys
