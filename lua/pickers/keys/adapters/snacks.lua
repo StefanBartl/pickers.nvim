@@ -51,12 +51,24 @@ local HISTORY = { history_back = true, history_forward = true }
 local CONFIRM = { mouse_confirm = "confirm" }
 
 --- Handled elsewhere (pickers.entry_actions, or not applicable to snacks) --
---- see @description.
+--- see @description. copy_absolute/copy_dirname/copy_env_rooted/
+--- markdown_link are entry_actions concerns like create_file/
+--- open_background -- and, unlike those, results-window/normal-mode ONLY
+--- (see pickers.keys' @description), so they must not fall through to the
+--- default branch below either: that branch binds every window INCLUDING
+--- `input` in insert mode, which would swallow their plain-printable lhs
+--- (`[`, `]`, `a`, `e`, `M`, `L`) out of any typed query containing them.
+--- See pickers.entry_actions.adapters.snacks' own get_keys() (list window,
+--- normal mode only) for where they actually get bound.
 local SKIP = {
   create_file = true,
   open_background = true,
   preview_toggle = true,
   cheatsheet = true,
+  copy_absolute = true,
+  copy_dirname = true,
+  copy_env_rooted = true,
+  markdown_link = true,
 }
 
 --- The pickers.nvim-side actions snacks resolves by name from the `win`

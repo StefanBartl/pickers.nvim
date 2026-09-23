@@ -70,6 +70,25 @@
 ---               handles mouse clicks itself, same capability-gap class as
 ---               its history keys (see `pickers.keys.adapters.fzf`).
 ---
+--- `copy_absolute`/`copy_dirname`/`copy_env_rooted`/`markdown_link` copy the
+--- selected entry's path in various formats (see
+--- `pickers.entry_actions.path_copy`) -- the curated subset of
+--- filetree.nvim's `[a`/`]a`/`[e`/`ML` path-copy family that still makes
+--- sense on a picker result row. Default lhs match filetree.nvim's own
+--- defaults exactly. Results-window/normal-mode ONLY (`modes = { "n" }`,
+--- same class as `mouse_confirm`), deliberately NOT bound in insert mode:
+--- unlike every other in-picker key here, these lhs are plain printable
+--- characters (`[`, `]`, `a`, `e`, `M`, `L`) rather than control/special
+--- keys -- binding them in the prompt's insert mode would swallow those
+--- characters out of any typed query that happens to contain them. Like
+--- `create_file`/`open_background`/`cheatsheet`, these run pickers.nvim-
+--- specific logic (`pickers.entry_actions.path_copy`), so they are NOT
+--- patched globally by `M.patch()` -- telescope/snacks read `keys.resolve()`
+--- directly in their entry_actions adapters, and fzf-lua's bindings are
+--- fixed (`ctrl-y`/`alt-y`/`alt-r`/`alt-m`; fzf's own bind syntax has no
+--- multi-keystroke chord like `[a`, so the fzf-lua adapter uses single
+--- physical keys instead -- see `pickers.entry_actions.adapters.fzf`).
+---
 --- `cheatsheet` opens a read-only panel (`pickers.cheatsheet`) listing every
 --- currently-bound action in this table. Defaults to `<C-/>`, NOT `<C-?>`:
 --- every picker prompt starts in insert mode, where a raw `?` just searches
@@ -118,6 +137,13 @@ M.ACTIONS = {
   -- Read-only keymap cheatsheet (pickers.cheatsheet). NOT "<C-?>" -- see the
   -- @description block above.
   cheatsheet = { default = "<C-/>", modes = { "i", "n" } },
+  -- Path-copy entry actions (pickers.entry_actions.path_copy) -- results-
+  -- window/normal-mode only, see @description above for why these four
+  -- cannot follow create_file/open_background into insert mode too.
+  copy_absolute = { default = "[a", modes = { "n" } },
+  copy_dirname = { default = "]a", modes = { "n" } },
+  copy_env_rooted = { default = "[e", modes = { "n" } },
+  markdown_link = { default = "ML", modes = { "n" } },
   -- Opt-in (false = unbound): switch to the next/previous target of the
   -- active pickers.tabs group, the typed query carried along. Unbound by
   -- default because <Tab> is telescope's multi-select toggle -- a host that
@@ -145,6 +171,10 @@ M.ORDER = {
   "tab",
   "mouse_confirm",
   "cheatsheet",
+  "copy_absolute",
+  "copy_dirname",
+  "copy_env_rooted",
+  "markdown_link",
   "tab_next",
   "tab_prev",
 }

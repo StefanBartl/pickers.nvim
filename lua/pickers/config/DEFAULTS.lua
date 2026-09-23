@@ -142,6 +142,16 @@ local M = {
     -- fzf-lua's binding is fixed regardless of this value, same class as its
     -- ctrl-a/ctrl-o/shift-enter entry actions above.
     cheatsheet = "<C-/>",
+    -- Curated subset of filetree.nvim's path-copy family ([a/]a/[e/ML),
+    -- applied to the selected picker entry's path. Results-window/normal-
+    -- mode only (see pickers.keys' @description for why) -- see
+    -- pickers.entry_actions.path_copy. Fixed on fzf-lua (ctrl-y/alt-y/
+    -- alt-r/alt-m; fzf's bind syntax has no multi-keystroke chord like
+    -- "[a", see pickers.entry_actions.adapters.fzf).
+    copy_absolute = "[a",
+    copy_dirname = "]a",
+    copy_env_rooted = "[e",
+    markdown_link = "ML",
   },
 
   -- Native picker-history file(s) under stdpath("data")/pickers.nvim/history.

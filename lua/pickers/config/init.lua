@@ -412,6 +412,11 @@ local NESTED_OPTS = {
     "tab",
     "mouse_confirm",
     "cheatsheet",
+    -- Path-copy entry actions (pickers.entry_actions.path_copy).
+    "copy_absolute",
+    "copy_dirname",
+    "copy_env_rooted",
+    "markdown_link",
     -- Opt-in tab-group switch actions (pickers.keys.ACTIONS.tab_next/tab_prev);
     -- absent from DEFAULTS.keys because their default is `false`, not nil.
     "tab_next",

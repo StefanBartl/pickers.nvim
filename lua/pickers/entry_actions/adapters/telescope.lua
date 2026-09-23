@@ -1,5 +1,7 @@
 ---@module 'pickers.entry_actions.adapters.telescope'
----@brief Telescope entry-action mappings: create_file + open_background + cheatsheet.
+---@brief Telescope entry-action mappings: create_file + open_background +
+---cheatsheet + path_copy (copy_absolute/copy_dirname/copy_env_rooted/
+---markdown_link).
 ---@description
 --- Single canonical source for these mappings — collapses the pre-existing
 --- duplicate config.telescope.actions.open_badd / config.telescope.open_background
@@ -10,6 +12,16 @@ local notify = require("lib.nvim.notify").create("[pickers.entry_actions.adapter
 local extract = require("pickers.entry_actions.extract.telescope")
 local create_file = require("pickers.entry_actions.create_file")
 local open_background = require("pickers.entry_actions.open_background")
+local path_copy = require("pickers.entry_actions.path_copy")
+
+---@internal
+---path_copy format name -> pickers.keys action name.
+local FMT_TO_ACTION = {
+  absolute = "copy_absolute",
+  dirname = "copy_dirname",
+  env_rooted = "copy_env_rooted",
+  markdown_link = "markdown_link",
+}
 
 local M = {}
 
@@ -33,6 +45,21 @@ local function do_create_file(prompt_bufnr)
   end
   require("telescope.actions").close(prompt_bufnr)
   create_file.run(path)
+end
+
+---@internal
+---Path-copy entry action (see pickers.entry_actions.path_copy): copy the
+---selected entry's path in `fmt`, without closing or otherwise disturbing
+---the picker -- same non-disruptive "stay in place" behavior as
+---filetree.nvim's own path_copy/markdown_links features.
+---@param fmt string
+---@return fun(prompt_bufnr: integer)
+local function do_copy(fmt)
+  return function()
+    local action_state = require("telescope.actions.state")
+    local path = extract(action_state.get_selected_entry())
+    path_copy.run(fmt, path)
+  end
 end
 
 ---@internal
@@ -75,6 +102,18 @@ function M.get_mappings()
   for _, key in ipairs((resolved.cheatsheet or {}).lhs or {}) do
     mappings.i[key] = do_cheatsheet
     mappings.n[key] = do_cheatsheet
+  end
+
+  -- Path-copy entry actions: results-window/normal-mode ONLY (`n`, never
+  -- `i`) -- their default lhs are plain printable characters (`[`, `]`,
+  -- `a`, `e`, `M`, `L`), not control/special keys, so binding them in the
+  -- prompt's insert mode would swallow those characters out of any typed
+  -- query containing them. See pickers.keys' @description.
+  for _, fmt in ipairs(path_copy.FORMAT_ORDER) do
+    local action = FMT_TO_ACTION[fmt]
+    for _, key in ipairs((resolved[action] or {}).lhs or {}) do
+      mappings.n[key] = do_copy(fmt)
+    end
   end
 
   return mappings

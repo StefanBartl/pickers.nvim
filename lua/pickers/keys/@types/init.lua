@@ -24,5 +24,9 @@
 ---@field tab?                  Pickers.KeyBinding Open selected entry in a new tab. Default: "<C-t>"
 ---@field mouse_confirm?        Pickers.KeyBinding Double-click a result to open it. Default: "<2-LeftMouse>"
 ---@field cheatsheet?           Pickers.KeyBinding Show the in-picker keymap cheatsheet. Default: "<C-/>"
+---@field copy_absolute?        Pickers.KeyBinding Copy the selected entry's absolute path. Default: "[a" (results/normal-mode only)
+---@field copy_dirname?         Pickers.KeyBinding Copy the selected entry's parent directory (absolute). Default: "]a" (results/normal-mode only)
+---@field copy_env_rooted?      Pickers.KeyBinding Copy the selected entry's path with $REPOS_DIR folded in. Default: "[e" (results/normal-mode only)
+---@field markdown_link?        Pickers.KeyBinding Copy the selected entry as a Markdown link. Default: "ML" (results/normal-mode only)
 
 return {}

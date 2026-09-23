@@ -452,7 +452,37 @@ In-picker keys (preview scroll + history + entry actions)~
   (Snacks.win:toggle_help(), bound by default) — it reads real buffer
   keymaps, pickers.nvim's own included, and
   pickers.entry_actions.adapters.snacks feeds it a matching `desc` for
-  create_file/open_background/cheatsheet.
+  create_file/open_background/cheatsheet/path_copy.
+
+  `copy_absolute`/`copy_dirname`/`copy_env_rooted`/`markdown_link` copy the
+  selected entry's path in various formats to the "+"/unnamed registers —
+  the curated subset of filetree.nvim's [a/]a/[e/ML path-copy family that
+  still makes sense on a picker RESULT ROW (a plain path string, not a
+  FiletreeNode).  Deliberately not ported: marks/trash keymaps, and the
+  recursive/from-marked Markdown-link variants (a result row is one file,
+  not a directory subtree).  filetree.nvim's `gb` ("add to buffer list") is
+  not duplicated either — open_background above already is that action
+  here.  Unlike create_file/open_background/cheatsheet, these do NOT close
+  the picker on telescope/snacks (filetree.nvim's own path-copy is
+  non-disruptive); fzf-lua closes+resumes regardless (its action table
+  always closes the running process first), approximating the same effect.
+
+  Default lhs "[a"/"]a"/"[e"/"ML" match filetree.nvim exactly, and are
+  RESULTS-WINDOW/NORMAL-MODE ONLY, never insert mode: unlike every other
+  in-picker key, these are plain printable characters rather than
+  control/special keys, so binding them while typing a query would swallow
+  those characters out of it.  fzf's own --bind syntax additionally has no
+  concept of a multi-keystroke chord like "[a" (a single logical key, not a
+  pending-key state machine), so its bindings are fixed to single physical
+  keys instead: ctrl-y/alt-y/alt-r/alt-m, same class as its
+  ctrl-a/ctrl-o/shift-enter/f1.  `copy_env_rooted` folds $REPOS_DIR back
+  into the path (reading pickers.config's already-resolved repos_dir) and
+  falls back to the plain absolute path when unset or the entry is outside
+  it: >lua
+    require("pickers").setup({
+      keys = { copy_absolute = "[a", copy_dirname = "]a" },
+    })
+<
 
 ==============================================================================
 8. COMPAT COMMANDS                                               *pickers-compat*
@@ -618,9 +648,22 @@ All keys are optional.  Unset keys retain their default values.
       cheatsheet           (string|string[]|false, default "<C-/>") — show
                              the in-picker keymap cheatsheet; fixed to f1 on
                              fzf-lua
+      copy_absolute        (string|string[]|false, default "[a") — copy the
+                             selected entry's absolute path; results/normal-
+                             mode only; fixed to ctrl-y on fzf-lua
+      copy_dirname         (string|string[]|false, default "]a") — copy its
+                             parent directory (absolute); results/normal-
+                             mode only; fixed to alt-y on fzf-lua
+      copy_env_rooted      (string|string[]|false, default "[e") — copy its
+                             path with $REPOS_DIR folded in; results/normal-
+                             mode only; fixed to alt-r on fzf-lua
+      markdown_link        (string|string[]|false, default "ML") — copy it
+                             as a Markdown link; results/normal-mode only;
+                             fixed to alt-m on fzf-lua
     fzf-lua only binds the vertical preview scroll and the fixed ctrl-a/
-    ctrl-o/shift-enter/f1 entry actions — horizontal scroll, history, and
-    remapping the entry-action keys are all fzf-native/fixed there.
+    ctrl-o/shift-enter/f1/ctrl-y/alt-y/alt-r/alt-m entry actions —
+    horizontal scroll, history, and remapping the entry-action keys are all
+    fzf-native/fixed there.
 
 ==============================================================================
 10. HISTORY                                                    *pickers-history*

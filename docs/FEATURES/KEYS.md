@@ -43,9 +43,10 @@ The part that costs the most and shows the least: preview scrolling, history
 navigation and the entry actions are defined **once** and translated per
 engine, so the same key does the same thing on telescope, fzf-lua and snacks.
 
-Fourteen actions, covering preview scroll (four directions), history back and
+Eighteen actions, covering preview scroll (four directions), history back and
 forward, `create_file`, `open_background`, `preview_toggle`, `split`, `vsplit`,
-`tab`, `mouse_confirm`, and `cheatsheet`.
+`tab`, `mouse_confirm`, `cheatsheet`, and the path-copy family
+(`copy_absolute`, `copy_dirname`, `copy_env_rooted`, `markdown_link`).
 
 **fzf-lua is the capability gap, and it is a real one.** Its builtin previewer
 has no horizontal preview scroll; its history is fzf's own `--history` bound to
@@ -144,3 +145,38 @@ something different for the same key.
 
 - **Module:** [`cheatsheet/init.lua`](../../lua/pickers/cheatsheet/init.lua)
 - **Config:** `keys.cheatsheet` (default `<C-/>`; fixed to `f1` on fzf-lua)
+
+### Path copy (`copy_absolute`, `copy_dirname`, `copy_env_rooted`, `markdown_link`)
+
+Copy the selected entry's path in various formats to the `"+"`/unnamed
+registers — the curated subset of filetree.nvim's `[a`/`]a`/`[e`/`ML`
+path-copy family that still makes sense on a picker result row (a plain
+path string, not a `FiletreeNode`). Deliberately not ported: marks/trash
+keymaps, and the recursive/from-marked Markdown-link variants (a result
+row is one file, not a directory subtree). filetree.nvim's `gb` ("add to
+buffer list") is not duplicated either — `open_background` above already
+is that action here.
+
+Unlike every other entry action, these do **not** close the picker on
+telescope/snacks (filetree.nvim's own path-copy is non-disruptive); fzf-lua
+has to close+resume regardless (its action table always closes the running
+process first), which approximates the same effect.
+
+**Results-window/normal-mode only, never insert mode.** Their default lhs
+(`[a`, `]a`, `[e`, `ML`) are plain printable characters rather than
+control/special keys, so binding them in the prompt's insert mode would
+swallow those characters out of any typed query containing them. fzf's own
+`--bind` syntax additionally has no concept of a multi-keystroke chord like
+`[a` (a single logical key, not a pending-key state machine), so its
+bindings are fixed to single physical keys instead: `ctrl-y`/`alt-y`/
+`alt-r`/`alt-m`, same class as its `ctrl-a`/`ctrl-o`/`shift-enter`/`f1`.
+
+`copy_env_rooted` folds `$REPOS_DIR` back into the path (reading
+`pickers.config`'s already-resolved `repos_dir`) and falls back to the
+plain absolute path when unset or the entry is outside it.
+
+- **Module:** [`entry_actions/path_copy.lua`](../../lua/pickers/entry_actions/path_copy.lua),
+  adapters in `entry_actions/{extract,adapters}/`
+- **Config:** `keys.copy_absolute` (default `[a`), `keys.copy_dirname`
+  (default `]a`), `keys.copy_env_rooted` (default `[e`), `keys.markdown_link`
+  (default `ML`)
