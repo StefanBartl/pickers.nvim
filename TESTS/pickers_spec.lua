@@ -1728,6 +1728,182 @@ do
   vim.fn.delete(broot, "rf")
 end
 
+-- ── pickers.git_status_marks — filter classification + row/item building ────
+do
+  local gsm = require("pickers.git_status_marks")
+
+  -- Pure classification, straight off the two-char porcelain code -- no git
+  -- process, no repo, matches lib.nvim.git's own @class Lib.Git.StatusEntry.
+  check("git_status_marks.is_staged: 'M ' (staged modify)", gsm.is_staged("M "))
+  check("git_status_marks.is_staged: ' M' (unstaged modify) is not staged", not gsm.is_staged(" M"))
+  check("git_status_marks.is_staged: '??' (untracked) is not staged", not gsm.is_staged("??"))
+  check("git_status_marks.is_staged: 'A ' (staged add)", gsm.is_staged("A "))
+  check("git_status_marks.is_staged: 'MM' (staged+unstaged modify)", gsm.is_staged("MM"))
+
+  check("git_status_marks.is_unstaged: ' M' (unstaged modify)", gsm.is_unstaged(" M"))
+  check(
+    "git_status_marks.is_unstaged: 'M ' (staged only) is not unstaged",
+    not gsm.is_unstaged("M ")
+  )
+  check("git_status_marks.is_unstaged: '??' (untracked) counts as unstaged", gsm.is_unstaged("??"))
+  check("git_status_marks.is_unstaged: 'MM' (staged+unstaged modify)", gsm.is_unstaged("MM"))
+
+  check("git_status_marks.matches_filter: 'all' never excludes", gsm.matches_filter("M ", "all"))
+  check(
+    "git_status_marks.matches_filter: unknown filter defaults to 'all' behaviour",
+    gsm.matches_filter("M ", "not_a_real_filter")
+  )
+  check("git_status_marks.matches_filter: staged/'M '", gsm.matches_filter("M ", "staged"))
+  check(
+    "git_status_marks.matches_filter: staged/'??' excluded",
+    not gsm.matches_filter("??", "staged")
+  )
+  check("git_status_marks.matches_filter: unstaged/' M'", gsm.matches_filter(" M", "unstaged"))
+  check(
+    "git_status_marks.matches_filter: unstaged/'M ' excluded",
+    not gsm.matches_filter("M ", "unstaged")
+  )
+
+  -- build_rows: filtering + sorting a fixture status map, no git involved.
+  local fixture_map = {
+    ["b/staged_add.lua"] = { code = "A ", orig_path = nil },
+    ["a/unstaged_modify.lua"] = { code = " M", orig_path = nil },
+    ["c/untracked.lua"] = { code = "??", orig_path = nil },
+    ["both.lua"] = { code = "MM", orig_path = nil },
+  }
+  local rows_all = gsm.build_rows(fixture_map, "all")
+  check("git_status_marks.build_rows: 'all' keeps every entry", #rows_all == 4)
+  local paths_all = vim.tbl_map(function(r)
+    return r.path
+  end, rows_all)
+  check(
+    "git_status_marks.build_rows: sorted by path",
+    vim.deep_equal(
+      paths_all,
+      { "a/unstaged_modify.lua", "b/staged_add.lua", "both.lua", "c/untracked.lua" }
+    ),
+    vim.inspect(paths_all)
+  )
+
+  local rows_staged = gsm.build_rows(fixture_map, "staged")
+  local paths_staged = vim.tbl_map(function(r)
+    return r.path
+  end, rows_staged)
+  check(
+    "git_status_marks.build_rows: 'staged' drops the untracked+unstaged-only entries",
+    vim.deep_equal(paths_staged, { "b/staged_add.lua", "both.lua" }),
+    vim.inspect(paths_staged)
+  )
+
+  local rows_unstaged = gsm.build_rows(fixture_map, "unstaged")
+  local paths_unstaged = vim.tbl_map(function(r)
+    return r.path
+  end, rows_unstaged)
+  check(
+    "git_status_marks.build_rows: 'unstaged' drops the staged-only entry, keeps untracked",
+    vim.deep_equal(paths_unstaged, { "a/unstaged_modify.lua", "both.lua", "c/untracked.lua" }),
+    vim.inspect(paths_unstaged)
+  )
+
+  check("git_status_marks.build_rows: nil map -> empty", #gsm.build_rows(nil, "all") == 0)
+
+  -- to_items: pure string joins, no filesystem access.
+  local items = gsm.to_items(rows_staged, "/repo")
+  check(
+    "git_status_marks.to_items: text is '[code] path'",
+    items[1].text == "[A ] b/staged_add.lua" and items[2].text == "[MM] both.lua"
+  )
+  check(
+    "git_status_marks.to_items: file is repo_root/path, for the picker's preview",
+    items[1].file == "/repo/b/staged_add.lua"
+  )
+  check("git_status_marks.to_items: kind is 'file'", items[1].kind == "file")
+
+  -- toggle_rows: three rows, current one marked, rest not.
+  local toggles = gsm.toggle_rows("staged")
+  check("git_status_marks.toggle_rows: three rows", #toggles == 3)
+  check(
+    "git_status_marks.toggle_rows: current filter marked '[x]', others '[ ]'",
+    toggles[1].text:find("^%[ %]")
+      and toggles[2].text:find("^%[x%]")
+      and toggles[3].text:find("^%[ %]")
+  )
+  check(
+    "git_status_marks.toggle_rows: each row carries its own filter + kind",
+    toggles[1].filter == "all"
+      and toggles[2].filter == "staged"
+      and toggles[3].filter == "unstaged"
+      and toggles[1].kind == "toggle"
+  )
+
+  -- open(): the flow on a fake engine + a stubbed lib.nvim.git, same
+  -- fake-engine technique pickers.browse's own suite above uses. No real git
+  -- process, no real repo.
+  local prev_git = package.loaded["lib.nvim.git"]
+  -- A real absolute directory (nothing written into it — `:edit` never
+  -- requires the target file to exist), not a literal "/fake/repo" string:
+  -- Windows only treats a path as absolute with a drive letter, so a bare
+  -- leading "/" would silently resolve relative to the cwd instead and the
+  -- edit-opens-the-right-buffer assertion below would compare the wrong path.
+  local fake_root = vim.fn.fnamemodify(vim.fn.tempname(), ":h")
+  local fake_map = {
+    ["x.lua"] = { code = "M ", orig_path = nil },
+    ["y.lua"] = { code = " M", orig_path = nil },
+  }
+  package.loaded["lib.nvim.git"] = {
+    repo_root = function()
+      return fake_root
+    end,
+    status_porcelain = function()
+      return fake_map, nil
+    end,
+  }
+
+  local last_opts
+  local fake_engine = {
+    pick_item = function(o)
+      last_opts = o
+    end,
+  }
+  gsm.open({ engine_mod = fake_engine })
+  check(
+    "git_status_marks.open: prompt names the active filter",
+    last_opts.prompt:find("both", 1, true) ~= nil
+  )
+  check(
+    "git_status_marks.open: toggle rows first, then both file rows",
+    last_opts.items[1].kind == "toggle"
+      and last_opts.items[2].kind == "toggle"
+      and last_opts.items[3].kind == "toggle"
+      and last_opts.items[4].kind == "file"
+      and last_opts.items[5].kind == "file"
+  )
+
+  -- Selecting the "staged only" toggle row reopens the list, filtered.
+  local staged_toggle
+  for _, it in ipairs(last_opts.items) do
+    if it.kind == "toggle" and it.filter == "staged" then staged_toggle = it end
+  end
+  last_opts.on_select(staged_toggle)
+  check(
+    "git_status_marks.open: toggling to 'staged' reopens with only the staged row",
+    last_opts.prompt:find("staged only", 1, true) ~= nil
+      and #last_opts.items == 4 -- 3 toggle rows + 1 staged file row
+      and last_opts.items[4].path == "x.lua"
+  )
+
+  -- Selecting a file row edits it.
+  local file_row = last_opts.items[4]
+  last_opts.on_select(file_row)
+  check(
+    "git_status_marks.open: picking a file row edits repo_root/path",
+    vim.fs.normalize(vim.api.nvim_buf_get_name(0)) == vim.fs.normalize(fake_root .. "/x.lua")
+  )
+  vim.cmd("enew!")
+
+  package.loaded["lib.nvim.git"] = prev_git
+end
+
 -- ── pickers.tabs — groups, switch, query carry-over, title suffix ────────────
 do
   local tabs = require("pickers.tabs")
