@@ -23,6 +23,15 @@ you had called it yourself. Two different jobs, kept visibly separate.
 - **Keymaps:** `explorer` (`<leader>.` by default) opens the active engine's
   file explorer — snacks' tree explorer, telescope-file-browser, …
 
+Two builtins are not a flat `mod[fn]` dispatch and get their own module
+instead: `browse`/`explorer` (fzf-lua's own row) go through
+[`pickers.browse`](BROWSE.md), and `git_status_marks` goes through
+[`pickers.git_status_marks`](../../lua/pickers/git_status_marks/init.lua) — a
+staged/unstaged/both-filterable, marks-style list of uncommitted files, with
+no native equivalent on any of the three engines (see
+[docs/builtins.md](../builtins.md#git_status-vs-git_status_marks) for how it
+differs from the plain `git_status` builtin above it).
+
 ## Gaps are answers, not omissions
 
 The three engines disagree on **naming** (snacks `recent`, telescope

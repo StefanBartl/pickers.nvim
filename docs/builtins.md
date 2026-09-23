@@ -15,7 +15,7 @@ whatever opts you pass, same as calling it yourself.
 Tab-completes over every registered name (`:Pickers builtin <Tab>`). See
 `lua/pickers/builtins/init.lua` for the registry itself.
 
-The matrix below is the list — one row per registered name, 52 of them at the
+The matrix below is the list — one row per registered name, 53 of them at the
 time of writing. It is the only place in the docs that counts them, so the
 number cannot go stale anywhere else; every other page links here instead of
 restating it.
@@ -64,6 +64,7 @@ support it when you hit one.
 | `git_log_file` | `git_log_file` | `git_bcommits` | `git_bcommits` |
 | `git_log_line` | `git_log_line` | — | — |
 | `git_status` | `git_status` | `git_status` | `git_status` |
+| `git_status_marks` | `pickers.git_status_marks` | `pickers.git_status_marks` | `pickers.git_status_marks` |
 | `git_stash` | `git_stash` | `git_stash` | `git_stash` |
 | `git_diff` | `git_diff` | — | `git_diff` |
 | `gh_issue` | `gh_issue` | `pickers.sources.github` (`gh` CLI) | `pickers.sources.github` (`gh` CLI) |
@@ -89,6 +90,25 @@ support it when you hit one.
 
 `lines`/`grep_buffers` deliberately aren't `files`/`grep` — those already exist
 as `:Pickers cwd files` / `:Pickers cwd grep` and don't need a builtin entry.
+
+## `git_status` vs. `git_status_marks`
+
+Two different things that both talk about "git status":
+
+- **`git_status`** dispatches into the engine's own native status picker
+  (`Snacks.picker.git_status()` / `telescope.builtin.git_status()` /
+  `require("fzf-lua").git_status()`) — whatever that engine ships, diff
+  preview and all, with no staged/unstaged split.
+- **`git_status_marks`** is pickers.nvim's own in-house list (like `browse`/
+  `explorer`'s fzf-lua row — no native counterpart on any engine has this),
+  built from `lib.nvim.git.status_porcelain` (the same porcelain parser
+  gitsuite.nvim and filetree.nvim already use — no second parser). It is
+  filterable to staged/unstaged/both, with the filter switchable via three
+  rows at the top of the list (`[x] show: ...`) rather than a raw keypress —
+  `pick_item()` has no per-call custom-keymap hook on any of the three
+  engines. Picking a file row opens it; `pickers.entry_actions` (`[a`/`]a`/
+  `[e`/`ML`, …) apply automatically, same as any other `pick_item()`-based
+  list here.
 
 ## Notes on specific gaps
 
