@@ -1217,15 +1217,31 @@ do
   check("entry_actions.fzf: alt-m (markdown_link) present", type(fa["alt-m"]) == "function")
 
   -- snacks: get_keys() (list window, normal mode) carries them; get_actions()
-  -- carries a desc; get_input_keys() must NOT carry them (printable-lhs
-  -- safety -- see pickers.keys' @description).
+  -- carries a desc; get_input_keys() must ALSO carry them, mode "n" only
+  -- (never "i") -- otherwise pressing <Esc> in the input window (which
+  -- stays IN that window/buffer, just drops it into ITS OWN normal mode --
+  -- unlike telescope's single prompt buffer, snacks' input and list windows
+  -- are separate key tables) leaves these actions unreachable. See
+  -- pickers.entry_actions.adapters.snacks' get_input_keys() doc.
   local snacks_adapter = require("pickers.entry_actions.adapters.snacks")
   local sk = snacks_adapter.get_keys()
   check("entry_actions.snacks: copy_absolute key", sk["[a"] == "copy_absolute")
   check("entry_actions.snacks: markdown_link key", sk["ML"] == "markdown_link")
   local sik = snacks_adapter.get_input_keys()
-  check("entry_actions.snacks: copy_absolute NOT in input keys", sik["[a"] == nil)
-  check("entry_actions.snacks: markdown_link NOT in input keys", sik["ML"] == nil)
+  check(
+    "entry_actions.snacks: copy_absolute in input keys, normal-mode only",
+    sik["[a"] ~= nil
+      and sik["[a"][1] == "copy_absolute"
+      and has(sik["[a"].mode, "n")
+      and not has(sik["[a"].mode, "i")
+  )
+  check(
+    "entry_actions.snacks: markdown_link in input keys, normal-mode only",
+    sik["ML"] ~= nil
+      and sik["ML"][1] == "markdown_link"
+      and has(sik["ML"].mode, "n")
+      and not has(sik["ML"].mode, "i")
+  )
   local sa = snacks_adapter.get_actions()
   check(
     "entry_actions.snacks: copy_absolute carries desc",
