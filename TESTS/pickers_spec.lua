@@ -4343,6 +4343,16 @@ do
     extract_snacks({ item = { path = "src/foo.lua", file = "/repo/src/foo.lua" } })
       == "/repo/src/foo.lua"
   )
+  -- Regression: pick_dir (pickers.engines.snacks) calls Snacks.picker.select()
+  -- over a plain string[] of directories, so item.item there is the bare path
+  -- itself, not a table -- and item.text is index-prefixed
+  -- ("3 /some/dir", see snacks.picker.select's own `it.text = idx .. " " ..
+  -- text`). Without a dedicated `item.item` string case, this used to fall
+  -- through to the .text branch and hand back the index-polluted string.
+  check(
+    "extract.snacks: pick_dir-shaped item (item.item is a bare path string)",
+    extract_snacks({ text = "3 /some/dir", item = "/some/dir", idx = 3 }) == "/some/dir"
+  )
 end
 
 -- ── entry_actions.open_background — empty-path guard, error path, show flag ─
