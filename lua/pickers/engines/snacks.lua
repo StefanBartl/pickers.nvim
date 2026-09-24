@@ -279,8 +279,26 @@ function M.pick_dir(opts)
           return
         end
 
-        Picker.select(dirs, { prompt = opts.prompt or "Folder> " }, function(dir)
-          if dir then opts.on_select(dir) end
+        -- Pickers.Item-shaped table entries ({ text, file }), not bare
+        -- strings: Snacks.picker.select() wraps every entry the same way
+        -- regardless of what it "means" (`{ item = <original>, text = idx
+        -- .." "..text }`), so a bare string here is indistinguishable, once
+        -- wrapped, from pickers.sources.collection's non-path display-label
+        -- lists that also flow through Picker.select via pick_item() --
+        -- both would show up to entry_actions.extract.snacks as the exact
+        -- same shape, with no way to tell "this string IS a path" from
+        -- "this string is just a label" apart (see that module's own
+        -- @description for the regression this caused and reverted). A
+        -- `.file`-bearing table sidesteps the ambiguity entirely:
+        -- extract.snacks already resolves `item.file`/nested `item.item.file`
+        -- first, before ever falling back to a bare `item.item` string.
+        local items = {}
+        for _, d in ipairs(dirs) do
+          items[#items + 1] = { text = d, file = d }
+        end
+
+        Picker.select(items, { prompt = opts.prompt or "Folder> " }, function(item)
+          if item then opts.on_select(item.file) end
         end)
       end)
     end
