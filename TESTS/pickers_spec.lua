@@ -1312,7 +1312,7 @@ do
   -- heuristic above, which assumes a single-field "icon path" line and would
   -- otherwise mangle both the tab and the path embedded after it. Regression
   -- test: a "[XY] repo/relative.lua"-style display text (pickers.
-  -- git_status_marks' own row format) has no icon prefix for the heuristic
+  -- git_status_filtered's own row format) has no icon prefix for the heuristic
   -- to strip, so this used to come back as an unusable, tab-and-bracket-laden
   -- string instead of the hidden absolute path.
   local cwd_fzf = (vim.fn.getcwd():gsub("\\", "/"))
@@ -1745,40 +1745,46 @@ do
   vim.fn.delete(broot, "rf")
 end
 
--- ── pickers.git_status_marks — filter classification + row/item building ────
+-- ── pickers.git_status_filtered — filter classification + row/item building ────
 do
-  local gsm = require("pickers.git_status_marks")
+  local gsf = require("pickers.git_status_filtered")
 
   -- Pure classification, straight off the two-char porcelain code -- no git
   -- process, no repo, matches lib.nvim.git's own @class Lib.Git.StatusEntry.
-  check("git_status_marks.is_staged: 'M ' (staged modify)", gsm.is_staged("M "))
-  check("git_status_marks.is_staged: ' M' (unstaged modify) is not staged", not gsm.is_staged(" M"))
-  check("git_status_marks.is_staged: '??' (untracked) is not staged", not gsm.is_staged("??"))
-  check("git_status_marks.is_staged: 'A ' (staged add)", gsm.is_staged("A "))
-  check("git_status_marks.is_staged: 'MM' (staged+unstaged modify)", gsm.is_staged("MM"))
+  check("git_status_filtered.is_staged: 'M ' (staged modify)", gsf.is_staged("M "))
+  check(
+    "git_status_filtered.is_staged: ' M' (unstaged modify) is not staged",
+    not gsf.is_staged(" M")
+  )
+  check("git_status_filtered.is_staged: '??' (untracked) is not staged", not gsf.is_staged("??"))
+  check("git_status_filtered.is_staged: 'A ' (staged add)", gsf.is_staged("A "))
+  check("git_status_filtered.is_staged: 'MM' (staged+unstaged modify)", gsf.is_staged("MM"))
 
-  check("git_status_marks.is_unstaged: ' M' (unstaged modify)", gsm.is_unstaged(" M"))
+  check("git_status_filtered.is_unstaged: ' M' (unstaged modify)", gsf.is_unstaged(" M"))
   check(
-    "git_status_marks.is_unstaged: 'M ' (staged only) is not unstaged",
-    not gsm.is_unstaged("M ")
+    "git_status_filtered.is_unstaged: 'M ' (staged only) is not unstaged",
+    not gsf.is_unstaged("M ")
   )
-  check("git_status_marks.is_unstaged: '??' (untracked) counts as unstaged", gsm.is_unstaged("??"))
-  check("git_status_marks.is_unstaged: 'MM' (staged+unstaged modify)", gsm.is_unstaged("MM"))
+  check(
+    "git_status_filtered.is_unstaged: '??' (untracked) counts as unstaged",
+    gsf.is_unstaged("??")
+  )
+  check("git_status_filtered.is_unstaged: 'MM' (staged+unstaged modify)", gsf.is_unstaged("MM"))
 
-  check("git_status_marks.matches_filter: 'all' never excludes", gsm.matches_filter("M ", "all"))
+  check("git_status_filtered.matches_filter: 'all' never excludes", gsf.matches_filter("M ", "all"))
   check(
-    "git_status_marks.matches_filter: unknown filter defaults to 'all' behaviour",
-    gsm.matches_filter("M ", "not_a_real_filter")
+    "git_status_filtered.matches_filter: unknown filter defaults to 'all' behaviour",
+    gsf.matches_filter("M ", "not_a_real_filter")
   )
-  check("git_status_marks.matches_filter: staged/'M '", gsm.matches_filter("M ", "staged"))
+  check("git_status_filtered.matches_filter: staged/'M '", gsf.matches_filter("M ", "staged"))
   check(
-    "git_status_marks.matches_filter: staged/'??' excluded",
-    not gsm.matches_filter("??", "staged")
+    "git_status_filtered.matches_filter: staged/'??' excluded",
+    not gsf.matches_filter("??", "staged")
   )
-  check("git_status_marks.matches_filter: unstaged/' M'", gsm.matches_filter(" M", "unstaged"))
+  check("git_status_filtered.matches_filter: unstaged/' M'", gsf.matches_filter(" M", "unstaged"))
   check(
-    "git_status_marks.matches_filter: unstaged/'M ' excluded",
-    not gsm.matches_filter("M ", "unstaged")
+    "git_status_filtered.matches_filter: unstaged/'M ' excluded",
+    not gsf.matches_filter("M ", "unstaged")
   )
 
   -- build_rows: filtering + sorting a fixture status map, no git involved.
@@ -1788,13 +1794,13 @@ do
     ["c/untracked.lua"] = { code = "??", orig_path = nil },
     ["both.lua"] = { code = "MM", orig_path = nil },
   }
-  local rows_all = gsm.build_rows(fixture_map, "all")
-  check("git_status_marks.build_rows: 'all' keeps every entry", #rows_all == 4)
+  local rows_all = gsf.build_rows(fixture_map, "all")
+  check("git_status_filtered.build_rows: 'all' keeps every entry", #rows_all == 4)
   local paths_all = vim.tbl_map(function(r)
     return r.path
   end, rows_all)
   check(
-    "git_status_marks.build_rows: sorted by path",
+    "git_status_filtered.build_rows: sorted by path",
     vim.deep_equal(
       paths_all,
       { "a/unstaged_modify.lua", "b/staged_add.lua", "both.lua", "c/untracked.lua" }
@@ -1802,58 +1808,58 @@ do
     vim.inspect(paths_all)
   )
 
-  local rows_staged = gsm.build_rows(fixture_map, "staged")
+  local rows_staged = gsf.build_rows(fixture_map, "staged")
   local paths_staged = vim.tbl_map(function(r)
     return r.path
   end, rows_staged)
   check(
-    "git_status_marks.build_rows: 'staged' drops the untracked+unstaged-only entries",
+    "git_status_filtered.build_rows: 'staged' drops the untracked+unstaged-only entries",
     vim.deep_equal(paths_staged, { "b/staged_add.lua", "both.lua" }),
     vim.inspect(paths_staged)
   )
 
-  local rows_unstaged = gsm.build_rows(fixture_map, "unstaged")
+  local rows_unstaged = gsf.build_rows(fixture_map, "unstaged")
   local paths_unstaged = vim.tbl_map(function(r)
     return r.path
   end, rows_unstaged)
   check(
-    "git_status_marks.build_rows: 'unstaged' drops the staged-only entry, keeps untracked",
+    "git_status_filtered.build_rows: 'unstaged' drops the staged-only entry, keeps untracked",
     vim.deep_equal(paths_unstaged, { "a/unstaged_modify.lua", "both.lua", "c/untracked.lua" }),
     vim.inspect(paths_unstaged)
   )
 
-  check("git_status_marks.build_rows: nil map -> empty", #gsm.build_rows(nil, "all") == 0)
+  check("git_status_filtered.build_rows: nil map -> empty", #gsf.build_rows(nil, "all") == 0)
 
   -- to_items: pure string joins, no filesystem access.
-  local items = gsm.to_items(rows_staged, "/repo")
+  local items = gsf.to_items(rows_staged, "/repo")
   check(
-    "git_status_marks.to_items: text is '[code] path'",
+    "git_status_filtered.to_items: text is '[code] path'",
     items[1].text == "[A ] b/staged_add.lua" and items[2].text == "[MM] both.lua"
   )
   check(
-    "git_status_marks.to_items: file is repo_root/path, for the picker's preview",
+    "git_status_filtered.to_items: file is repo_root/path, for the picker's preview",
     items[1].file == "/repo/b/staged_add.lua"
   )
-  check("git_status_marks.to_items: kind is 'file'", items[1].kind == "file")
+  check("git_status_filtered.to_items: kind is 'file'", items[1].kind == "file")
 
   -- toggle_rows: three rows, current one marked, rest not.
-  local toggles = gsm.toggle_rows("staged")
-  check("git_status_marks.toggle_rows: three rows", #toggles == 3)
+  local toggles = gsf.toggle_rows("staged")
+  check("git_status_filtered.toggle_rows: three rows", #toggles == 3)
   check(
-    "git_status_marks.toggle_rows: current filter marked '[x]', others '[ ]'",
+    "git_status_filtered.toggle_rows: current filter marked '[x]', others '[ ]'",
     toggles[1].text:find("^%[ %]")
       and toggles[2].text:find("^%[x%]")
       and toggles[3].text:find("^%[ %]")
   )
   check(
-    "git_status_marks.toggle_rows: each row carries its own filter + kind",
+    "git_status_filtered.toggle_rows: each row carries its own filter + kind",
     toggles[1].filter == "all"
       and toggles[2].filter == "staged"
       and toggles[3].filter == "unstaged"
       and toggles[1].kind == "toggle"
   )
   check(
-    "git_status_marks.toggle_rows: omitted root -> no path field (pure-classification callers)",
+    "git_status_filtered.toggle_rows: omitted root -> no path field (pure-classification callers)",
     toggles[1].path == nil
   )
 
@@ -1863,9 +1869,9 @@ do
   -- row's DISPLAY LABEL instead of warning "No valid path found" (see
   -- pickers.entry_actions.extract.snacks and pickers.browse's own `path =
   -- dir` precedent for the same "give every row an own path" idea).
-  local toggles_rooted = gsm.toggle_rows("all", "/repo")
+  local toggles_rooted = gsf.toggle_rows("all", "/repo")
   check(
-    "git_status_marks.toggle_rows: root -> every row carries path = root",
+    "git_status_filtered.toggle_rows: root -> every row carries path = root",
     toggles_rooted[1].path == "/repo"
       and toggles_rooted[2].path == "/repo"
       and toggles_rooted[3].path == "/repo"
@@ -1900,13 +1906,13 @@ do
       last_opts = o
     end,
   }
-  gsm.open({ engine_mod = fake_engine })
+  gsf.open({ engine_mod = fake_engine })
   check(
-    "git_status_marks.open: prompt names the active filter",
+    "git_status_filtered.open: prompt names the active filter",
     last_opts.prompt:find("both", 1, true) ~= nil
   )
   check(
-    "git_status_marks.open: toggle rows first, then both file rows",
+    "git_status_filtered.open: toggle rows first, then both file rows",
     last_opts.items[1].kind == "toggle"
       and last_opts.items[2].kind == "toggle"
       and last_opts.items[3].kind == "toggle"
@@ -1914,7 +1920,7 @@ do
       and last_opts.items[5].kind == "file"
   )
   check(
-    "git_status_marks.open: toggle rows carry the real repo root as path",
+    "git_status_filtered.open: toggle rows carry the real repo root as path",
     last_opts.items[1].path == fake_root
       and last_opts.items[2].path == fake_root
       and last_opts.items[3].path == fake_root
@@ -1927,7 +1933,7 @@ do
   end
   last_opts.on_select(staged_toggle)
   check(
-    "git_status_marks.open: toggling to 'staged' reopens with only the staged row",
+    "git_status_filtered.open: toggling to 'staged' reopens with only the staged row",
     last_opts.prompt:find("staged only", 1, true) ~= nil
       and #last_opts.items == 4 -- 3 toggle rows + 1 staged file row
       and last_opts.items[4].path == "x.lua"
@@ -1937,7 +1943,7 @@ do
   local file_row = last_opts.items[4]
   last_opts.on_select(file_row)
   check(
-    "git_status_marks.open: picking a file row edits repo_root/path",
+    "git_status_filtered.open: picking a file row edits repo_root/path",
     vim.fs.normalize(vim.api.nvim_buf_get_name(0)) == vim.fs.normalize(fake_root .. "/x.lua")
   )
   vim.cmd("enew!")
@@ -4311,7 +4317,7 @@ do
   -- .file, the opposite order of the top-level chain two lines above --
   -- wrong, since .file is the one field Pickers.Item documents as
   -- guaranteed-absolute (pickers.engines.@types) while .path is informal and
-  -- may be relative (pickers.git_status_marks sets both: a repo-root-relative
+  -- may be relative (pickers.git_status_filtered sets both: a repo-root-relative
   -- .path alongside an absolute .file on every file row). Snacks.picker.
   -- select() wraps a raw Pickers.Item as { item = <raw>, text = ... }, so
   -- this nested shape is exactly what a real file row looks like once

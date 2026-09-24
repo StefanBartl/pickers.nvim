@@ -52,14 +52,14 @@ local function browse_run(engine_name)
 end
 
 ---@internal
----A `run` for the git_status_marks builtin: pickers.git_status_marks, on all
----three engines (no native counterpart to dispatch into, same reason
+---A `run` for the git_status_filtered builtin: pickers.git_status_filtered, on
+---all three engines (no native counterpart to dispatch into, same reason
 ---`browse`/`explorer` above have their own `run`).
 ---@param engine_name string
 ---@return fun(opts: table|nil)
-local function git_status_marks_run(engine_name)
+local function git_status_filtered_run(engine_name)
   return function(opts)
-    require("pickers.git_status_marks").open(vim.tbl_extend("force", opts or {}, {
+    require("pickers.git_status_filtered").open(vim.tbl_extend("force", opts or {}, {
       engine_mod = require("pickers.engines." .. engine_name),
     }))
   end
@@ -127,14 +127,14 @@ M.REGISTRY = {
     telescope = { fn = "git_status" },
     fzf = { fn = "git_status" },
   },
-  git_status_marks = {
-    desc = "Uncommitted files (marks-style list), filterable to staged/"
-      .. "unstaged/both -- NOT the engine's native git_status above: an "
-      .. "in-house list (pickers.git_status_marks) with the filter switchable "
-      .. "via three rows at the top, on all three engines",
-    snacks = { run = git_status_marks_run("snacks") },
-    telescope = { run = git_status_marks_run("telescope") },
-    fzf = { run = git_status_marks_run("fzf") },
+  git_status_filtered = {
+    desc = "Uncommitted files, filterable to staged/unstaged/both -- NOT the "
+      .. "engine's native git_status above: an in-house list "
+      .. "(pickers.git_status_filtered) with the filter switchable via three "
+      .. "rows at the top, on all three engines",
+    snacks = { run = git_status_filtered_run("snacks") },
+    telescope = { run = git_status_filtered_run("telescope") },
+    fzf = { run = git_status_filtered_run("fzf") },
   },
   git_stash = {
     desc = "Git stash",

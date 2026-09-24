@@ -1,5 +1,5 @@
----@module 'pickers.git_status_marks'
----@brief A "marks"-style list of uncommitted files (staged/unstaged/both), on
+---@module 'pickers.git_status_filtered'
+---@brief A staged/unstaged/both-filterable list of uncommitted files, on
 ---the engine's own item picker, with the filter switchable at the top of the
 ---list.
 ---@description
@@ -32,16 +32,16 @@
 --- config's own telescope/fzf-lua/snacks setup merges those in globally, not
 --- per picker instance.
 
-local notify = require("lib.nvim.notify").create("[pickers.git_status_marks]")
+local notify = require("lib.nvim.notify").create("[pickers.git_status_filtered]")
 
 local M = {}
 
----@alias Pickers.GitStatusMarks.Filter "all"|"staged"|"unstaged"
+---@alias Pickers.GitStatusFiltered.Filter "all"|"staged"|"unstaged"
 
----@type Pickers.GitStatusMarks.Filter[]
+---@type Pickers.GitStatusFiltered.Filter[]
 M.FILTER_ORDER = { "all", "staged", "unstaged" }
 
----@type table<Pickers.GitStatusMarks.Filter, string>
+---@type table<Pickers.GitStatusFiltered.Filter, string>
 M.FILTER_LABELS = {
   all = "both (staged + unstaged)",
   staged = "staged only",
@@ -71,7 +71,7 @@ end
 ---Whether `code` passes `filter`. `"all"` (and any unrecognised filter,
 ---defensively) never excludes anything.
 ---@param code string
----@param filter Pickers.GitStatusMarks.Filter
+---@param filter Pickers.GitStatusFiltered.Filter
 ---@return boolean
 function M.matches_filter(code, filter)
   if filter == "staged" then return M.is_staged(code) end
@@ -81,7 +81,7 @@ end
 
 -- ── pure list building ───────────────────────────────────────────────────────
 
----@class Pickers.GitStatusMarks.Row
+---@class Pickers.GitStatusFiltered.Row
 ---@field path string       Repo-root-relative path.
 ---@field code string       Two-character XY status.
 ---@field orig_path string|nil  Source path of a rename/copy.
@@ -90,8 +90,8 @@ end
 ---Pure -- takes an already-parsed status map, so it is testable with a
 ---fixture, no git process and no repo needed.
 ---@param map table<string, { code: string, orig_path: string|nil }>
----@param filter Pickers.GitStatusMarks.Filter
----@return Pickers.GitStatusMarks.Row[]
+---@param filter Pickers.GitStatusFiltered.Filter
+---@return Pickers.GitStatusFiltered.Row[]
 function M.build_rows(map, filter)
   local out = {}
   for path, entry in pairs(map or {}) do
@@ -108,7 +108,7 @@ end
 ---`rows` (repo-root-relative) into `Pickers.Item`s (`text`, `file` for the
 ---preview, plus `path`/`code`/`kind` riding along for `on_select`). Pure --
 ---string joins only, no filesystem access.
----@param rows Pickers.GitStatusMarks.Row[]
+---@param rows Pickers.GitStatusFiltered.Row[]
 ---@param repo_root string
 ---@return table[] # Pickers.Item[], each also carrying kind="file"
 function M.to_items(rows, repo_root)
@@ -127,7 +127,7 @@ end
 
 ---The three filter-toggle rows shown at the top of the list, current one
 ---marked. Pure.
----@param current Pickers.GitStatusMarks.Filter
+---@param current Pickers.GitStatusFiltered.Filter
 ---@param root string|nil  Repo root, carried as `path` (see below). Omitted
 ---by the pure classification tests above, which don't exercise entry_actions.
 ---@return table[] # Pickers.Item[], each also carrying kind="toggle"/filter
@@ -153,13 +153,13 @@ end
 
 -- ── the picker ───────────────────────────────────────────────────────────────
 
----@class Pickers.GitStatusMarks.Opts
+---@class Pickers.GitStatusFiltered.Opts
 ---@field engine_mod? table
 ---@field dir? string  Git dir/cwd to query (`git -C <dir> status ...`). Defaults to the cwd.
----@field filter? Pickers.GitStatusMarks.Filter  Defaults to "all".
+---@field filter? Pickers.GitStatusFiltered.Filter  Defaults to "all".
 
 ---Open the list on `opts.engine_mod` (default: the resolved engine).
----@param opts Pickers.GitStatusMarks.Opts|nil
+---@param opts Pickers.GitStatusFiltered.Opts|nil
 function M.open(opts)
   opts = opts or {}
   local engine_mod = opts.engine_mod or require("pickers.engines").load()

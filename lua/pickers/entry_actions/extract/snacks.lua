@@ -27,7 +27,7 @@ return function(item)
     -- `.file` first, same precedence as the top-level chain two lines up:
     -- it is the one field `Pickers.Item` documents as guaranteed-absolute
     -- (see pickers.engines.@types), while `.path` is informal and may be
-    -- relative (e.g. pickers.git_status_marks' repo-root-relative `.path`
+    -- relative (e.g. pickers.git_status_filtered's repo-root-relative `.path`
     -- alongside its absolute `.file`) -- preferring it here would silently
     -- hand back a path relative to the wrong base once resolved.
     ---@diagnostic disable-next-line: undefined-field

@@ -64,7 +64,7 @@ support it when you hit one.
 | `git_log_file` | `git_log_file` | `git_bcommits` | `git_bcommits` |
 | `git_log_line` | `git_log_line` | — | — |
 | `git_status` | `git_status` | `git_status` | `git_status` |
-| `git_status_marks` | `pickers.git_status_marks` | `pickers.git_status_marks` | `pickers.git_status_marks` |
+| `git_status_filtered` | `pickers.git_status_filtered` | `pickers.git_status_filtered` | `pickers.git_status_filtered` |
 | `git_stash` | `git_stash` | `git_stash` | `git_stash` |
 | `git_diff` | `git_diff` | — | `git_diff` |
 | `gh_issue` | `gh_issue` | `pickers.sources.github` (`gh` CLI) | `pickers.sources.github` (`gh` CLI) |
@@ -91,7 +91,7 @@ support it when you hit one.
 `lines`/`grep_buffers` deliberately aren't `files`/`grep` — those already exist
 as `:Pickers cwd files` / `:Pickers cwd grep` and don't need a builtin entry.
 
-## `git_status` vs. `git_status_marks`
+## `git_status` vs. `git_status_filtered`
 
 Two different things that both talk about "git status":
 
@@ -99,7 +99,7 @@ Two different things that both talk about "git status":
   (`Snacks.picker.git_status()` / `telescope.builtin.git_status()` /
   `require("fzf-lua").git_status()`) — whatever that engine ships, diff
   preview and all, with no staged/unstaged split.
-- **`git_status_marks`** is pickers.nvim's own in-house list (like `browse`/
+- **`git_status_filtered`** is pickers.nvim's own in-house list (like `browse`/
   `explorer`'s fzf-lua row — no native counterpart on any engine has this),
   built from `lib.nvim.git.status_porcelain` (the same porcelain parser
   gitsuite.nvim and filetree.nvim already use — no second parser). It is
