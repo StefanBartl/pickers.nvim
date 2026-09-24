@@ -24,7 +24,18 @@ return function(selected)
       path = selected.path or selected.filename
     else
       path = selected[1]
-      needs_strip = true
+      -- pickers.engines.fzf's own pick_item() hides a second, real absolute
+      -- path after a tab on any row it attaches a previewer to (see its
+      -- `preview()`, which parses the exact same "<text>\t<file>" shape) --
+      -- prefer that clean field over the icon-strip heuristic below, which
+      -- assumes a single-field "icon path" line and would otherwise mangle
+      -- both the tab and the path embedded after it.
+      local tail = path and path:match("\t(.+)$")
+      if tail and tail ~= "" then
+        path = tail
+      else
+        needs_strip = true
+      end
     end
   end
 

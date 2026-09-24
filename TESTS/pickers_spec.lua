@@ -1305,6 +1305,23 @@ do
     stripped:find("main.lua", 1, true) ~= nil
   )
   check("extract.fzf: icon glyph removed", not stripped:find("239", 1, true))
+
+  -- pickers.engines.fzf's own pick_item() hides the real absolute path after
+  -- a tab on any row it attaches a previewer to ("<text>\t<file>", see its
+  -- preview()) -- extract() must prefer that clean field over the icon-strip
+  -- heuristic above, which assumes a single-field "icon path" line and would
+  -- otherwise mangle both the tab and the path embedded after it. Regression
+  -- test: a "[XY] repo/relative.lua"-style display text (pickers.
+  -- git_status_marks' own row format) has no icon prefix for the heuristic
+  -- to strip, so this used to come back as an unusable, tab-and-bracket-laden
+  -- string instead of the hidden absolute path.
+  local cwd_fzf = (vim.fn.getcwd():gsub("\\", "/"))
+  local abs_file = cwd_fzf .. "/pc_test_fzf_tab/src/foo.lua"
+  local tabbed_line = "[ M] pc_test_fzf_tab/src/foo.lua\t" .. abs_file
+  check(
+    "extract.fzf: has_preview '<text>\\t<file>' row resolves the hidden file field",
+    extract({ tabbed_line }) == abs_file
+  )
 end
 
 -- ── quickfix: preview float + refine filter over a real :copen ──────────────
@@ -1835,6 +1852,24 @@ do
       and toggles[3].filter == "unstaged"
       and toggles[1].kind == "toggle"
   )
+  check(
+    "git_status_marks.toggle_rows: omitted root -> no path field (pure-classification callers)",
+    toggles[1].path == nil
+  )
+
+  -- toggle_rows(current, root): carries a real path (repo root) -- without
+  -- this, pickers.entry_actions fired on a toggle row falls through
+  -- extract.snacks' `item.text` fallback and copies/creates against this
+  -- row's DISPLAY LABEL instead of warning "No valid path found" (see
+  -- pickers.entry_actions.extract.snacks and pickers.browse's own `path =
+  -- dir` precedent for the same "give every row an own path" idea).
+  local toggles_rooted = gsm.toggle_rows("all", "/repo")
+  check(
+    "git_status_marks.toggle_rows: root -> every row carries path = root",
+    toggles_rooted[1].path == "/repo"
+      and toggles_rooted[2].path == "/repo"
+      and toggles_rooted[3].path == "/repo"
+  )
 
   -- open(): the flow on a fake engine + a stubbed lib.nvim.git, same
   -- fake-engine technique pickers.browse's own suite above uses. No real git
@@ -1877,6 +1912,12 @@ do
       and last_opts.items[3].kind == "toggle"
       and last_opts.items[4].kind == "file"
       and last_opts.items[5].kind == "file"
+  )
+  check(
+    "git_status_marks.open: toggle rows carry the real repo root as path",
+    last_opts.items[1].path == fake_root
+      and last_opts.items[2].path == fake_root
+      and last_opts.items[3].path == fake_root
   )
 
   -- Selecting the "staged only" toggle row reopens the list, filtered.
@@ -4265,6 +4306,20 @@ do
   check(
     "extract.snacks: item.file (util unavailable) still resolves",
     extract_snacks({ file = "/f" }) == "/f"
+  )
+  -- Regression: the nested item.item.* chain used to check .path before
+  -- .file, the opposite order of the top-level chain two lines above --
+  -- wrong, since .file is the one field Pickers.Item documents as
+  -- guaranteed-absolute (pickers.engines.@types) while .path is informal and
+  -- may be relative (pickers.git_status_marks sets both: a repo-root-relative
+  -- .path alongside an absolute .file on every file row). Snacks.picker.
+  -- select() wraps a raw Pickers.Item as { item = <raw>, text = ... }, so
+  -- this nested shape is exactly what a real file row looks like once
+  -- entry_actions sees it.
+  check(
+    "extract.snacks: nested item.item prefers .file over a relative .path",
+    extract_snacks({ item = { path = "src/foo.lua", file = "/repo/src/foo.lua" } })
+      == "/repo/src/foo.lua"
   )
 end
 

@@ -128,8 +128,10 @@ end
 ---The three filter-toggle rows shown at the top of the list, current one
 ---marked. Pure.
 ---@param current Pickers.GitStatusMarks.Filter
+---@param root string|nil  Repo root, carried as `path` (see below). Omitted
+---by the pure classification tests above, which don't exercise entry_actions.
 ---@return table[] # Pickers.Item[], each also carrying kind="toggle"/filter
-function M.toggle_rows(current)
+function M.toggle_rows(current, root)
   local out = {}
   for _, f in ipairs(M.FILTER_ORDER) do
     local mark = (f == current) and "x" or " "
@@ -137,6 +139,13 @@ function M.toggle_rows(current)
       text = ("[%s] show: %s"):format(mark, M.FILTER_LABELS[f]),
       kind = "toggle",
       filter = f,
+      -- A real, harmless path -- same "give every row its own path" precedent
+      -- pickers.browse's own action rows use (`path = dir`). Without this, a
+      -- pickers.entry_actions key (`[a`/copy_absolute, …) fired on a toggle
+      -- row falls through extract.snacks' `item.text` fallback and copies
+      -- this row's DISPLAY LABEL ("[ ] show: staged only") as if it were a
+      -- path, instead of warning "No valid path found".
+      path = root,
     }
   end
   return out
@@ -176,7 +185,7 @@ function M.open(opts)
   local rows = M.build_rows(map, filter)
   if #rows == 0 then notify.info("git status: no " .. M.FILTER_LABELS[filter] .. " changes") end
 
-  local items = M.toggle_rows(filter)
+  local items = M.toggle_rows(filter, root)
   vim.list_extend(items, M.to_items(rows, root))
 
   engine_mod.pick_item({
