@@ -6,11 +6,21 @@
 --- forward-compatible way to resolve a file-bearing Item. Falls back to a
 --- manual field chain for shapes that helper doesn't cover, notably generic
 --- `Snacks.picker.select()` items (`{ item = <original>, text = ... }`).
---- `text` there is index-prefixed (`"3 /some/dir"`, see
---- `snacks.picker.select`'s own `it.text = idx .. " " .. text`), so it is
---- only a safe path source when `.item` itself is not already the plain,
---- unprefixed value -- e.g. `pickers.engines.snacks`'s `pick_dir`, whose
---- `Snacks.picker.select()` call hands it a bare path string per entry.
+---
+--- Deliberately does NOT treat a bare-string `item.item` as a path (tried
+--- once, reverted): `Snacks.picker.select()` wraps EVERY entry the same way
+--- regardless of what it represents, so a bare string there is
+--- indistinguishable between `pickers.engines.snacks`'s `pick_dir` (where it
+--- used to be a real path) and `pickers.sources.collection`'s subdir-label
+--- lists reached via `pick_item()` (e.g. the built-in "repos" scope), whose
+--- items are plain display labels with no path meaning at all
+--- (`vim.fn.fnamemodify("pickers.nvim", ":p")` silently resolves relative to
+--- the CURRENT cwd, not `repos_dir` -- a wrong-but-plausible-looking path
+--- copied with a normal success notification, worse than the obviously-
+--- garbled index-prefixed `.text` fallback it would have used instead).
+--- Fixed at the source instead: `pick_dir` now hands `Picker.select()`
+--- `{ text, file }` tables, which resolve correctly through the `item.file`/
+--- `item.item.file` branches below -- no ambiguous bare-string case needed.
 
 ---@param item table|nil
 ---@return string|nil path
@@ -37,15 +47,6 @@ return function(item)
     -- hand back a path relative to the wrong base once resolved.
     ---@diagnostic disable-next-line: undefined-field
     path = item.item.file or item.item.path or item.item.filename
-  end
-  -- `Snacks.picker.select()` over a plain string list (e.g. pick_dir): the
-  -- original value IS the path, with no index prefix to strip -- must be
-  -- checked before the `.text` fallback below, whose index prefix would
-  -- otherwise corrupt it (`"3 /some/dir"` instead of `/some/dir`).
-  ---@diagnostic disable-next-line: undefined-field
-  if not path and type(item.item) == "string" and item.item ~= "" then
-    ---@diagnostic disable-next-line: undefined-field
-    path = item.item
   end
   ---@diagnostic disable-next-line: undefined-field
   if not path and type(item.text) == "string" then

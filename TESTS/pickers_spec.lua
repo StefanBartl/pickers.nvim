@@ -3175,6 +3175,75 @@ do
   package.loaded["snacks.picker"] = prev_snacks
 end
 
+-- ── pickers.engines.snacks — pick_dir() hands Picker.select() { text, file }
+-- table items, not bare directory strings ────────────────────────────────
+-- Regression pin: a bare string here is indistinguishable, once wrapped by
+-- Snacks.picker.select(), from pickers.sources.collection's non-path
+-- display-label lists -- see pickers.entry_actions.extract.snacks' own
+-- @description for the bug this caused and the fix (table items resolve via
+-- item.file, no ambiguous bare-string case needed).
+do
+  local prev_snacks = package.loaded["snacks.picker"]
+  local captured
+  package.loaded["snacks.picker"] = {
+    select = function(items, opts, on_choice)
+      captured = { items = items, opts = opts, on_choice = on_choice }
+    end,
+  }
+  package.loaded["pickers.engines.snacks"] = nil
+  local snacks_engine = require("pickers.engines.snacks")
+
+  local orig_system = vim.system
+  local orig_executable = vim.fn.executable
+  vim.fn.executable = function(name)
+    return (name == "fd") and 1 or 0
+  end
+  vim.system = function(_cmd, _opts, cb)
+    vim.schedule(function()
+      cb({ code = 0, stdout = "sub_a\nsub_b\n" })
+    end)
+  end
+
+  local got_path
+  snacks_engine.pick_dir({
+    cwd = "/repo",
+    prompt = "Folder> ",
+    on_select = function(p)
+      got_path = p
+    end,
+  })
+  vim.wait(2000, function()
+    return captured ~= nil
+  end)
+
+  check(
+    "pick_dir/snacks: Picker.select() receives table items",
+    captured ~= nil and type(captured.items) == "table"
+  )
+  local first = captured and captured.items[1]
+  check(
+    "pick_dir/snacks: each item is a { text, file } table, not a bare string",
+    type(first) == "table" and type(first.file) == "string" and type(first.text) == "string"
+  )
+  check(
+    "pick_dir/snacks: .file/.text agree and are the normalized absolute dir",
+    first and first.file == first.text
+  )
+
+  -- on_select must receive a plain path STRING, unwrapped from the table --
+  -- the folder source's `opts.on_select: fun(path: string)` contract.
+  captured.on_choice(first)
+  check(
+    "pick_dir/snacks: on_select receives the unwrapped path string, not the table",
+    type(got_path) == "string" and got_path == first.file
+  )
+
+  vim.system = orig_system
+  vim.fn.executable = orig_executable
+  package.loaded["pickers.engines.snacks"] = nil
+  package.loaded["snacks.picker"] = prev_snacks
+end
+
 -- ── search-flag escalation ──────────────────────────────────────────────────
 --
 -- `all` was the only accepted token, forcing hidden+no_ignore+follow together.
@@ -4343,15 +4412,33 @@ do
     extract_snacks({ item = { path = "src/foo.lua", file = "/repo/src/foo.lua" } })
       == "/repo/src/foo.lua"
   )
-  -- Regression: pick_dir (pickers.engines.snacks) calls Snacks.picker.select()
-  -- over a plain string[] of directories, so item.item there is the bare path
-  -- itself, not a table -- and item.text is index-prefixed
-  -- ("3 /some/dir", see snacks.picker.select's own `it.text = idx .. " " ..
-  -- text`). Without a dedicated `item.item` string case, this used to fall
-  -- through to the .text branch and hand back the index-polluted string.
+  -- pick_dir (pickers.engines.snacks) now calls Snacks.picker.select() over
+  -- { text, file } tables, not bare directory strings -- so a pick_dir row
+  -- reaches extract.snacks as a nested item.item.file, same shape as any
+  -- other file row, and resolves through the existing table-shaped chain
+  -- above with no dedicated case needed.
   check(
-    "extract.snacks: pick_dir-shaped item (item.item is a bare path string)",
-    extract_snacks({ text = "3 /some/dir", item = "/some/dir", idx = 3 }) == "/some/dir"
+    "extract.snacks: pick_dir-shaped item (item.item is a { text, file } table)",
+    extract_snacks({
+      text = "3 /some/dir",
+      item = { text = "/some/dir", file = "/some/dir" },
+      idx = 3,
+    }) == "/some/dir"
+  )
+  -- Regression pin: a bare-string item.item (e.g. pickers.sources.collection's
+  -- subdir-label lists, reached via pick_item() for the built-in "repos"
+  -- scope) must NOT be treated as a path -- it is a plain display label
+  -- ("pickers.nvim"), not a filesystem path, and Snacks.picker.select() wraps
+  -- it in the exact same { item = <string>, text = idx.." "..text } shape a
+  -- real pick_dir row used to have. A version of this module briefly treated
+  -- any bare-string item.item as a path to fix pick_dir, which silently
+  -- turned a collection label into a plausible-but-wrong absolute path
+  -- (resolved against the current cwd, not repos_dir) instead of the
+  -- obviously-garbled index-prefixed .text fallback below -- worse, not
+  -- better. Falls through to .text here, same as before that ever existed.
+  check(
+    "extract.snacks: bare-string item.item (a display label, not a path) is NOT treated as a path",
+    extract_snacks({ text = "3 pickers.nvim", item = "pickers.nvim", idx = 3 }) == "3 pickers.nvim"
   )
 end
 
