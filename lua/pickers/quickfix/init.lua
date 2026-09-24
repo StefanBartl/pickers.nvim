@@ -299,13 +299,15 @@ function M.preview(win)
     title_pos = "left",
     focusable = false,
     zindex = 45,
-    noautocmd = true,
   }
   local pwin = previews[qfbuf]
   if pwin and vim.api.nvim_win_is_valid(pwin) then
+    -- `noautocmd` is only valid on window CREATION (nvim_open_win below) --
+    -- passing it to nvim_win_set_config on an already-existing window raises
+    -- "'noautocmd' cannot be used with existing windows" (Neovim 0.11+).
     vim.api.nvim_win_set_config(pwin, wcfg)
   else
-    pwin = vim.api.nvim_open_win(buf, false, wcfg)
+    pwin = vim.api.nvim_open_win(buf, false, vim.tbl_extend("force", wcfg, { noautocmd = true }))
     vim.api.nvim_set_option_value("number", true, { win = pwin })
     vim.api.nvim_set_option_value("wrap", false, { win = pwin })
     vim.api.nvim_set_option_value("cursorline", false, { win = pwin })
