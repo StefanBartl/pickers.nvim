@@ -134,10 +134,10 @@ snacks. See `lua/pickers/keys/`.
 | `tab` | `<C-t>` | ✓ | native (`ctrl-t`) | ✓ |
 | `mouse_confirm` | `<2-LeftMouse>` | ✓ | native (fzf's own mouse handling) | native + patched |
 | `cheatsheet` | `<C-/>` | ✓ | fixed (`f1`) | ✓ |
-| `copy_absolute` | `[a` | ✓ (results only) | fixed (`ctrl-y`) | ✓ (list window only) |
-| `copy_dirname` | `]a` | ✓ (results only) | fixed (`alt-y`) | ✓ (list window only) |
-| `copy_env_rooted` | `[e` | ✓ (results only) | fixed (`alt-r`) | ✓ (list window only) |
-| `markdown_link` | `ML` | ✓ (results only) | fixed (`alt-m`) | ✓ (list window only) |
+| `copy_absolute` | `[a` | ✓ (results only) | fixed (`ctrl-y`) | ✓ (list + input, normal mode) |
+| `copy_dirname` | `]a` | ✓ (results only) | fixed (`alt-y`) | ✓ (list + input, normal mode) |
+| `copy_env_rooted` | `[e` | ✓ (results only) | fixed (`alt-r`) | ✓ (list + input, normal mode) |
+| `markdown_link` | `ML` | ✓ (results only) | fixed (`alt-m`) | ✓ (list + input, normal mode) |
 
 fzf-lua is the capability gap: its builtin previewer has no horizontal preview
 scroll, its history is fzf's own `--history` bound to `ctrl-p`/`ctrl-n`
@@ -244,11 +244,15 @@ These four are **results-window/normal-mode only, never insert mode** —
 unlike every other in-picker key on this page, their default lhs (`[a`,
 `]a`, `[e`, `ML`) are plain printable characters rather than control/special
 keys, so binding them while typing a query would swallow those characters
-out of it. fzf-lua's own `--bind` syntax additionally has no concept of a
-multi-keystroke chord like `[a` (it binds a single logical key, not a
-pending-key state machine), so its bindings are fixed to single physical
-keys instead — `ctrl-y`/`alt-y`/`alt-r`/`alt-m` — same class as its
-`ctrl-a`/`ctrl-o`/`shift-enter`/`f1`. See
+out of it. On snacks this means both the list window's own normal mode
+*and* the input window's normal mode (i.e. after pressing `<Esc>` there,
+which stays in that same window/buffer instead of moving focus to the
+list) — telescope only needs the latter since it has a single prompt
+buffer whose normal mode already covers both (`mappings.n`). fzf-lua's own
+`--bind` syntax additionally has no concept of a multi-keystroke chord like
+`[a` (it binds a single logical key, not a pending-key state machine), so
+its bindings are fixed to single physical keys instead — `ctrl-y`/`alt-y`/
+`alt-r`/`alt-m` — same class as its `ctrl-a`/`ctrl-o`/`shift-enter`/`f1`. See
 [`lua/pickers/entry_actions/README.md`](../lua/pickers/entry_actions/README.md#path-copy-actions-copy_absolutecopy_dirnamecopy_env_rootedmarkdown_link)
 for the full table and the `$REPOS_DIR` fallback rules for `copy_env_rooted`.
 

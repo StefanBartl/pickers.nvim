@@ -165,11 +165,17 @@ process first), which approximates the same effect.
 **Results-window/normal-mode only, never insert mode.** Their default lhs
 (`[a`, `]a`, `[e`, `ML`) are plain printable characters rather than
 control/special keys, so binding them in the prompt's insert mode would
-swallow those characters out of any typed query containing them. fzf's own
-`--bind` syntax additionally has no concept of a multi-keystroke chord like
-`[a` (a single logical key, not a pending-key state machine), so its
-bindings are fixed to single physical keys instead: `ctrl-y`/`alt-y`/
-`alt-r`/`alt-m`, same class as its `ctrl-a`/`ctrl-o`/`shift-enter`/`f1`.
+swallow those characters out of any typed query containing them. On snacks
+this "normal mode" spans both windows: the list window's own normal mode
+*and* the input window's normal mode reached via `<Esc>` (which stays in
+that window/buffer rather than moving focus to the list) — both `get_keys()`
+and `get_input_keys()` bind them, mode `"n"` only. telescope needs just one
+registration (`mappings.n`) since its single prompt buffer's normal mode
+already covers both cases. fzf's own `--bind` syntax additionally has no
+concept of a multi-keystroke chord like `[a` (a single logical key, not a
+pending-key state machine), so its bindings are fixed to single physical
+keys instead: `ctrl-y`/`alt-y`/`alt-r`/`alt-m`, same class as its
+`ctrl-a`/`ctrl-o`/`shift-enter`/`f1`.
 
 `copy_env_rooted` folds `$REPOS_DIR` back into the path (reading
 `pickers.config`'s already-resolved `repos_dir`) and falls back to the

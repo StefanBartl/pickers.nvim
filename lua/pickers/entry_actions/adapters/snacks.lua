@@ -119,11 +119,8 @@ end
 ---`create_file`/`open_background`/`cheatsheet`/path_copy config.
 ---
 ---The path_copy actions (copy_absolute/copy_dirname/copy_env_rooted/
----markdown_link) belong ONLY here, never in `get_input_keys()`: their
----default lhs (`[a`/`]a`/`[e`/`ML`) are plain printable characters, and the
----list window -- unlike input -- is never used for typing a query, so
----binding them there cannot swallow a character out of one. See
----pickers.keys' @description.
+---markdown_link) are ALSO bound in `get_input_keys()` below, mode "n" only --
+---see that function's doc for why the list window alone is not enough.
 ---@return table<string, string> keys
 function M.get_keys()
   local resolved = require("pickers.keys").resolve()
@@ -153,6 +150,21 @@ end
 ---Key -> action-name bindings for `win.input.keys`, in snacks'
 ---mode-qualified form so the actions are reachable while the prompt has focus
 ---(which is where every picker starts). Modes come from `pickers.keys.ACTIONS`.
+---
+---Includes the path_copy actions too, mode "n" only (`resolved[...].modes`
+---is already `{ "n" }` for those four -- see `pickers.keys.ACTIONS` --  so
+---this never re-adds insert mode). They cannot rely on `get_keys()` (list
+---window) alone: snacks' input and list windows are two separate buffers
+---with two separate key tables, and pressing `<Esc>` in the input window
+---(insert mode) does not move focus to the list -- plain Neovim `<Esc>`
+---behavior just drops the INPUT buffer into ITS OWN normal mode (snacks'
+---own default `win.input.keys["<Esc>"] = "cancel"` carries no `mode` field,
+---so it only fires there, not in insert -- see snacks' own comment: "to
+---close the picker on ESC instead of going to normal mode, add..."). A
+---list-only registration is therefore unreachable from that state. This is
+---unlike telescope, which has a single prompt buffer whose normal mode IS
+---`mappings.n` (see `pickers.entry_actions.adapters.telescope`), so no
+---equivalent second registration is needed there.
 ---@return table<string, { [1]: string, mode: string[] }> keys
 function M.get_input_keys()
   local resolved = require("pickers.keys").resolve()
@@ -163,6 +175,15 @@ function M.get_input_keys()
     if spec then
       for _, key in ipairs(spec.lhs or {}) do
         keys[key] = { action, mode = spec.modes }
+      end
+    end
+  end
+
+  for _, action_name in pairs(FMT_TO_ACTION) do
+    local spec = resolved[action_name]
+    if spec then
+      for _, key in ipairs(spec.lhs or {}) do
+        keys[key] = { action_name, mode = spec.modes }
       end
     end
   end

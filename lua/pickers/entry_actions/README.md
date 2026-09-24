@@ -55,8 +55,14 @@ resolves `modes = { "n" }` for all four). Their default lhs (`[a`, `]a`,
 key here (`<C-a>`, `<S-CR>`, `<C-/>`, arrows, …) — binding them in the
 prompt's insert mode would swallow those characters out of any typed query
 that happens to contain them (e.g. searching for a file with "ML" in its
-name). This is why the snacks adapter's `get_keys()` (list window, normal
-mode) is the only place these are bound — never `get_input_keys()`.
+name). On snacks, "normal mode" means both `get_keys()` (list window) AND
+`get_input_keys()` (input window, mode `"n"` only) — pressing `<Esc>` in
+the input window does not move focus to the list, it just drops that same
+buffer into its own normal mode (snacks' own default
+`win.input.keys["<Esc>"] = "cancel"` carries no `mode` field, so it fires
+there, not in insert), so a list-only registration would be unreachable
+from that state. telescope needs only one registration (`mappings.n`)
+since its single prompt buffer's normal mode already covers both cases.
 
 fzf's own `--bind` syntax has no concept of a multi-keystroke chord like
 `[a` (it binds a single logical key, not a pending-key state machine), so
