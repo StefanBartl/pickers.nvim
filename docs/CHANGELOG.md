@@ -10,6 +10,10 @@ a changelog.
 
 ---
 
+[x] **`display.path_adaptive` (telescope).** Global `path_display` that shortens a path
+  to the picker's own width via lib.nvim's `fs.path_shorten`; the boolean
+  `path_shorten` (fixed native "shorten") is unchanged. fzf-lua and snacks have no equivalent.
+
 [x] **`mappings`: several lhs per entry, `desc`, `nowait`.**
   `recent = { { "<leader>fo", "<leader>old" }, desc = "Recent files" }`. A list with an
   empty or non-string element is rejected as a whole (warning, nothing bound).
