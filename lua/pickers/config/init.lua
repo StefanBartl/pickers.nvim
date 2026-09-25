@@ -429,7 +429,7 @@ local NESTED_OPTS = {
   ["smart.weights"] = { "filename", "content", "both" },
   ["smart.frecency"] = { "enabled", "weight", "dir" },
   display = { "path_shorten", "cycle", "prompt_top", "preview_wrap" },
-  images = { "enabled" },
+  images = { "enabled", "pdf_text" },
   filetree = { "enabled" },
   tabs = { "groups" }, -- "groups"' own keys are user-named group names, not validated
   quickfix = { "enabled", "preview", "keys" },
@@ -594,6 +594,9 @@ function M.apply(opts)
   if type(sanitized.images) == "table" then
     if type(sanitized.images.enabled) == "boolean" then
       cfg.images.enabled = sanitized.images.enabled
+    end
+    if type(sanitized.images.pdf_text) == "boolean" then
+      cfg.images.pdf_text = sanitized.images.pdf_text
     end
   end
 

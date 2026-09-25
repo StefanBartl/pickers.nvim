@@ -149,6 +149,8 @@ require("pickers").setup({
   -- needs pdfport.nvim, which images.nvim reaches. See "Image previews".
   images = {
     enabled = true,
+    pdf_text = true, -- telescope + pdfport.nvim: a PDF that cannot be drawn
+                     -- previews as extracted text (lazy, first PDF preview)
   },
 
   -- filetree.nvim's `f` / `gr` run through this plugin when it is installed.

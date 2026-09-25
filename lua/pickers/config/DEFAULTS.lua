@@ -248,6 +248,10 @@ local M = {
   -- See pickers.integrations.images.
   images = {
     enabled = true,
+    -- Telescope, pdfport.nvim installed: a PDF that cannot be drawn as an
+    -- image previews as extracted text instead of binary noise (lazy, first
+    -- PDF preview). See pickers.integrations.pdf_text.
+    pdf_text = true,
   },
 
   -- filetree.nvim's `f` / `gr` (find files / grep in a tree node's directory)
