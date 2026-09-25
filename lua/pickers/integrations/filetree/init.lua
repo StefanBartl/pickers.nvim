@@ -26,13 +26,28 @@ local function engine()
   return mod
 end
 
+---@internal
+---Whether any engine is installed, asked without `engines.load`'s error
+---notification: filetree.nvim asks on every `f` / `gr` press, and "no engine"
+---is a normal answer there (it falls back), not something to report each time.
+---@return boolean
+local function has_engine()
+  for _, name in ipairs({ "telescope", "fzf", "snacks" }) do
+    local ok, mod = pcall(require, "pickers.engines." .. name)
+    if ok and type(mod) == "table" and type(mod.available) == "function" and mod.available() then
+      return true
+    end
+  end
+  return false
+end
+
 ---True when filetree.nvim may use this plugin: the switch is on and an engine
 ---(telescope / fzf-lua / snacks) is installed.
 ---@return boolean
 function M.available()
   local cfg = require("pickers.config").get()
   if type(cfg.filetree) == "table" and cfg.filetree.enabled == false then return false end
-  return engine() ~= nil
+  return has_engine()
 end
 
 ---@internal

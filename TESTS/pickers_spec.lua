@@ -5244,8 +5244,19 @@ do
     files = package.loaded["pickers.actions.files"],
     grep = package.loaded["pickers.actions.grep"],
     last = package.loaded["pickers.last"],
+    telescope = package.loaded["pickers.engines.telescope"],
+    fzf = package.loaded["pickers.engines.fzf"],
+    snacks = package.loaded["pickers.engines.snacks"],
   }
   local have_engine, seen = true, {}
+  -- `available()` asks the engine modules directly (no error notification).
+  for _, name in ipairs({ "telescope", "fzf", "snacks" }) do
+    package.loaded["pickers.engines." .. name] = {
+      available = function()
+        return have_engine
+      end,
+    }
+  end
   package.loaded["pickers.engines"] = {
     load = function()
       return have_engine and { name = "stub" } or nil
@@ -5294,6 +5305,9 @@ do
   package.loaded["pickers.actions.files"] = prev.files
   package.loaded["pickers.actions.grep"] = prev.grep
   package.loaded["pickers.last"] = prev.last
+  package.loaded["pickers.engines.telescope"] = prev.telescope
+  package.loaded["pickers.engines.fzf"] = prev.fzf
+  package.loaded["pickers.engines.snacks"] = prev.snacks
 end
 
 -- ── Summary ─────────────────────────────────────────────────────────────────
