@@ -55,7 +55,13 @@ local function fzf(cfg)
     -- fzf-lua keys its global actions per provider: `actions.files` is the
     -- table the files/grep/buffers/... pickers inherit from. A flat
     -- `actions = { ["ctrl-a"] = ... }` is not read by any of them.
-    local current = ((require("fzf-lua.config").setup_opts or {}).actions or {}).files or {}
+    -- A user-supplied `actions.files` REPLACES fzf-lua's defaults rather than
+    -- merging into them, so start from what is in force: the host's own table
+    -- if it set one, otherwise fzf-lua's defaults (enter, ctrl-s/v/t, alt-q...).
+    local current = ((require("fzf-lua.config").setup_opts or {}).actions or {}).files
+    if type(current) ~= "table" then
+      current = vim.deepcopy(require("fzf-lua.defaults").defaults.actions.files)
+    end
     fzf_lua.setup({ actions = { files = vim.tbl_extend("keep", current, ours) } }, true)
   end)
 end
