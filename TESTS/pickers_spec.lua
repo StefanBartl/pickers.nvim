@@ -5750,6 +5750,55 @@ do
   package.loaded["telescope.config"] = prev.tcfg
 end
 
+-- ── pickers.display_native — cosmetic switches onto the engines ─────────────
+do
+  local dn = require("pickers.display_native")
+  local prev = {
+    snacks = package.loaded["snacks"],
+    telescope = package.loaded["telescope"],
+    fzf = package.loaded["fzf-lua"],
+    tcfg = package.loaded["telescope.config"],
+  }
+  local ts_seen, fzf_seen
+  package.loaded["telescope"] = {
+    setup = function(o)
+      ts_seen = o
+    end,
+  }
+  package.loaded["telescope.config"] = { values = { layout_config = { width = 0.8 } } }
+  package.loaded["fzf-lua"] = {
+    setup = function(o)
+      fzf_seen = o
+    end,
+  }
+  local fake = { config = { picker = {} } }
+  package.loaded["snacks"] = fake
+
+  dn.patch({ display = { cycle = true, prompt_top = true, preview_wrap = false } })
+  check("display_native: telescope cycle", ts_seen and ts_seen.defaults.scroll_strategy == "cycle")
+  check(
+    "display_native: telescope prompt on top, layout_config kept",
+    ts_seen.defaults.sorting_strategy == "ascending"
+      and ts_seen.defaults.layout_config.prompt_position == "top"
+      and ts_seen.defaults.layout_config.width == 0.8
+  )
+  check(
+    "display_native: fzf --cycle and --layout reverse",
+    fzf_seen and fzf_seen.fzf_opts["--cycle"] == true and fzf_seen.fzf_opts["--layout"] == "reverse"
+  )
+  check("display_native: fzf preview wrap", fzf_seen.winopts.preview.wrap == false)
+  check("display_native: snacks preview wrap", fake.config.picker.win.preview.wo.wrap == false)
+
+  ts_seen, fzf_seen = nil, nil
+  dn.patch({ display = { path_shorten = true } })
+  check("display_native: nothing set patches nothing", ts_seen == nil and fzf_seen == nil)
+
+  package.loaded["snacks"] = prev.snacks
+  package.loaded["telescope"] = prev.telescope
+  package.loaded["fzf-lua"] = prev.fzf
+  package.loaded["telescope.config"] = prev.tcfg
+end
+
 -- ── Summary ─────────────────────────────────────────────────────────────────
 print(string.format("\n%d passed, %d failed", passed, failed))
 os.exit(failed == 0 and 0 or 1)

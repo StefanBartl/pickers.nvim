@@ -10,6 +10,14 @@ a changelog.
 
 ---
 
+[x] **`display.cycle` / `prompt_top` / `preview_wrap`: cosmetic switches for every engine.**
+  `pickers.display_native` patches them onto telescope (`scroll_strategy`,
+  `sorting_strategy` + `prompt_position`), fzf-lua (`--cycle`, `--layout`,
+  `winopts.preview.wrap`) and snacks (`win.preview.wo.wrap`) once loaded. `nil`
+  (default) leaves the engine alone; where an engine has no equivalent (telescope
+  preview wrap -- its previewer always turns wrap off; snacks cycles and lays out
+  the prompt by its own layout) the switch is skipped rather than faked.
+
 [x] **`find.exclude` reaches the engines' native pickers; `find.ignore_list`.**
   `pickers.find_native` patches the effective exclude list onto telescope
   (`file_ignore_patterns`, globs escaped to Lua patterns), fzf-lua (`files.fd_opts`

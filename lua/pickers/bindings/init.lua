@@ -40,6 +40,7 @@ function M.setup(cfg)
   -- find_files, Snacks.picker files, ...), so the same list applies whether a
   -- picker was opened through :Pickers or straight from the engine.
   require("pickers.find_native").patch(cfg)
+  require("pickers.display_native").patch(cfg)
 
   -- The quickfix window's preview + filter: a FileType qf trigger, so it
   -- applies to every list however it was filled (:grep, :make, an LSP

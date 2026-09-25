@@ -224,6 +224,12 @@ local M = {
   -- truncates to fit the available column width by default, no toggle needed.
   display = {
     path_shorten = false,
+    -- Opt-in switches, nil = the engine keeps its own default. Patched onto
+    -- every engine's global config, so native pickers follow too. See
+    -- pickers.display_native for the per-engine mapping.
+    cycle = nil,
+    prompt_top = nil,
+    preview_wrap = nil,
   },
 
   -- Image previews in the preview window, via images.nvim (a soft dependency:
