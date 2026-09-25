@@ -10,6 +10,18 @@ a changelog.
 
 ---
 
+[x] **`on_select(path)` for `pick_files`: report the picked file after the engine
+  opened it.** filetree's `f` used to reveal the chosen file in the tree through
+  its own telescope `<CR>`; through pickers.nvim that was lost, and the engines
+  had no hook. telescope: `select_default:enhance({ pre, post })` (the entry is
+  read in `pre`, before the picker closes; `enhance`, not `replace`, so
+  multi-select and the variants stay telescope's). snacks: a `confirm` that runs
+  `actions.jump` and then reports (scheduled, since `jump` re-schedules itself
+  from insert mode). fzf-lua: the default `files` action wrapped, the entry
+  resolved by fzf-lua's own `entry_to_file`. Carried on `Pickers.Source` /
+  `Pickers.EngineOpts`; `pickers.integrations.filetree.files` takes it in
+  `opts`. Not set by any scope. Tests: `TESTS/pickers_spec.lua`, "on_select".
+
 [x] **`pickers.integrations.filetree`: files / live grep scoped to a directory,
   for filetree.nvim.** filetree's `f`/`gr`/`tf`/`tg` used to reach into
   `pickers.actions.*` and `pickers.engines` directly; this is the public entry

@@ -383,8 +383,15 @@ require("filetree").setup({ integrations = { pickers = false } })
 ```
 
 The entry point is `require("pickers.integrations.filetree")`:
-`files(dir, { query })` and `grep(dir, { query, extra_args })`, both returning
-`false` when disabled or when no engine is installed.
+`files(dir, { query, on_select })` and `grep(dir, { query, extra_args })`, both
+returning `false` when disabled, when no engine is installed, or when `dir` is
+not a directory.
+
+`on_select(path)` is called with the absolute path of the file that was picked,
+after the engine opened it (a multi-selection is not reported). filetree.nvim
+uses it to reveal the file in its tree. It works on all three engines: telescope
+enhances `select_default`, snacks wraps `confirm` around its own `jump`, fzf-lua
+wraps its default `files` action; in each the engine's own opening is unchanged.
 
 ---
 

@@ -19,6 +19,7 @@ function M.run(source, engine_mod, override)
     prompt = source.prompt .. require("pickers.tabs").title_suffix(),
     query = source.query,
     find_command = source.find_command,
+    on_select = source.on_select,
     find = find,
   })
 end

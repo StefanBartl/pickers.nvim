@@ -147,6 +147,32 @@ function M.available()
   return ok
 end
 
+---@internal
+---fzf-lua's default `files` action, followed by a report of the picked file.
+---Only a single pick is reported (a multi-selection goes to the quickfix list,
+---which is not "the file the user chose"). The entry is resolved by fzf-lua's own
+---`entry_to_file`, which strips the icon/ANSI decoration the raw line carries.
+---@param on_select (fun(path: string))|nil
+---@param root string|nil  # Root a relative entry is against.
+---@return (fun(selected: string[], o: table))|nil
+local function default_action_with(on_select, root)
+  if type(on_select) ~= "function" then return nil end
+  return function(selected, o)
+    require("fzf-lua").actions.file_edit_or_qf(selected, o)
+    if #selected ~= 1 then return end
+    local ok, fzf_path = pcall(require, "fzf-lua.path")
+    local entry = ok and fzf_path.entry_to_file(selected[1], o) or nil
+    local file = entry and entry.path
+    if type(file) ~= "string" or file == "" then return end
+    if not (file:sub(1, 1) == "/" or file:match("^%a:[/\\]")) then
+      file = (o.cwd or root or vim.uv.cwd()) .. "/" .. file
+    end
+    vim.schedule(function()
+      on_select(vim.fs.normalize(file))
+    end)
+  end
+end
+
 ---@param opts Pickers.EngineOpts
 function M.pick_files(opts)
   local ok, fzf = pcall(require, "fzf-lua")
@@ -162,6 +188,8 @@ function M.pick_files(opts)
     fzf_opts = vim.tbl_extend("force", history_fzf_opts("files") or {}, cheatsheet_header()),
     path_shorten = path_shorten_opt(),
   }
+  local on_pick = default_action_with(opts.on_select, opts.roots[1])
+  if on_pick then base.actions = { ["default"] = on_pick } end
 
   -- Custom find command (system source: pre-built fd argv)
   if opts.find_command then
