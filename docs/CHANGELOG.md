@@ -20,7 +20,12 @@ a changelog.
   from insert mode). fzf-lua: the default `files` action wrapped, the entry
   resolved by fzf-lua's own `entry_to_file`. Carried on `Pickers.Source` /
   `Pickers.EngineOpts`; `pickers.integrations.filetree.files` takes it in
-  `opts`. Not set by any scope. Tests: `TESTS/pickers_spec.lua`, "on_select".
+  `opts`. Not set by any scope. Review pass: a multi-selection is not reported on
+  any engine (telescope/snacks used to report the highlighted entry); a callback
+  that throws is notified instead of raised from inside the picker; fzf-lua wraps
+  the user's configured `actions.files.enter` instead of replacing it; the
+  shared bits live in `pickers.engines.report`. Tests: `TESTS/pickers_spec.lua`,
+  "on_select".
 
 [x] **`pickers.integrations.filetree`: files / live grep scoped to a directory,
   for filetree.nvim.** filetree's `f`/`gr`/`tf`/`tg` used to reach into

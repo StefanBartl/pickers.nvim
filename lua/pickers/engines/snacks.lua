@@ -78,11 +78,11 @@ local function confirm_with(on_select)
   if type(on_select) ~= "function" then return nil end
   return function(picker, item, action)
     local items = picker:selected({ fallback = true })
-    local target = require("snacks.picker.util").path(items[1] or item)
+    -- A multi-selection opens several files (or fills the quickfix list): there
+    -- is no single picked file to report.
+    local target = #items <= 1 and require("snacks.picker.util").path(items[1] or item) or nil
     require("snacks.picker.actions").jump(picker, item, action)
-    if target then vim.schedule(function()
-      on_select(target)
-    end) end
+    if target then require("pickers.engines.report").call(on_select, vim.fs.normalize(target)) end
   end
 end
 

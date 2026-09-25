@@ -148,7 +148,23 @@ function M.available()
 end
 
 ---@internal
----fzf-lua's default `files` action, followed by a report of the picked file.
+---The action fzf-lua would run on <CR> in a `files` picker: the user's own if they
+---configured one (`actions.files.enter`, or its old name `default`), else
+---fzf-lua's `file_edit_or_qf`. Wrapping this rather than fzf-lua's default keeps a
+---customised <CR> customised.
+---@return function|nil
+local function configured_enter()
+  local ok, cfg = pcall(require, "fzf-lua.config")
+  local files = ok and cfg.globals and cfg.globals["actions.files"] or nil
+  local act = type(files) == "table" and (files.enter or files.default) or nil
+  if type(act) == "table" then act = act.fn end
+  if type(act) == "function" then return act end
+  local ok_fzf, fzf = pcall(require, "fzf-lua")
+  return ok_fzf and fzf.actions and fzf.actions.file_edit_or_qf or nil
+end
+
+---@internal
+---fzf-lua's <CR> action for `files`, followed by a report of the picked file.
 ---Only a single pick is reported (a multi-selection goes to the quickfix list,
 ---which is not "the file the user chose"). The entry is resolved by fzf-lua's own
 ---`entry_to_file`, which strips the icon/ANSI decoration the raw line carries.
@@ -157,19 +173,19 @@ end
 ---@return (fun(selected: string[], o: table))|nil
 local function default_action_with(on_select, root)
   if type(on_select) ~= "function" then return nil end
+  local open = configured_enter()
+  if not open then return nil end
   return function(selected, o)
-    require("fzf-lua").actions.file_edit_or_qf(selected, o)
+    open(selected, o)
     if #selected ~= 1 then return end
     local ok, fzf_path = pcall(require, "fzf-lua.path")
     local entry = ok and fzf_path.entry_to_file(selected[1], o) or nil
     local file = entry and entry.path
     if type(file) ~= "string" or file == "" then return end
-    if not (file:sub(1, 1) == "/" or file:match("^%a:[/\\]")) then
-      file = (o.cwd or root or vim.uv.cwd()) .. "/" .. file
-    end
-    vim.schedule(function()
-      on_select(vim.fs.normalize(file))
-    end)
+    require("pickers.engines.report").call(
+      on_select,
+      require("pickers.engines.report").absolute(file, o.cwd or root)
+    )
   end
 end
 
