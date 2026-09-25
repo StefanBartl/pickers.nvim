@@ -389,6 +389,9 @@ do
       explorer = { "<leader>ZZtestexplorer", "snacks" },
       bogus_entry_name = { "<leader>ZZtestbogus" },
       malformed = "not-a-table",
+      recent = { { "<leader>ZZtestr1", "<leader>ZZtestr2" }, desc = "My recent" },
+      lsp_references = { "<leader>ZZtestnowait", nowait = true },
+      grep_word = { { "<leader>ZZtestbad", "" } },
     },
   })
   local ok_apply = pcall(mappings.apply, config.get())
@@ -406,7 +409,27 @@ do
     vim.fn.maparg("<leader>ZZtestbogus", "n") == ""
   )
 
+  check(
+    "mappings.apply: a list of lhs binds each one",
+    vim.fn.maparg("<leader>ZZtestr1", "n") ~= "" and vim.fn.maparg("<leader>ZZtestr2", "n") ~= ""
+  )
+  check(
+    "mappings.apply: desc is honoured",
+    vim.fn.maparg("<leader>ZZtestr1", "n", false, true).desc == "My recent"
+  )
+  check(
+    "mappings.apply: nowait is honoured",
+    vim.fn.maparg("<leader>ZZtestnowait", "n", false, true).nowait == 1
+  )
+  check(
+    "mappings.apply: a list with an empty lhs binds nothing",
+    vim.fn.maparg("<leader>ZZtestbad", "n") == ""
+  )
+
   -- Cleanup: unset the test keymaps and reset mappings config.
+  for _, l in ipairs({ "r1", "r2", "nowait" }) do
+    pcall(vim.keymap.del, "n", "<leader>ZZtest" .. l)
+  end
   pcall(vim.keymap.del, "n", "<leader>ZZtestfiles")
   pcall(vim.keymap.del, "n", "<leader>ZZtestexplorer")
   config.apply({ mappings = {} })
