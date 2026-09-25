@@ -5675,6 +5675,25 @@ do
     "entry_actions.patch: fzf fills in ctrl-o",
     files_actions and type(files_actions["ctrl-o"]) == "function"
   )
+  -- No setup_opts.actions.files yet: fzf-lua's own defaults are the base,
+  -- because a supplied table replaces them instead of merging.
+  package.loaded["fzf-lua.config"] = { setup_opts = {} }
+  local prev_fzf_defaults = package.loaded["fzf-lua.defaults"]
+  package.loaded["fzf-lua.defaults"] = {
+    defaults = { actions = { files = { enter = "edit", ["ctrl-s"] = "split" } } },
+  }
+  fzf_seen = nil
+  require("pickers.entry_actions.patch").patch(require("pickers.config").get())
+  files_actions = fzf_seen and fzf_seen.actions and fzf_seen.actions.files
+  check(
+    "entry_actions.patch: fzf keeps fzf-lua's default actions",
+    files_actions and files_actions.enter == "edit" and files_actions["ctrl-s"] == "split"
+  )
+  check(
+    "entry_actions.patch: fzf adds ours next to the defaults",
+    files_actions and type(files_actions["ctrl-a"]) == "function"
+  )
+  package.loaded["fzf-lua.defaults"] = prev_fzf_defaults
   package.loaded["fzf-lua.config"] = prev_fzf_cfg
 
   -- keys.enable = false: nothing is patched.
