@@ -36,6 +36,11 @@ function M.setup(cfg)
   -- way. Unlike history (opt-in), this honours "same keys for every picker".
   if not cfg.keys or cfg.keys.enable ~= false then require("pickers.keys").patch(cfg) end
 
+  -- find.exclude onto the engines' native pickers (:FzfLua files, :Telescope
+  -- find_files, Snacks.picker files, ...), so the same list applies whether a
+  -- picker was opened through :Pickers or straight from the engine.
+  require("pickers.find_native").patch(cfg)
+
   -- The quickfix window's preview + filter: a FileType qf trigger, so it
   -- applies to every list however it was filled (:grep, :make, an LSP
   -- reference list, a picker's send-to-qf).

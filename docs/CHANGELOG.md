@@ -10,6 +10,16 @@ a changelog.
 
 ---
 
+[x] **`find.exclude` reaches the engines' native pickers; `find.ignore_list`.**
+  `pickers.find_native` patches the effective exclude list onto telescope
+  (`file_ignore_patterns`, globs escaped to Lua patterns), fzf-lua (`files.fd_opts`
+  / `grep.rg_opts`) and snacks (`sources.{files,grep}.exclude`) once each is
+  loaded, so a keymap calling `:FzfLua files` directly honours the same list as
+  `:Pickers cwd files`. Entries already present are not duplicated;
+  `find.native = false` opts out. `find.ignore_list = true` folds lib.nvim's
+  shared ignore list into `find.exclude` (plain basenames and the simple
+  `%.ext` patterns become globs; real Lua-pattern magic is dropped).
+
 [x] **Entry actions and snacks keys are patched in, not merged by hand.**
   `pickers.entry_actions.patch` (called from `keys.patch`, gated by
   `keys.enable`) installs create_file / open_background / cheatsheet /
