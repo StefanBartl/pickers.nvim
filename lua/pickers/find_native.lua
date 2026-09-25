@@ -95,11 +95,18 @@ end
 ---@return string
 local function append_globs(base, exclude, flag, negate)
   local out = base or ""
+  -- fzf-lua's rg_opts ends in `-e`: the query is appended right after it, so
+  -- anything added here must go BEFORE it or `-e` would swallow the flag.
+  local tail = ""
+  if out:match("%s%-e$") then
+    out = out:gsub("%s%-e$", "")
+    tail = " -e"
+  end
   for _, g in ipairs(exclude) do
     local arg = vim.fn.shellescape((negate and "!" or "") .. g)
     if not out:find(arg, 1, true) then out = out .. " " .. flag .. " " .. arg end
   end
-  return out
+  return out .. tail
 end
 
 ---@param exclude string[]

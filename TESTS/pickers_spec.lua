@@ -5705,7 +5705,7 @@ do
     end,
   }
   package.loaded["fzf-lua.config"] = {
-    globals = { files = { fd_opts = "--type f" }, grep = { rg_opts = "--column" } },
+    globals = { files = { fd_opts = "--type f" }, grep = { rg_opts = "--column -e" } },
   }
   local fake = { config = { picker = { sources = { files = { exclude = { "old" } } } } } }
   package.loaded["snacks"] = fake
@@ -5725,6 +5725,10 @@ do
   check(
     "find_native: fzf rg_opts gets a negated -g",
     fzf_seen and fzf_seen.grep.rg_opts:find("!", 1, true) ~= nil
+  )
+  check(
+    "find_native: fzf rg_opts keeps its trailing -e last",
+    fzf_seen and fzf_seen.grep.rg_opts:match("%s%-e$") ~= nil
   )
   local ex = fake.config.picker.sources.files.exclude
   check(
