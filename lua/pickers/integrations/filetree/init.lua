@@ -51,6 +51,15 @@ function M.available()
 end
 
 ---@internal
+---A root the engines can search: an existing directory. Anything else is not
+---this bridge's to report -- the caller falls back, as for any other refusal.
+---@param dir any
+---@return boolean
+local function usable_dir(dir)
+  return type(dir) == "string" and dir ~= "" and vim.fn.isdirectory(dir) == 1
+end
+
+---@internal
 ---@param dir string
 ---@param what string
 ---@param query string|nil
@@ -69,11 +78,15 @@ end
 ---@param opts? { query?: string }
 ---@return boolean handled  # false when disabled or no engine is installed.
 function M.files(dir, opts)
-  if not M.available() then return false end
+  if not usable_dir(dir) or not M.available() then return false end
+  -- `available()` saw an engine, but `load` honours the configured one and can
+  -- still come back empty; nothing to run then.
+  local eng = engine()
+  if not eng then return false end
   opts = opts or {}
   local source = source_for(dir, "Files", opts.query)
   require("pickers.last").set("files", source)
-  require("pickers.actions.files").run(source, engine())
+  require("pickers.actions.files").run(source, eng)
   return true
 end
 
@@ -82,11 +95,13 @@ end
 ---@param opts? { query?: string, extra_args?: string[] }
 ---@return boolean handled  # false when disabled or no engine is installed.
 function M.grep(dir, opts)
-  if not M.available() then return false end
+  if not usable_dir(dir) or not M.available() then return false end
+  local eng = engine()
+  if not eng then return false end
   opts = opts or {}
   local source = source_for(dir, "Grep", opts.query)
   require("pickers.last").set("grep", source)
-  require("pickers.actions.grep").run(source, engine(), opts.extra_args)
+  require("pickers.actions.grep").run(source, eng, opts.extra_args)
   return true
 end
 
