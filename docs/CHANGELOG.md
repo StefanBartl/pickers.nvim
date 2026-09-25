@@ -10,6 +10,12 @@ a changelog.
 
 ---
 
+[x] **Fix: fzf-lua entry actions were patched onto the wrong table.**
+  fzf-lua groups its global actions per provider; the entry actions went into a flat
+  top-level `actions`, which no picker reads, so `:FzfLua files` never got
+  `ctrl-a`/`ctrl-o`/`f1`. They now go into `actions.files`, which the file-based
+  pickers inherit. Covered by a test.
+
 [x] **`images.pdf_text`: readable PDF preview on telescope.**
   `pickers.integrations.pdf_text` installs pdfport.nvim's `filetype_hook` as
   telescope's global `defaults.preview.filetype_hook` (a hook the host already
