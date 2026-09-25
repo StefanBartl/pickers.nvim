@@ -5234,6 +5234,68 @@ do
   vim.g.pickers_nvim_setup_called = prev_setup_called
 end
 
+-- ── pickers.integrations.filetree — dir-scoped files / grep for filetree.nvim ──
+-- Engine and actions are stubbed: what is under test is the switch, the root the
+-- source carries, and that a refusal is a clean `false` the caller can fall back on.
+do
+  local cfg_mod = require("pickers.config")
+  local prev = {
+    engines = package.loaded["pickers.engines"],
+    files = package.loaded["pickers.actions.files"],
+    grep = package.loaded["pickers.actions.grep"],
+    last = package.loaded["pickers.last"],
+  }
+  local have_engine, seen = true, {}
+  package.loaded["pickers.engines"] = {
+    load = function()
+      return have_engine and { name = "stub" } or nil
+    end,
+  }
+  package.loaded["pickers.actions.files"] = {
+    run = function(source, eng)
+      seen.files = { source = source, eng = eng }
+    end,
+  }
+  package.loaded["pickers.actions.grep"] = {
+    run = function(source, eng, extra)
+      seen.grep = { source = source, eng = eng, extra = extra }
+    end,
+  }
+  package.loaded["pickers.last"] = { set = function() end }
+  package.loaded["pickers.integrations.filetree"] = nil
+  local ft = require("pickers.integrations.filetree")
+
+  check("integrations.filetree: available() by default", ft.available() == true)
+  check("integrations.filetree: files() reports handled", ft.files("/x/proj", { query = "q" }))
+  check(
+    "integrations.filetree: files() carries the dir as the one root",
+    vim.deep_equal(seen.files.source.roots, { "/x/proj" })
+  )
+  check("integrations.filetree: files() seeds the query", seen.files.source.query == "q")
+  check(
+    "integrations.filetree: grep() forwards extra args",
+    ft.grep("/x/proj", { extra_args = { "--glob=!x" } })
+      and vim.deep_equal(seen.grep.extra, { "--glob=!x" })
+  )
+
+  seen = {}
+  cfg_mod.apply({ filetree = { enabled = false } })
+  check("integrations.filetree: filetree.enabled = false disables it", ft.available() == false)
+  check("integrations.filetree: disabled files() answers false", ft.files("/x") == false)
+  check("integrations.filetree: disabled grep() answers false", ft.grep("/x") == false)
+  check("integrations.filetree: disabled runs nothing", seen.files == nil and seen.grep == nil)
+  cfg_mod.apply({ filetree = { enabled = true } })
+  check("integrations.filetree: the opt-out is reversible", ft.available() == true)
+
+  have_engine = false
+  check("integrations.filetree: no engine installed answers false", ft.files("/x") == false)
+
+  package.loaded["pickers.engines"] = prev.engines
+  package.loaded["pickers.actions.files"] = prev.files
+  package.loaded["pickers.actions.grep"] = prev.grep
+  package.loaded["pickers.last"] = prev.last
+end
+
 -- ── Summary ─────────────────────────────────────────────────────────────────
 print(string.format("\n%d passed, %d failed", passed, failed))
 os.exit(failed == 0 and 0 or 1)

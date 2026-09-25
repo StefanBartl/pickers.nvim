@@ -235,6 +235,16 @@ local M = {
     enabled = true,
   },
 
+  -- filetree.nvim's `f` / `gr` (find files / grep in a tree node's directory)
+  -- run through this plugin when it is installed: filetree hands the directory
+  -- over instead of driving a picker of its own. On by default (opt-OUT); off
+  -- here means filetree falls back to its own backends. filetree.nvim has the
+  -- matching switch on its side (`integrations.pickers`).
+  -- See pickers.integrations.filetree.
+  filetree = {
+    enabled = true,
+  },
+
   -- Tab groups (pickers.tabs): named lists of `:Pickers` argument strings
   -- cycled from inside a picker with the opt-in `keys.tab_next`/`tab_prev`,
   -- the typed query carried along. `:Pickers tabs <group>` opens one.

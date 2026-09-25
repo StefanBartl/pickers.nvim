@@ -70,6 +70,14 @@
 ---@field enabled? boolean  Default: true
 
 -- ###########################################################################
+-- filetree.nvim integration (soft dependency, the other way round)
+
+--- Let filetree.nvim's `f` / `gr` run through this plugin. `enabled` is an
+--- opt-OUT. See `pickers.integrations.filetree`.
+---@class Pickers.FiletreeConfig
+---@field enabled? boolean  Default: true
+
+-- ###########################################################################
 -- Top-level configuration
 
 ---@class Pickers.Config
@@ -88,6 +96,7 @@
 ---@field smart?         Pickers.SmartConfig
 ---@field display?       Pickers.DisplayConfig
 ---@field images?        Pickers.ImagesConfig
+---@field filetree?      Pickers.FiletreeConfig
 ---@field quickfix?      Pickers.QuickfixConfig
 ---@field tabs?          Pickers.TabsConfig  # tab groups cycled from inside a picker (pickers.tabs)  # preview float + refine filter in the quickfix window (pickers.quickfix)
 

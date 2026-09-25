@@ -10,6 +10,14 @@ a changelog.
 
 ---
 
+[x] **`pickers.integrations.filetree`: files / live grep scoped to a directory,
+  for filetree.nvim.** filetree's `f`/`gr`/`tf`/`tg` used to reach into
+  `pickers.actions.*` and `pickers.engines` directly; this is the public entry
+  point (`files(dir, opts)`, `grep(dir, opts)`) that builds the same `{ roots,
+  prompt }` source a scope does. Opt-out `filetree = { enabled = false }`
+  (default on) — off, or with no engine installed, both answer `false` and the
+  caller falls back. Test: `TESTS/pickers_spec.lua`, "integrations.filetree".
+
 [x] **Removed the `wkdbooks` built-in scope and the `plugins_book` source —
   both were this author's own private collections, promoted to hardcoded
   status instead of staying user config.** `wkdbooks` added nothing the
