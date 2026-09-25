@@ -41,6 +41,7 @@ function M.setup(cfg)
   -- picker was opened through :Pickers or straight from the engine.
   require("pickers.find_native").patch(cfg)
   require("pickers.display_native").patch(cfg)
+  require("pickers.integrations.pdf_text").patch(cfg)
 
   -- The quickfix window's preview + filter: a FileType qf trigger, so it
   -- applies to every list however it was filled (:grep, :make, an LSP

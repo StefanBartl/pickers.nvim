@@ -5799,6 +5799,55 @@ do
   package.loaded["telescope.config"] = prev.tcfg
 end
 
+-- ── pickers.integrations.pdf_text — telescope filetype_hook, chained ─────────
+do
+  local prev = {
+    telescope = package.loaded["telescope"],
+    tcfg = package.loaded["telescope.config"],
+    pdf = package.loaded["pdfport.integrations.telescope"],
+  }
+  local seen
+  local host_calls = 0
+  package.loaded["telescope"] = {
+    setup = function(o)
+      seen = o
+    end,
+  }
+  package.loaded["telescope.config"] = {
+    values = {
+      preview = {
+        timeout = 250,
+        filetype_hook = function(path)
+          host_calls = host_calls + 1
+          return path == "host.txt"
+        end,
+      },
+    },
+  }
+  package.loaded["pdfport.integrations.telescope"] = {
+    filetype_hook = function()
+      return "pdf"
+    end,
+  }
+
+  require("pickers.integrations.pdf_text").patch({ images = { pdf_text = true } })
+  local hook = seen and seen.defaults.preview.filetype_hook
+  check(
+    "pdf_text: hook installed, other preview settings kept",
+    hook and seen.defaults.preview.timeout == 250
+  )
+  check("pdf_text: the host's own hook runs first and can claim the file", hook("host.txt") == true)
+  check("pdf_text: otherwise pdfport's hook answers", hook("a.pdf") == "pdf")
+
+  seen = nil
+  require("pickers.integrations.pdf_text").patch({ images = { pdf_text = false } })
+  check("pdf_text: pdf_text=false installs nothing", seen == nil)
+
+  package.loaded["telescope"] = prev.telescope
+  package.loaded["telescope.config"] = prev.tcfg
+  package.loaded["pdfport.integrations.telescope"] = prev.pdf
+end
+
 -- ── Summary ─────────────────────────────────────────────────────────────────
 print(string.format("\n%d passed, %d failed", passed, failed))
 os.exit(failed == 0 and 0 or 1)

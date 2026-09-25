@@ -72,7 +72,8 @@
 --- integration switches itself off anyway when images.nvim is absent or the
 --- terminal cannot draw. See `pickers.integrations.images`.
 ---@class Pickers.ImagesConfig
----@field enabled? boolean  Default: true
+---@field enabled? boolean   Default: true
+---@field pdf_text? boolean  Telescope: text preview for PDFs via pdfport.nvim when no image can be drawn (default: true)
 
 -- ###########################################################################
 -- filetree.nvim integration (soft dependency, the other way round)

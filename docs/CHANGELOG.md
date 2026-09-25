@@ -10,6 +10,14 @@ a changelog.
 
 ---
 
+[x] **`images.pdf_text`: readable PDF preview on telescope.**
+  `pickers.integrations.pdf_text` installs pdfport.nvim's `filetype_hook` as
+  telescope's global `defaults.preview.filetype_hook` (a hook the host already
+  set runs first), so a PDF the `images` integration cannot draw previews as
+  extracted text. pdfport is required lazily, on the first PDF preview. fzf-lua
+  is not wired: its `preview` function is ignored while a builtin previewer
+  is active, which the files picker always has.
+
 [x] **`display.cycle` / `prompt_top` / `preview_wrap`: cosmetic switches for every engine.**
   `pickers.display_native` patches them onto telescope (`scroll_strategy`,
   `sorting_strategy` + `prompt_position`), fzf-lua (`--cycle`, `--layout`,
