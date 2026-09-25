@@ -5239,6 +5239,8 @@ end
 -- source carries, and that a refusal is a clean `false` the caller can fall back on.
 do
   local cfg_mod = require("pickers.config")
+  local dir = vim.fn.tempname()
+  vim.fn.mkdir(dir, "p")
   local prev = {
     engines = package.loaded["pickers.engines"],
     files = package.loaded["pickers.actions.files"],
@@ -5248,7 +5250,7 @@ do
     fzf = package.loaded["pickers.engines.fzf"],
     snacks = package.loaded["pickers.engines.snacks"],
   }
-  local have_engine, seen = true, {}
+  local have_engine, load_empty, seen = true, false, {}
   -- `available()` asks the engine modules directly (no error notification).
   for _, name in ipairs({ "telescope", "fzf", "snacks" }) do
     package.loaded["pickers.engines." .. name] = {
@@ -5259,7 +5261,7 @@ do
   end
   package.loaded["pickers.engines"] = {
     load = function()
-      return have_engine and { name = "stub" } or nil
+      return (have_engine and not load_empty) and { name = "stub" } or nil
     end,
   }
   package.loaded["pickers.actions.files"] = {
@@ -5277,29 +5279,43 @@ do
   local ft = require("pickers.integrations.filetree")
 
   check("integrations.filetree: available() by default", ft.available() == true)
-  check("integrations.filetree: files() reports handled", ft.files("/x/proj", { query = "q" }))
+  check("integrations.filetree: files() reports handled", ft.files(dir, { query = "q" }))
   check(
     "integrations.filetree: files() carries the dir as the one root",
-    vim.deep_equal(seen.files.source.roots, { "/x/proj" })
+    vim.deep_equal(seen.files.source.roots, { dir })
   )
   check("integrations.filetree: files() seeds the query", seen.files.source.query == "q")
   check(
     "integrations.filetree: grep() forwards extra args",
-    ft.grep("/x/proj", { extra_args = { "--glob=!x" } })
+    ft.grep(dir, { extra_args = { "--glob=!x" } })
       and vim.deep_equal(seen.grep.extra, { "--glob=!x" })
   )
 
   seen = {}
   cfg_mod.apply({ filetree = { enabled = false } })
   check("integrations.filetree: filetree.enabled = false disables it", ft.available() == false)
-  check("integrations.filetree: disabled files() answers false", ft.files("/x") == false)
-  check("integrations.filetree: disabled grep() answers false", ft.grep("/x") == false)
+  check("integrations.filetree: disabled files() answers false", ft.files(dir) == false)
+  check("integrations.filetree: disabled grep() answers false", ft.grep(dir) == false)
   check("integrations.filetree: disabled runs nothing", seen.files == nil and seen.grep == nil)
   cfg_mod.apply({ filetree = { enabled = true } })
   check("integrations.filetree: the opt-out is reversible", ft.available() == true)
 
   have_engine = false
-  check("integrations.filetree: no engine installed answers false", ft.files("/x") == false)
+  check("integrations.filetree: no engine installed answers false", ft.files(dir) == false)
+  have_engine = true
+
+  -- An engine is installed but `load` (which honours the configured one) comes
+  -- back empty: nothing to run, and no error from indexing a nil engine.
+  load_empty = true
+  seen = {}
+  check("integrations.filetree: an empty engine load answers false", ft.files(dir) == false)
+  check("integrations.filetree: an empty engine load runs nothing", seen.files == nil)
+  load_empty = false
+
+  -- Not a directory: refused, the caller falls back.
+  check("integrations.filetree: a missing dir answers false", ft.files(dir .. "/nope") == false)
+  check("integrations.filetree: a non-string dir answers false", ft.grep(nil) == false)
+  check("integrations.filetree: an empty dir answers false", ft.grep("") == false)
 
   package.loaded["pickers.engines"] = prev.engines
   package.loaded["pickers.actions.files"] = prev.files
