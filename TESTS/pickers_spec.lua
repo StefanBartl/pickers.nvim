@@ -5640,7 +5640,16 @@ do
     { config = { picker = { win = { list = { keys = { ["<C-a>"] = "mine" } } } } } }
   package.loaded["snacks"] = fake_snacks
   package.loaded["telescope"] = { setup = function() end }
-  package.loaded["fzf-lua"] = nil
+  local fzf_seen
+  package.loaded["fzf-lua"] = {
+    setup = function(o)
+      fzf_seen = o
+    end,
+  }
+  local prev_fzf_cfg = package.loaded["fzf-lua.config"]
+  package.loaded["fzf-lua.config"] = {
+    setup_opts = { actions = { files = { ["ctrl-a"] = "mine" } } },
+  }
   local ok_patch =
     pcall(require("pickers.entry_actions.patch").patch, require("pickers.config").get())
   check("entry_actions.patch: does not throw", ok_patch)
@@ -5654,6 +5663,19 @@ do
     "entry_actions.patch: snacks input keys filled in",
     type(picker.win.input.keys) == "table" and next(picker.win.input.keys) ~= nil
   )
+
+  -- fzf-lua: per-provider `actions.files`; the host's own ctrl-a is kept.
+  local files_actions = fzf_seen and fzf_seen.actions and fzf_seen.actions.files
+  check("entry_actions.patch: fzf targets actions.files", type(files_actions) == "table")
+  check(
+    "entry_actions.patch: fzf host action wins",
+    files_actions and files_actions["ctrl-a"] == "mine"
+  )
+  check(
+    "entry_actions.patch: fzf fills in ctrl-o",
+    files_actions and type(files_actions["ctrl-o"]) == "function"
+  )
+  package.loaded["fzf-lua.config"] = prev_fzf_cfg
 
   -- keys.enable = false: nothing is patched.
   local off = { config = { picker = {} } }

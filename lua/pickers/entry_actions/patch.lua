@@ -14,7 +14,8 @@
 ---
 ---   telescope -> `defaults.mappings` (telescope replaces that table on a
 ---                second `setup()`, so the current one is folded in first)
----   fzf-lua   -> global `actions` (`setup(.., true)` keeps earlier options,
+--- fzf-lua   -> `actions.files`, the table every file-based picker inherits
+---                (`setup(.., true)` keeps earlier options,
 ---                but on a conflict the NEW value would win -- so the
 ---                host's own actions are folded in first here too)
 ---   snacks    -> `Snacks.config.picker` (`actions` + `win` keys). Snacks
@@ -51,8 +52,11 @@ local function fzf(cfg)
   pcall(function()
     local ours = require("pickers.entry_actions.adapters.fzf").get_actions()
     if vim.tbl_isempty(ours) then return end
-    local current = (require("fzf-lua.config").setup_opts or {}).actions or {}
-    fzf_lua.setup({ actions = vim.tbl_extend("keep", current, ours) }, true)
+    -- fzf-lua keys its global actions per provider: `actions.files` is the
+    -- table the files/grep/buffers/... pickers inherit from. A flat
+    -- `actions = { ["ctrl-a"] = ... }` is not read by any of them.
+    local current = ((require("fzf-lua.config").setup_opts or {}).actions or {}).files or {}
+    fzf_lua.setup({ actions = { files = vim.tbl_extend("keep", current, ours) } }, true)
   end)
 end
 
