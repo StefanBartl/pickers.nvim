@@ -60,6 +60,7 @@
 --- default, so there is nothing to opt into there.
 ---@class Pickers.DisplayConfig
 ---@field path_shorten? boolean  Default: false
+---@field path_adaptive? boolean  Telescope: shorten paths to the picker width via lib.nvim (default: nil)
 ---@field cycle?        boolean  Wrap around at either end of the list (default: nil = engine default)
 ---@field prompt_top?   boolean  Prompt above (true) / below (false) the results (default: nil)
 ---@field preview_wrap? boolean  Wrap long lines in the preview (default: nil)

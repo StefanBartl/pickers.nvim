@@ -428,7 +428,7 @@ local NESTED_OPTS = {
   smart = { "weights", "limit", "timeout", "frecency", "dedup_grep_rows" },
   ["smart.weights"] = { "filename", "content", "both" },
   ["smart.frecency"] = { "enabled", "weight", "dir" },
-  display = { "path_shorten", "cycle", "prompt_top", "preview_wrap" },
+  display = { "path_shorten", "path_adaptive", "cycle", "prompt_top", "preview_wrap" },
   images = { "enabled", "pdf_text" },
   filetree = { "enabled" },
   tabs = { "groups" }, -- "groups"' own keys are user-named group names, not validated
@@ -584,7 +584,7 @@ function M.apply(opts)
       cfg.display.path_shorten = sanitized.display.path_shorten
     end
     -- Opt-in switches, nil = the engine's own default (pickers.display_native).
-    for _, key in ipairs({ "cycle", "prompt_top", "preview_wrap" }) do
+    for _, key in ipairs({ "cycle", "prompt_top", "preview_wrap", "path_adaptive" }) do
       if type(sanitized.display[key]) == "boolean" then
         cfg.display[key] = sanitized.display[key]
       end

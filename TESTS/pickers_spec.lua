@@ -5853,6 +5853,15 @@ do
   check("display_native: fzf preview wrap", fzf_seen.winopts.preview.wrap == false)
   check("display_native: snacks preview wrap", fake.config.picker.win.preview.wo.wrap == false)
 
+  dn.patch({ display = { path_adaptive = true } })
+  local pd = ts_seen and ts_seen.defaults.path_display
+  check("display_native: telescope path_display is a function", type(pd) == "function")
+  local long = "/aaaaaaaaaa/bbbbbbbbbb/cccccccccc/dddddddddd/eeeeeeeeee/file.lua"
+  check(
+    "display_native: adaptive path fits the picker width",
+    type(pd) == "function" and #pd({ winwidth = 40 }, long) <= 30
+  )
+
   ts_seen, fzf_seen = nil, nil
   dn.patch({ display = { path_shorten = true } })
   check("display_native: nothing set patches nothing", ts_seen == nil and fzf_seen == nil)

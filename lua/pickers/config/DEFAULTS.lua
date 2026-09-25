@@ -227,6 +227,7 @@ local M = {
     -- Opt-in switches, nil = the engine keeps its own default. Patched onto
     -- every engine's global config, so native pickers follow too. See
     -- pickers.display_native for the per-engine mapping.
+    path_adaptive = nil,
     cycle = nil,
     prompt_top = nil,
     preview_wrap = nil,

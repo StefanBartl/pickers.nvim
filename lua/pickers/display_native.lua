@@ -14,6 +14,11 @@
 ---                   telescope `sorting_strategy` + `layout_config.prompt_position`
 ---                   fzf-lua   `fzf_opts["--layout"]` = "reverse"/"default"
 ---                   snacks    layout-dependent -- untouched
+---   path_adaptive shorten long paths to the picker's width (lib.nvim's
+---                 `fs.path_shorten`), instead of telescope's fixed "shorten"
+---                   telescope `path_display` (a function reading `winwidth`)
+---                   fzf-lua   no equivalent (only a numeric `path_shorten`)
+---                   snacks    truncates to the column width by itself
 ---   preview_wrap  wrap long lines in the preview
 ---                   fzf-lua   `winopts.preview.wrap`
 ---                   snacks    `win.preview.wo.wrap`
@@ -31,6 +36,7 @@ local function any_set(display)
   return type(display.cycle) == "boolean"
     or type(display.prompt_top) == "boolean"
     or type(display.preview_wrap) == "boolean"
+    or display.path_adaptive == true
 end
 
 ---@param display Pickers.DisplayConfig
@@ -47,6 +53,16 @@ local function telescope(display)
       defaults.layout_config = vim.tbl_deep_extend("force", values.layout_config or {}, {
         prompt_position = display.prompt_top and "top" or "bottom",
       })
+    end
+    if display.path_adaptive == true then
+      local ok, shorten = pcall(require, "lib.nvim.fs.path_shorten")
+      if ok then
+        defaults.path_display = function(picker_opts, path)
+          local width = type(picker_opts) == "table" and picker_opts.winwidth
+          local max_len = type(width) == "number" and math.max(10, width - 10) or 60
+          return shorten(path, max_len)
+        end
+      end
     end
     if next(defaults) then require("telescope").setup({ defaults = defaults }) end
   end)
