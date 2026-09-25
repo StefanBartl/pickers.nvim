@@ -5312,6 +5312,30 @@ do
   fzf_engine.pick_files({ roots = { pick_root }, prompt = "P", find = {} })
   check("on_select/fzf: no callback -> no actions override", got.actions == nil)
 
+  -- A <CR> the user configured (`actions.files.enter`) is the one that opens.
+  local custom_opened
+  local prev_fzf_cfg = package.loaded["fzf-lua.config"]
+  package.loaded["fzf-lua.config"] = {
+    globals = {
+      ["actions.files"] = {
+        enter = function(selected)
+          custom_opened = selected
+        end,
+      },
+    },
+  }
+  fzf_engine.pick_files({ roots = { pick_root }, prompt = "P", find = {}, on_select = on_select })
+  opened = nil
+  got.actions.default({ "X sub/c.lua" }, { cwd = pick_root })
+  vim.wait(200, function()
+    return reported ~= nil
+  end)
+  check(
+    "on_select/fzf: a configured <CR> action opens, fzf-lua's default does not",
+    custom_opened ~= nil and opened == nil
+  )
+  package.loaded["fzf-lua.config"] = prev_fzf_cfg
+
   -- telescope: `select_default` is enhanced, the entry read in `pre`, reported in `post`.
   local enhanced
   local entry = { path = pick_root .. "/t.lua" }
@@ -5327,9 +5351,17 @@ do
       end,
     },
   }
+  local marked = 0 -- how many entries the stub picker has multi-selected
   package.loaded["telescope.actions.state"] = {
     get_selected_entry = function()
       return entry
+    end,
+    get_current_picker = function()
+      return {
+        get_multi_selection = function()
+          return vim.list_slice({ {}, {}, {} }, 1, marked)
+        end,
+      }
     end,
   }
   package.loaded["pickers.engines.telescope"] = nil
@@ -5368,6 +5400,27 @@ do
   vim.wait(50)
   check("on_select/telescope: reports once per pick", reported == nil)
 
+  -- Several marked entries: telescope opens them all, there is no picked file.
+  entry = { path = pick_root .. "/m.lua" }
+  marked = 2
+  reported = nil
+  enhanced.pre()
+  enhanced.post()
+  vim.wait(50)
+  check("on_select/telescope: a multi-selection is not reported", reported == nil)
+  marked = 1
+  enhanced.pre()
+  enhanced.post()
+  vim.wait(200, function()
+    return reported ~= nil
+  end)
+  check(
+    "on_select/telescope: a single marked entry still is",
+    reported == pick_root .. "/m.lua",
+    reported
+  )
+  marked = 0
+
   -- snacks: `confirm` runs snacks' own jump, then reports.
   local jumped
   package.loaded["snacks.picker"] = {
@@ -5399,6 +5452,24 @@ do
     return reported ~= nil
   end)
   check("on_select/snacks: runs snacks' own jump first", jumped == true)
+  -- Several selected items: jump opens them all, nothing is reported.
+  reported = nil
+  got.confirm({
+    selected = function()
+      return { { file = pick_root .. "/a.lua" }, { file = pick_root .. "/b.lua" } }
+    end,
+  }, nil, {})
+  vim.wait(50)
+  check("on_select/snacks: a multi-selection is not reported", reported == nil)
+  reported = nil
+  got.confirm({
+    selected = function()
+      return { { file = pick_root .. "/s.lua" } }
+    end,
+  }, nil, {})
+  vim.wait(200, function()
+    return reported ~= nil
+  end)
   check(
     "on_select/snacks: reports the picked item's path",
     reported == pick_root .. "/s.lua",
@@ -5407,6 +5478,48 @@ do
   snacks_engine.pick_files({ roots = { pick_root }, prompt = "P", find = {} })
   check("on_select/snacks: no callback -> snacks' own confirm stays", got.confirm == nil)
 
+  -- A callback that throws is reported as a notification, not raised from the picker.
+  local errors = {}
+  local prev_notify_mod = package.loaded["lib.nvim.notify"]
+  local prev_report = package.loaded["pickers.engines.report"]
+  package.loaded["lib.nvim.notify"] = {
+    create = function()
+      return {
+        error = function(msg)
+          errors[#errors + 1] = msg
+        end,
+      }
+    end,
+  }
+  package.loaded["pickers.engines.report"] = nil
+  local report = require("pickers.engines.report")
+  report.call(function()
+    error("boom")
+  end, "/x")
+  vim.wait(100, function()
+    return #errors > 0
+  end)
+  package.loaded["lib.nvim.notify"] = prev_notify_mod
+  check(
+    "on_select/report: a throwing callback is notified, not raised",
+    #errors > 0 and tostring(errors[1]):find("boom", 1, true) ~= nil,
+    vim.inspect(errors)
+  )
+  check(
+    "on_select/report: absolute() keeps an absolute path",
+    report.absolute("/a/b", "/r") == "/a/b"
+  )
+  check(
+    "on_select/report: absolute() joins a relative one to the root",
+    report.absolute("b/c", "/r") == "/r/b/c"
+  )
+  check(
+    "on_select/report: a Windows drive is absolute",
+    report.is_absolute("C:/x") and report.is_absolute("C:\\x")
+  )
+  check("on_select/report: a relative path is not", not report.is_absolute("x/y"))
+
+  package.loaded["pickers.engines.report"] = prev_report
   for k, v in pairs(prev) do
     package.loaded[k] = v
   end

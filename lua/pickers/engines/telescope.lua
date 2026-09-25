@@ -113,20 +113,14 @@ function M.available()
 end
 
 ---@internal
----Whether `path` is absolute (POSIX root or a Windows drive).
----@param path string
----@return boolean
-local function is_absolute(path)
-  local first = path:sub(1, 1)
-  return first == "/" or first == "\\" or path:match("^%a:[/\\]") ~= nil
-end
-
----@internal
 ---Wrap an `attach_mappings` so `on_select(path)` runs after the default action
 ---has opened the file. `enhance` (not `replace`) on purpose: the default action
 ---keeps doing what it does -- multi-select, quickfix, `<C-x>` variants stay
 ---telescope's -- and only the picked entry is read in `pre`, before the picker
----closes. The enhancement lasts for this picker only, like any `attach_mappings`.
+---closes. A multi-selection is not reported: it does not have "the" picked file.
+---telescope drops every `enhance`/`replace` when the NEXT picker opens (not when
+---this one closes, because `post` has to outlive the close), so this one stays
+---registered until then -- harmless, its `chosen` is reset after every report.
 ---@param orig (fun(prompt_bufnr: integer, map: function): boolean|nil)|nil
 ---@param on_select (fun(path: string))|nil
 ---@param cwd string|nil  # Root the entry's relative name is against.
@@ -136,23 +130,21 @@ local function with_on_select(orig, on_select, cwd)
   return function(prompt_bufnr, map)
     local actions = require("telescope.actions")
     local state = require("telescope.actions.state")
+    local report = require("pickers.engines.report")
     local chosen
     actions.select_default:enhance({
       pre = function()
+        chosen = nil
+        local picker = state.get_current_picker(prompt_bufnr)
+        if picker and #picker:get_multi_selection() > 1 then return end
         local entry = state.get_selected_entry()
         local name = entry and (entry.path or entry.filename or entry.value)
-        if type(name) == "string" and name ~= "" then
-          chosen = is_absolute(name) and name or ((cwd or vim.uv.cwd()) .. "/" .. name)
-        end
+        if type(name) == "string" and name ~= "" then chosen = report.absolute(name, cwd) end
       end,
       post = function()
         local path = chosen
         chosen = nil
-        if path then
-          vim.schedule(function()
-            on_select(vim.fs.normalize(path))
-          end)
-        end
+        if path then report.call(on_select, path) end
       end,
     })
     if orig then return orig(prompt_bufnr, map) end
