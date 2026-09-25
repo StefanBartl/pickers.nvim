@@ -17,6 +17,7 @@ the engine underneath. This plugin makes it one grammar instead.
 | **Tabs** | Named groups of `:Pickers` targets cycled from inside a picker with the query carried along (`tab_next`/`tab_prev`, opt-in) |
 | **Browse** | A directory browser on the engine's item picker, with new/rename/delete rows — and fzf-lua's `explorer` |
 | **GitHub** | Issues and pull requests on every engine: snacks natively, telescope and fzf-lua through the `gh` CLI |
+| **filetree.nvim** | `f` / `gr` on a tree node run through this plugin, and the picked file is revealed in the tree — opt-out on both ends |
 
 pickers.nvim consolidates what used to be seven separate picker modules into
 one plugin: a single `:Pickers` command over three interchangeable engines
@@ -50,6 +51,8 @@ appears once, where a reader would look for it.
   just had.
 - **[IMAGES](IMAGES.md)** — png/jpg entries drawn as pictures in the preview
   window, and PDFs as their first page, via images.nvim.
+- **[FILETREE](FILETREE.md)** — filetree.nvim's `f`/`gr` through this plugin, the
+  `on_select` hook that reveals the picked file, and the public entry point.
 
 Reference documentation lives one level up and is not repeated here:
 [`commands.md`](../commands.md) for the full argument grammar,

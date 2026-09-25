@@ -42,6 +42,11 @@ action and native picker completing with `<Tab>`.
 > **[pdfport.nvim](https://github.com/StefanBartl/pdfport.nvim)** — the same
 > for a `.pdf` entry, previewed as its first page.
 >
+> **[filetree.nvim](https://github.com/StefanBartl/filetree.nvim)** — its `f`
+> (find files) and `gr` (grep) on a tree node run through this plugin, and the
+> picked file is revealed in the tree. On by default; either end can opt out
+> ([details](docs/FEATURES/FILETREE.md)).
+>
 > All of the above are soft: without them everything else works unchanged.
 > [lib.nvim](https://github.com/StefanBartl/lib.nvim) and one picker engine are
 > the real dependencies — see [Requirements](docs/installation.md#requirements).
@@ -69,7 +74,7 @@ question each page answers.
 
 ### The Rest
 
-- [Features](docs/FEATURES/README.md) — one page per area: [engines](docs/FEATURES/ENGINES.md), [scopes](docs/FEATURES/SCOPES.md), [actions](docs/FEATURES/ACTIONS.md), [native pickers](docs/FEATURES/BUILTINS.md), [keys](docs/FEATURES/KEYS.md), [UI](docs/FEATURES/UI.md), [persistence](docs/FEATURES/PERSISTENCE.md), [refine](docs/FEATURES/REFINE.md), [images and PDFs](docs/FEATURES/IMAGES.md).
+- [Features](docs/FEATURES/README.md) — one page per area: [engines](docs/FEATURES/ENGINES.md), [scopes](docs/FEATURES/SCOPES.md), [actions](docs/FEATURES/ACTIONS.md), [native pickers](docs/FEATURES/BUILTINS.md), [keys](docs/FEATURES/KEYS.md), [UI](docs/FEATURES/UI.md), [persistence](docs/FEATURES/PERSISTENCE.md), [refine](docs/FEATURES/REFINE.md), [images and PDFs](docs/FEATURES/IMAGES.md), [filetree.nvim](docs/FEATURES/FILETREE.md).
 - [Built-in pickers](docs/builtins.md) — every `:Pickers builtin <name>`, and the per-engine parity matrix.
 - [Collections](docs/collections.md) — user-defined named scopes: what a collection is, and how to define one.
 - [Workflow](docs/WORKFLOW.md) — how scopes, collections and engines combine into a way of working, and the traps table worth reading before you hit one.
