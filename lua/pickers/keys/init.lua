@@ -282,6 +282,11 @@ function M.patch(cfg)
   local resolved = M.resolve(cfg)
   if vim.tbl_isempty(resolved) then return end
 
+  -- Entry actions + snacks keys (create_file, open_background, cheatsheet,
+  -- path_copy, tab groups): merged into each engine's global config, the
+  -- host's own bindings winning on conflict. Snacks is patched there too.
+  require("pickers.entry_actions.patch").patch(cfg)
+
   local when_loaded = require("pickers.engines.when_loaded")
   when_loaded.run("telescope", function()
     require("pickers.keys.adapters.telescope").patch(resolved)

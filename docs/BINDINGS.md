@@ -122,7 +122,7 @@ All of these live in the augroup `"pickers.nvim"` when lib.nvim is present; with
 | `tab_next` | *(off, opt-in)* | patched (a pickers.tabs function) | — (fzf gap: no Lua in `keymap.builtin`) | export only¹ + `keys.snacks_actions()` |
 | `tab_prev` | *(off, opt-in)* | patched (a pickers.tabs function) | — (fzf gap) | export only¹ + `keys.snacks_actions()` |
 
-¹ snacks: pickers.nvim doesn't own `Snacks.setup()`, so nothing is auto-registered there — merge `require("pickers.keys").snacks_win()` into your own `snacks.setup({ picker = { win = ... } })`.
+¹ snacks: pickers.nvim doesn't own `Snacks.setup()`, but snacks reads `Snacks.config.picker` each time a picker opens — so the keys are patched into that table once snacks is loaded (`pickers.entry_actions.patch`), a key you already bound winning. `keys.snacks_win()` stays exported for merging by hand.
 
 ### Quickfix-window keys (`quickfix.keys`)
 
@@ -134,7 +134,7 @@ Buffer-local to a quickfix or location buffer, bound by the `FileType qf` autocm
 | `restore` | `zF` | Put the full list back and clear the stack |
 | `toggle_preview` | `p` | Preview float on/off for the session |
 
-`create_file`/`open_background` run pickers.nvim-specific logic (`lua/pickers/entry_actions/`), not a built-in engine action — merge them into your own engine `setup()` manually via `entry_actions/adapters/{telescope,fzf,snacks}.lua`'s `get_mappings()` (telescope), `get_actions()` (fzf-lua), or `get_actions()` + `get_keys()` + `get_input_keys()` (snacks).
+`create_file`/`open_background`/`cheatsheet`/path-copy run pickers.nvim-specific logic (`lua/pickers/entry_actions/`), not a built-in engine action — they are patched into the engine's global config by `pickers.entry_actions.patch` (telescope `defaults.mappings`, fzf-lua `actions`, snacks `Snacks.config.picker`), your own bindings winning on conflict. `entry_actions/adapters/{telescope,fzf,snacks}.lua`'s `get_*()` stay public for merging by hand.
 
 ---
 

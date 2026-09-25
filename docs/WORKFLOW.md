@@ -217,7 +217,7 @@ rather than one entry per repo.
 | Expecting `mappings` to bind a `dir` nav | Not supported — `dir`'s nav argument doesn't fit the flat `<scope>_<action>` name shape `mappings` resolves against | [keymaps.md](keymaps.md#declarative-mappings-per-entry-engine-override) |
 | Naming a `mappings` entry with an engine that isn't installed | Falls back to your configured default engine — never becomes a dead keymap | [keymaps.md](keymaps.md#declarative-mappings-per-entry-engine-override) |
 | Assuming `result_count` shows up on fzf-lua/snacks | Telescope-only; the other two already show a native position/total counter, so it's skipped there, not broken | [configuration.md](configuration.md#result-count) |
-| Expecting `create_file`/`open_background` to "just work" like the other `keys.*` | They're pickers.nvim-specific logic, not a patched built-in engine action — still require merging the exported adapters into your own engine `setup()` manually | [keymaps.md](keymaps.md#in-picker-keys-preview-scroll--history--entry-actions) |
+| Expecting `create_file`/`open_background` to "just work" like the other `keys.*` | Outdated advice: they used to need merging into your own engine `setup()`; `pickers.entry_actions.patch` now installs them on every engine, your own bindings winning | [keymaps.md](keymaps.md#in-picker-keys-preview-scroll--history--entry-actions) |
 | Running `smart` on fzf-lua with an old fzf binary | Needs fzf ≥ 0.45 for Lua-function live mode — use telescope or snacks instead of debugging a "broken" smart action | [commands.md](commands.md#the-smart-action) |
 
 ## 9. When something feels wrong: `:checkhealth pickers`

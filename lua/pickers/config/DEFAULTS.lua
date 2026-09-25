@@ -93,8 +93,8 @@ local M = {
 
   -- Unified in-picker keys namespace: preview scroll + native history
   -- navigation (patched globally into telescope/fzf-lua/snacks) plus the
-  -- create_file/open_background/cheatsheet entry actions (merged manually
-  -- into your own engine setup() -- see pickers.entry_actions). See pickers.keys.
+  -- create_file/open_background/cheatsheet entry actions (patched in too, your
+  -- own bindings winning -- see pickers.entry_actions.patch). See pickers.keys.
   --   Each action takes a single lhs, a list of lhs, or `false` to unbind it.
   --   fzf-lua only binds the vertical preview scroll and the fixed ctrl-a/
   --   ctrl-o/shift-enter entry actions (horizontal scroll, history, and

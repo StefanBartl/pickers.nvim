@@ -106,8 +106,9 @@ its action table always closes the running fzf process first, so its
 
 ## Usage
 
-Each adapter is meant to be merged into the consuming plugin's own picker
-setup — `pickers.nvim` does not register these itself:
+`pickers.entry_actions.patch` installs all of this automatically (once each
+engine is loaded; your own bindings win on conflict), called from
+`pickers.keys.patch`. Merging by hand is only needed to bypass that:
 
 ```lua
 -- Telescope: merge into defaults.mappings

@@ -30,8 +30,8 @@ for free.
 telescope's multi-select toggle, so the key is the host's choice. They are
 telescope and snacks actions; fzf-lua's `keymap.builtin` cannot run Lua, so
 there the switch is not available (reported by `:checkhealth pickers` like
-the other fzf gaps). For snacks, merge both `keys.snacks_win()` and
-`keys.snacks_actions()` into your own `snacks.setup({ picker = ... })` —
+the other fzf gaps). For snacks, both the win keys and
+`keys.snacks_actions()` are patched into `Snacks.config.picker` for you —
 the win keys name the actions, the actions table holds them.
 
 - **Module:** [`tabs/init.lua`](../../lua/pickers/tabs/init.lua)
