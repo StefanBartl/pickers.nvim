@@ -325,6 +325,25 @@ require("pickers").setup({
 | fzf-lua | `path_shorten = true` passed to `files`/`live_grep` |
 | snacks | no-op — snacks already truncates the displayed path to fit the available column width by default, so there's nothing to opt into |
 
+## Layout switches (`cycle`, `prompt_top`, `preview_wrap`)
+
+Three more cosmetic switches under `display`, each `nil` by default (the engine
+keeps its own behaviour) until you set a boolean. They are patched onto each
+engine's global config, so native pickers (`:FzfLua files`, `:Telescope
+find_files`, …) follow too:
+
+```lua
+require("pickers").setup({
+  display = { cycle = true, prompt_top = true, preview_wrap = false },
+})
+```
+
+| Switch | telescope | fzf-lua | snacks |
+|---|---|---|---|
+| `cycle` | `scroll_strategy` `"cycle"`/`"limit"` | `--cycle` | already cycles — untouched |
+| `prompt_top` | `sorting_strategy` + `layout_config.prompt_position` | `--layout` `reverse`/`default` | layout-dependent — untouched |
+| `preview_wrap` | no option (its previewer always turns wrap off) — untouched | `winopts.preview.wrap` | `win.preview.wo.wrap` |
+
 ---
 
 ## Image previews

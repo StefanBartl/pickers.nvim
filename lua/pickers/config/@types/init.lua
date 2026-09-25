@@ -60,6 +60,9 @@
 --- default, so there is nothing to opt into there.
 ---@class Pickers.DisplayConfig
 ---@field path_shorten? boolean  Default: false
+---@field cycle?        boolean  Wrap around at either end of the list (default: nil = engine default)
+---@field prompt_top?   boolean  Prompt above (true) / below (false) the results (default: nil)
+---@field preview_wrap? boolean  Wrap long lines in the preview (default: nil)
 
 -- ###########################################################################
 -- Image previews (images.nvim, soft dependency)
