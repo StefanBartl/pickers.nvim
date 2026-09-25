@@ -34,7 +34,7 @@ troubleshooting page; those two are it.
 
 | Page | Answers |
 | --- | --- |
-| [FEATURES/](FEATURES/README.md) | One page per area — actions, builtins, engines, images, keys, persistence, refine, scopes, and the UI |
+| [FEATURES/](FEATURES/README.md) | One page per area — actions, builtins, engines, filetree.nvim, images, keys, persistence, refine, scopes, and the UI |
 
 ## Working on it
 
