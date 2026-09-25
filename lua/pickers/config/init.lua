@@ -377,7 +377,7 @@ local TOP_LEVEL_OPTS = {
 -- same as every other nested table below.
 ---@type table<string, string[]>
 local NESTED_OPTS = {
-  find = { "hidden", "no_ignore", "follow", "exclude" },
+  find = { "hidden", "no_ignore", "follow", "exclude", "ignore_list", "native" },
   keymaps = {
     "enable",
     "cwd_files",
@@ -527,6 +527,11 @@ function M.apply(opts)
 
   if type(sanitized.find) == "table" then
     cfg.find = vim.tbl_deep_extend("force", cfg.find, sanitized.find)
+    -- `find.ignore_list`: fold lib.nvim's shared ignore list into the
+    -- excludes, once, so every consumer of cfg.find.exclude sees it.
+    if cfg.find.ignore_list == true then
+      cfg.find.exclude = require("pickers.find_native").with_ignore_list(cfg.find.exclude)
+    end
   end
 
   if type(sanitized.keymaps) == "table" then

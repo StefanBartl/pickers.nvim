@@ -5666,6 +5666,86 @@ do
   package.loaded["fzf-lua"] = prev_fzf
 end
 
+-- ── pickers.find_native — find.exclude onto the native pickers ──────────────
+do
+  local fn = require("pickers.find_native")
+
+  -- with_ignore_list: lib.nvim's names + converted patterns + the host's own,
+  -- deduplicated; a pattern using real Lua magic is dropped, not guessed.
+  local merged = fn.with_ignore_list({ "node_modules", "mine" })
+  local set = {}
+  for _, g in ipairs(merged) do
+    set[g] = (set[g] or 0) + 1
+  end
+  check("find_native.with_ignore_list: keeps the host's own entry", set["mine"] == 1)
+  check("find_native.with_ignore_list: deduplicates", set["node_modules"] == 1)
+  check("find_native.with_ignore_list: a %.ext pattern becomes *.ext", set["*.log"] == 1)
+  check(
+    "find_native.with_ignore_list: no raw %-escapes left",
+    not vim.tbl_contains(merged, "%.log")
+  )
+
+  local prev = {
+    snacks = package.loaded["snacks"],
+    telescope = package.loaded["telescope"],
+    fzf = package.loaded["fzf-lua"],
+    fzf_cfg = package.loaded["fzf-lua.config"],
+    tcfg = package.loaded["telescope.config"],
+  }
+  local ts_seen, fzf_seen
+  package.loaded["telescope"] = {
+    setup = function(o)
+      ts_seen = o
+    end,
+  }
+  package.loaded["telescope.config"] = { values = { file_ignore_patterns = { "^keep$" } } }
+  package.loaded["fzf-lua"] = {
+    setup = function(o)
+      fzf_seen = o
+    end,
+  }
+  package.loaded["fzf-lua.config"] = {
+    globals = { files = { fd_opts = "--type f" }, grep = { rg_opts = "--column" } },
+  }
+  local fake = { config = { picker = { sources = { files = { exclude = { "old" } } } } } }
+  package.loaded["snacks"] = fake
+
+  fn.patch({ find = { exclude = { "node_modules", "*.min.js", "old" }, native = true } })
+  local pats = ts_seen and ts_seen.defaults.file_ignore_patterns or {}
+  check("find_native: telescope keeps the existing pattern", vim.tbl_contains(pats, "^keep$"))
+  check(
+    "find_native: telescope glob escaped to a Lua pattern",
+    vim.tbl_contains(pats, "node_modules")
+  )
+  check("find_native: telescope * becomes .*", vim.tbl_contains(pats, ".*%.min%.js"))
+  check(
+    "find_native: fzf fd_opts gets --exclude",
+    fzf_seen and fzf_seen.files.fd_opts:find("--exclude", 1, true) ~= nil
+  )
+  check(
+    "find_native: fzf rg_opts gets a negated -g",
+    fzf_seen and fzf_seen.grep.rg_opts:find("!", 1, true) ~= nil
+  )
+  local ex = fake.config.picker.sources.files.exclude
+  check(
+    "find_native: snacks files.exclude appended without duplicates",
+    #ex == 3 and ex[1] == "old"
+  )
+  check("find_native: snacks grep.exclude created", #fake.config.picker.sources.grep.exclude == 3)
+
+  -- native = false and an empty list both patch nothing.
+  ts_seen = nil
+  fn.patch({ find = { exclude = { "x" }, native = false } })
+  fn.patch({ find = { exclude = {}, native = true } })
+  check("find_native: native=false / empty exclude patch nothing", ts_seen == nil)
+
+  package.loaded["snacks"] = prev.snacks
+  package.loaded["telescope"] = prev.telescope
+  package.loaded["fzf-lua"] = prev.fzf
+  package.loaded["fzf-lua.config"] = prev.fzf_cfg
+  package.loaded["telescope.config"] = prev.tcfg
+end
+
 -- ── Summary ─────────────────────────────────────────────────────────────────
 print(string.format("\n%d passed, %d failed", passed, failed))
 os.exit(failed == 0 and 0 or 1)

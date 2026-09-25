@@ -46,6 +46,8 @@
 ---@field no_ignore? boolean       Ignore .gitignore / .ignore rules (default: false)
 ---@field follow?    boolean       Follow symlinks (default: true)
 ---@field exclude?   string[]|nil  Extra glob patterns to exclude (default: nil)
+---@field ignore_list? boolean     Also exclude lib.nvim's shared ignore list (default: false)
+---@field native?    boolean       Apply `exclude` to the engines' native pickers too (default: true)
 
 -- ###########################################################################
 -- Display (cosmetic, optional)

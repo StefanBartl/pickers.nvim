@@ -45,6 +45,11 @@ require("pickers").setup({
     -- Honoured by telescope, fzf-lua, and snacks.nvim, for BOTH the file
     -- listing and live grep (as rg -g '!<glob>'), and by the smart action's
     -- own fd/rg calls.
+    ignore_list = false, -- true: also exclude lib.nvim's shared ignore list
+                         -- (lib.nvim.fs.ignore.list), merged into `exclude`
+    native      = true,  -- also apply `exclude` to the engines' NATIVE pickers
+                         -- (:FzfLua files/grep, :Telescope find_files/live_grep,
+                         -- Snacks.picker files/grep); no-op while `exclude` is empty
   },
 
   keymaps = {

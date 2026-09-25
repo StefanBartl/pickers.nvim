@@ -85,6 +85,15 @@ local M = {
     no_ignore = false,
     follow = true,
     exclude = nil,
+    -- Opt-in: also exclude lib.nvim's shared ignore list (lib.nvim.fs.ignore.
+    -- list: .git, node_modules, build, dist, *.log, ...) -- one list for every
+    -- engine instead of one hand-kept copy per engine config.
+    ignore_list = false,
+    -- Apply `exclude` to the engines' NATIVE pickers too (:FzfLua files/grep,
+    -- :Telescope find_files/live_grep, Snacks.picker files/grep), not only to
+    -- the calls pickers.nvim makes itself. A no-op while `exclude` is empty;
+    -- false keeps the engines' own config untouched. See pickers.find_native.
+    native = true,
   },
 
   usercmds = {
