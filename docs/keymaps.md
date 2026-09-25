@@ -77,6 +77,16 @@ require("pickers").setup({
 })
 ```
 
+The lhs may be a list, and an entry may carry `desc` (the which-key text) and
+`nowait`:
+
+```lua
+mappings = {
+  recent         = { { "<leader>fo", "<leader>old" }, desc = "Recent files" },
+  lsp_references = { "GR", nowait = true },
+}
+```
+
 ### Name resolution
 
 | Name shape | Dispatches to |

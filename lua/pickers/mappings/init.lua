@@ -25,6 +25,10 @@
 ---     grep_cwd   = { "<leader>gr" },               -- active/default engine
 ---     explorer   = { "<leader>.",  "snacks" },     -- always snacks
 ---   }
+--- `lhs` may be a list to bind several keys to one picker, and an entry may
+--- carry `desc` (the which-key text) and `nowait`:
+---   recent = { { "<leader>fo", "<leader>old" }, desc = "Recent files" }
+---   lsp_references = { "GR", nowait = true }
 --- An engine named but not installed falls back to the configured default
 --- (never a dead keymap): builtins reuse `pickers.engines.load()`'s own
 --- fallback-to-auto-detect logic (resolved once here, since
@@ -78,6 +82,19 @@ local function scope_exists(scope)
   return false
 end
 
+---One lhs string, or a non-empty list of them, as a list; nil when malformed.
+---@internal
+---@param v any
+---@return string[]|nil
+local function normalise_lhs(v)
+  if type(v) == "string" then return v ~= "" and { v } or nil end
+  if type(v) ~= "table" or #v == 0 then return nil end
+  for _, x in ipairs(v) do
+    if type(x) ~= "string" or x == "" then return nil end
+  end
+  return v
+end
+
 ---Register every `cfg.mappings` entry as a normal-mode keymap. No-op when
 ---`cfg.mappings` is unset/empty. Unresolvable names/malformed entries are
 ---skipped with a warning, never a dead or throwing keymap.
@@ -87,25 +104,36 @@ function M.apply(cfg)
   if type(raw) ~= "table" then return end
 
   for name, spec in pairs(raw) do
-    if type(spec) ~= "table" or type(spec[1]) ~= "string" or spec[1] == "" then
+    local lhs_list = type(spec) == "table" and normalise_lhs(spec[1]) or nil
+    if not lhs_list then
       notify.warn(
-        "mappings." .. tostring(name) .. ": expected { lhs, engine? }, got " .. vim.inspect(spec)
+        "mappings."
+          .. tostring(name)
+          .. ": expected { lhs|{lhs...}, engine? }, got "
+          .. vim.inspect(spec)
       )
     else
-      local lhs = spec[1]
       local engine = type(spec[2]) == "string" and spec[2] or nil
       local kind, scope, action = M.classify(name)
+      local map_opts = {
+        desc = type(spec.desc) == "string" and spec.desc or ("[pickers] mapping: " .. name),
+        nowait = spec.nowait == true or nil,
+      }
 
       if kind == "builtin" then
-        vim.keymap.set("n", lhs, function()
-          local _, resolved = require("pickers.engines").load(engine)
-          require("pickers.builtins").run(name, nil, resolved)
-        end, { desc = "[pickers] mapping: " .. name })
+        for _, lhs in ipairs(lhs_list) do
+          vim.keymap.set("n", lhs, function()
+            local _, resolved = require("pickers.engines").load(engine)
+            require("pickers.builtins").run(name, nil, resolved)
+          end, map_opts)
+        end
       elseif (kind == "scope_action" or kind == "find_all") and scope and scope_exists(scope) then
         local fargs = (kind == "find_all") and { scope, "files", "all" } or { scope, action }
-        vim.keymap.set("n", lhs, function()
-          require("pickers.command").handle({ fargs = fargs, engine = engine })
-        end, { desc = "[pickers] mapping: " .. name })
+        for _, lhs in ipairs(lhs_list) do
+          vim.keymap.set("n", lhs, function()
+            require("pickers.command").handle({ fargs = fargs, engine = engine })
+          end, map_opts)
+        end
       else
         notify.warn(
           "mappings."

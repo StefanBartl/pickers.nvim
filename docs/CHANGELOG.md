@@ -10,6 +10,12 @@ a changelog.
 
 ---
 
+[x] **`mappings`: several lhs per entry, `desc`, `nowait`.**
+  `recent = { { "<leader>fo", "<leader>old" }, desc = "Recent files" }`. A list with an
+  empty or non-string element is rejected as a whole (warning, nothing bound).
+  What lets a host move every `builtin(...)`/`scope_action(...)` keymap it kept in
+  its own plugin spec into `setup({ mappings = ... })`.
+
 [x] **Fix: fzf-lua entry actions were patched onto the wrong table.**
   fzf-lua groups its global actions per provider; the entry actions went into a flat
   top-level `actions`, which no picker reads, so `:FzfLua files` never got
