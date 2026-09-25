@@ -110,8 +110,8 @@ something else has already loaded the plugin.
 
 By default pickers.nvim only *detects* whichever engine you already declared
 and configured yourself (the spec above). It never calls `Snacks.setup()` at
-all — there is no patch mechanism for snacks; see `keys.snacks_win()` in
-docs/keymaps.md for the export-and-merge-yourself model it uses instead. For
+all — it patches `Snacks.config.picker` instead (keys and entry actions, your
+own bindings winning; see docs/keymaps.md). For
 telescope and fzf-lua it stops short of full ownership too, but not all the
 way to "never calls setup()": the opt-in key/history patches
 (`keys.enable`/`history.enabled`, on and off by default respectively — see

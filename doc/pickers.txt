@@ -121,8 +121,8 @@ A fuller spec -- the complete key list is |pickers-config|: >lua
 
 Optional engine ownership + auto-install~
   By default pickers.nvim only detects whichever engine you already
-  declared/configured yourself.  It never calls Snacks.setup() at all (no
-  patch mechanism for snacks; see keys.snacks_win()).  For telescope/fzf-lua
+  declared/configured yourself.  It never calls Snacks.setup() at all (it patches
+  Snacks.config.picker instead).  For telescope/fzf-lua
   it stops short of full ownership too, but not all the way to "never calls
   setup()": the opt-in key/history patches call telescope.setup()/
   fzf-lua's setup() a second time, deep-merging in rather than replacing
@@ -386,18 +386,12 @@ In-picker keys (preview scroll + history + entry actions)~
 <
   telescope and fzf-lua are patched globally (`defaults.mappings` /
   `keymap.builtin`) — every picker they open, pickers.nvim's own and native
-  builtins alike, inherits the keys.  snacks cannot be self-patched
-  (pickers.nvim does not own `Snacks.setup()`); merge the exported `win`
-  table into your own setup: >lua
-    require("snacks").setup({
-      picker = { win = require("pickers.keys").snacks_win() },
-    })
-<
+  builtins alike, inherits the keys.  snacks is patched too, via
+  `Snacks.config.picker` (read live on every picker open).
   `create_file`/`open_background`/`cheatsheet` (the in-picker entry actions)
-  are the exception: they are NOT patched globally, since they run
-  pickers.nvim logic rather than a built-in engine action — merge
-  lua/pickers/entry_actions/'s adapters into your own setup() manually, as
-  documented there.
+  are installed the same way by pickers.entry_actions.patch; a key or
+  action you already bound always wins.  keys.snacks_win() and the adapters'
+  get_*() stay exported for merging by hand.
 
   `preview_toggle` is opt-in (false/unbound by default) and telescope-only:
   fzf-lua already binds toggle-preview on <F4>, snacks on <A-p>, both

@@ -5628,6 +5628,44 @@ do
   package.loaded["pickers.engines.snacks"] = prev.snacks
 end
 
+-- ── pickers.entry_actions.patch — engines patched, host config wins ────────
+do
+  local prev_snacks = package.loaded["snacks"]
+  local prev_telescope = package.loaded["telescope"]
+  local prev_fzf = package.loaded["fzf-lua"]
+
+  -- snacks: Snacks.config.picker is read live by snacks, so it is patched in
+  -- place; a key the host already bound is kept, the rest is filled in.
+  local fake_snacks =
+    { config = { picker = { win = { list = { keys = { ["<C-a>"] = "mine" } } } } } }
+  package.loaded["snacks"] = fake_snacks
+  package.loaded["telescope"] = { setup = function() end }
+  package.loaded["fzf-lua"] = nil
+  local ok_patch =
+    pcall(require("pickers.entry_actions.patch").patch, require("pickers.config").get())
+  check("entry_actions.patch: does not throw", ok_patch)
+  local picker = fake_snacks.config.picker
+  check(
+    "entry_actions.patch: snacks actions filled in",
+    type(picker.actions) == "table" and picker.actions.create_file ~= nil
+  )
+  check("entry_actions.patch: snacks host-bound key wins", picker.win.list.keys["<C-a>"] == "mine")
+  check(
+    "entry_actions.patch: snacks input keys filled in",
+    type(picker.win.input.keys) == "table" and next(picker.win.input.keys) ~= nil
+  )
+
+  -- keys.enable = false: nothing is patched.
+  local off = { config = { picker = {} } }
+  package.loaded["snacks"] = off
+  require("pickers.entry_actions.patch").patch({ keys = { enable = false } })
+  check("entry_actions.patch: keys.enable=false patches nothing", next(off.config.picker) == nil)
+
+  package.loaded["snacks"] = prev_snacks
+  package.loaded["telescope"] = prev_telescope
+  package.loaded["fzf-lua"] = prev_fzf
+end
+
 -- ── Summary ─────────────────────────────────────────────────────────────────
 print(string.format("\n%d passed, %d failed", passed, failed))
 os.exit(failed == 0 and 0 or 1)

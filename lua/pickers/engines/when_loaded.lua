@@ -35,6 +35,7 @@ local M = {}
 local PLUGIN_NAMES = {
   telescope = "telescope.nvim",
   ["fzf-lua"] = "fzf-lua",
+  snacks = "snacks.nvim",
 }
 
 ---Run `fn` once `module` is loaded (or right away if it already is).

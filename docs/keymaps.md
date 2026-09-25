@@ -213,8 +213,8 @@ searches for a literal question mark, and Neovim resolves `<C-?>` to the same
 byte (`0x7F`/`DEL`) that Backspace sends in many terminals, so binding it
 would open the cheatsheet on every backspace instead. Like
 `create_file`/`open_background`, this runs pickers.nvim-specific logic
-(`pickers.cheatsheet`), so it's merged into your own engine `setup()` the same
-way — see `lua/pickers/entry_actions/README.md`. fzf-lua's binding is fixed to
+(`pickers.cheatsheet`), so it is patched into the engine the same
+way as the other entry actions — see `lua/pickers/entry_actions/README.md`. fzf-lua's binding is fixed to
 `f1`, same class as its `ctrl-a`/`ctrl-o`/`shift-enter`.
 
 The key itself is visible without pressing anything: telescope's
@@ -273,17 +273,15 @@ require("pickers").setup({ keys = { enable = false } })
 
 ### Installation across engines
 
-`setup()` patches telescope and fzf-lua globally (`defaults.mappings` /
-`keymap.builtin`), so every picker they open — pickers.nvim's own and native
-builtins alike — inherits the keys. snacks cannot be self-patched (pickers.nvim
-does not own `Snacks.setup()`), so merge the exported `win` table into your own
-snacks setup:
+`setup()` patches telescope, fzf-lua and snacks globally (`defaults.mappings` /
+`keymap.builtin` / `Snacks.config.picker`), so every picker they open —
+pickers.nvim's own and native builtins alike — inherits the keys and the entry
+actions (`create_file`, `open_background`, cheatsheet, path copy). Each engine is
+patched once it is loaded, and a key or action you already bound is never
+overwritten. pickers.nvim does not own `Snacks.setup()`, but snacks reads
+`Snacks.config.picker` each time a picker opens, so patching it works before or
+after your own setup.
 
-```lua
-require("snacks").setup({
-  picker = { win = require("pickers.keys").snacks_win() },
-})
-```
-
-`keys.telescope_mappings()` and `keys.fzf_keymap()` are exported too, for wiring
-into your own engine `setup()` calls manually instead of relying on the patch.
+`keys.snacks_win()`, `keys.telescope_mappings()` and `keys.fzf_keymap()` (and the
+entry-action adapters' `get_*()`) stay exported, for wiring into your own engine
+`setup()` calls manually instead of relying on the patch.

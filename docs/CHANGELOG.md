@@ -10,6 +10,17 @@ a changelog.
 
 ---
 
+[x] **Entry actions and snacks keys are patched in, not merged by hand.**
+  `pickers.entry_actions.patch` (called from `keys.patch`, gated by
+  `keys.enable`) installs create_file / open_background / cheatsheet /
+  path_copy on every engine once it is loaded: telescope `defaults.mappings`,
+  fzf-lua global `actions`, and — new — snacks, through `Snacks.config.picker`
+  (read live by snacks on each open, so before/after `Snacks.setup()` both
+  work), together with the preview-scroll/history `win` keys and the tab
+  actions. A key or action the host already bound is kept. The adapters'
+  `get_*()` and `keys.snacks_win()` stay public. Makes the per-engine glue
+  modules in a host config (`config/{fzf,snacks,telescope}`) unnecessary.
+
 [x] **`on_select(path)` for `pick_files`: report the picked file after the engine
   opened it.** filetree's `f` used to reveal the chosen file in the tree through
   its own telescope `<CR>`; through pickers.nvim that was lost, and the engines
