@@ -75,7 +75,7 @@ end
 
 ---Find files under `dir`.
 ---@param dir string
----@param opts? { query?: string }
+---@param opts? { query?: string, on_select?: fun(path: string) }  # `on_select`: called with the absolute path of the file that was picked, after the engine opened it.
 ---@return boolean handled  # false when disabled or no engine is installed.
 function M.files(dir, opts)
   if not usable_dir(dir) or not M.available() then return false end
@@ -85,6 +85,7 @@ function M.files(dir, opts)
   if not eng then return false end
   opts = opts or {}
   local source = source_for(dir, "Files", opts.query)
+  if type(opts.on_select) == "function" then source.on_select = opts.on_select end
   require("pickers.last").set("files", source)
   require("pickers.actions.files").run(source, eng)
   return true

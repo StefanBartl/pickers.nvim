@@ -5234,6 +5234,187 @@ do
   vim.g.pickers_nvim_setup_called = prev_setup_called
 end
 
+-- ── on_select: report the picked file after the engine opened it ────────────────
+-- pick_files(opts.on_select) is for callers that pass a pick_root themselves
+-- (filetree.nvim reveals the file in its tree). Each engine keeps its own default
+-- action and reports the pick after it; the three are checked against stubs of
+-- the plugin they wrap, which is where the hook points live.
+do
+  local prev = {
+    ["fzf-lua"] = package.loaded["fzf-lua"],
+    ["fzf-lua.path"] = package.loaded["fzf-lua.path"],
+    ["telescope.builtin"] = package.loaded["telescope.builtin"],
+    ["telescope.actions"] = package.loaded["telescope.actions"],
+    ["telescope.actions.state"] = package.loaded["telescope.actions.state"],
+    ["snacks.picker"] = package.loaded["snacks.picker"],
+    ["snacks.picker.util"] = package.loaded["snacks.picker.util"],
+    ["snacks.picker.actions"] = package.loaded["snacks.picker.actions"],
+  }
+  local pick_root = vim.fs.normalize(vim.fn.tempname())
+  local reported
+
+  local function on_select(path)
+    reported = path
+  end
+
+  -- actions.files forwards the callback, and only that: the engine gets the
+  -- same table a source carries.
+  local engine_seen
+  require("pickers.actions.files").run(
+    { roots = { pick_root }, prompt = "P", on_select = on_select },
+    {
+      pick_files = function(o)
+        engine_seen = o
+      end,
+    }
+  )
+  check("on_select/actions.files: forwarded to the engine", engine_seen.on_select == on_select)
+  require("pickers.actions.files").run({ roots = { pick_root }, prompt = "P" }, {
+    pick_files = function(o)
+      engine_seen = o
+    end,
+  })
+  check("on_select/actions.files: absent stays absent", engine_seen.on_select == nil)
+
+  -- fzf-lua: the default action opens through fzf-lua's own, then reports.
+  local opened
+  local got
+  package.loaded["fzf-lua"] = {
+    files = function(o)
+      got = o
+    end,
+    actions = {
+      file_edit_or_qf = function(selected)
+        opened = selected
+      end,
+    },
+  }
+  package.loaded["fzf-lua.path"] = {
+    entry_to_file = function(entry)
+      return { path = entry:gsub("^%S+ ", "") } -- drops the icon column
+    end,
+  }
+  package.loaded["pickers.engines.fzf"] = nil
+  local fzf_engine = require("pickers.engines.fzf")
+  fzf_engine.pick_files({ roots = { pick_root }, prompt = "P", find = {}, on_select = on_select })
+  check("on_select/fzf: sets a default action", got and type(got.actions.default) == "function")
+  reported = nil
+  got.actions.default({ "X sub/a.lua" }, { cwd = pick_root })
+  vim.wait(200, function()
+    return reported ~= nil
+  end)
+  check("on_select/fzf: opens through fzf-lua's own action", opened and opened[1] == "X sub/a.lua")
+  check("on_select/fzf: reports the absolute path", reported == pick_root .. "/sub/a.lua", reported)
+  reported = nil
+  got.actions.default({ "X a.lua", "X b.lua" }, { cwd = pick_root })
+  vim.wait(50)
+  check("on_select/fzf: a multi-selection is not reported", reported == nil)
+  fzf_engine.pick_files({ roots = { pick_root }, prompt = "P", find = {} })
+  check("on_select/fzf: no callback -> no actions override", got.actions == nil)
+
+  -- telescope: `select_default` is enhanced, the entry read in `pre`, reported in `post`.
+  local enhanced
+  local entry = { path = pick_root .. "/t.lua" }
+  package.loaded["telescope.builtin"] = {
+    find_files = function(o)
+      got = o
+    end,
+  }
+  package.loaded["telescope.actions"] = {
+    select_default = {
+      enhance = function(_, spec)
+        enhanced = spec
+      end,
+    },
+  }
+  package.loaded["telescope.actions.state"] = {
+    get_selected_entry = function()
+      return entry
+    end,
+  }
+  package.loaded["pickers.engines.telescope"] = nil
+  local tel_engine = require("pickers.engines.telescope")
+  tel_engine.pick_files({ roots = { pick_root }, prompt = "P", find = {}, on_select = on_select })
+  check("on_select/telescope: attach_mappings is set", type(got.attach_mappings) == "function")
+  check(
+    "on_select/telescope: attach_mappings keeps the picker open",
+    got.attach_mappings(1, function() end) == true
+  )
+  reported = nil
+  enhanced.pre()
+  enhanced.post()
+  vim.wait(200, function()
+    return reported ~= nil
+  end)
+  check(
+    "on_select/telescope: reports the entry's path",
+    reported == pick_root .. "/t.lua",
+    reported
+  )
+  entry = { value = "rel/x.lua" }
+  reported = nil
+  enhanced.pre()
+  enhanced.post()
+  vim.wait(200, function()
+    return reported ~= nil
+  end)
+  check(
+    "on_select/telescope: a relative entry is joined to the pick_root",
+    reported == pick_root .. "/rel/x.lua",
+    reported
+  )
+  reported = nil
+  enhanced.post() -- nothing was chosen since: no report
+  vim.wait(50)
+  check("on_select/telescope: reports once per pick", reported == nil)
+
+  -- snacks: `confirm` runs snacks' own jump, then reports.
+  local jumped
+  package.loaded["snacks.picker"] = {
+    files = function(o)
+      got = o
+    end,
+  }
+  package.loaded["snacks.picker.util"] = {
+    path = function(item)
+      return item and item.file
+    end,
+  }
+  package.loaded["snacks.picker.actions"] = {
+    jump = function()
+      jumped = true
+    end,
+  }
+  package.loaded["pickers.engines.snacks"] = nil
+  local snacks_engine = require("pickers.engines.snacks")
+  snacks_engine.pick_files({ roots = { pick_root }, prompt = "P", find = {}, on_select = on_select })
+  check("on_select/snacks: sets a confirm", type(got.confirm) == "function")
+  reported = nil
+  got.confirm({
+    selected = function()
+      return { { file = pick_root .. "/s.lua" } }
+    end,
+  }, nil, {})
+  vim.wait(200, function()
+    return reported ~= nil
+  end)
+  check("on_select/snacks: runs snacks' own jump first", jumped == true)
+  check(
+    "on_select/snacks: reports the picked item's path",
+    reported == pick_root .. "/s.lua",
+    reported
+  )
+  snacks_engine.pick_files({ roots = { pick_root }, prompt = "P", find = {} })
+  check("on_select/snacks: no callback -> snacks' own confirm stays", got.confirm == nil)
+
+  for k, v in pairs(prev) do
+    package.loaded[k] = v
+  end
+  package.loaded["pickers.engines.fzf"] = nil
+  package.loaded["pickers.engines.telescope"] = nil
+  package.loaded["pickers.engines.snacks"] = nil
+end
+
 -- ── pickers.integrations.filetree — dir-scoped files / grep for filetree.nvim ──
 -- Engine and actions are stubbed: what is under test is the switch, the root the
 -- source carries, and that a refusal is a clean `false` the caller can fall back on.
@@ -5285,6 +5466,14 @@ do
     vim.deep_equal(seen.files.source.roots, { dir })
   )
   check("integrations.filetree: files() seeds the query", seen.files.source.query == "q")
+  local cb = function() end
+  ft.files(dir, { on_select = cb })
+  check(
+    "integrations.filetree: files() carries on_select on the source",
+    seen.files.source.on_select == cb
+  )
+  ft.files(dir, {})
+  check("integrations.filetree: no on_select stays absent", seen.files.source.on_select == nil)
   check(
     "integrations.filetree: grep() forwards extra args",
     ft.grep(dir, { extra_args = { "--glob=!x" } })

@@ -22,6 +22,7 @@
 ---@field find_command   string[]|nil  Custom fd/find command (system scope)
 ---@field additional_args string[]|nil Extra rg/fzf-lua args (drives scope)
 ---@field find           Pickers.FindOpts|nil  Per-collection find override (files action only); merged over cfg.find, not replacing it
+---@field on_select      fun(path: string)|nil  files action only: see `Pickers.EngineOpts.on_select`. Set by callers that pass a root themselves (`pickers.integrations.filetree`), never by a scope
 ---@field query          string|nil    Initial prompt text; set by `:Pickers ... ` callers that carry one (pickers.tabs)
 
 -- ###########################################################################

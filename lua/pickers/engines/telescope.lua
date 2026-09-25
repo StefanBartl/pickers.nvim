@@ -112,6 +112,54 @@ function M.available()
   return ok
 end
 
+---@internal
+---Whether `path` is absolute (POSIX root or a Windows drive).
+---@param path string
+---@return boolean
+local function is_absolute(path)
+  local first = path:sub(1, 1)
+  return first == "/" or first == "\\" or path:match("^%a:[/\\]") ~= nil
+end
+
+---@internal
+---Wrap an `attach_mappings` so `on_select(path)` runs after the default action
+---has opened the file. `enhance` (not `replace`) on purpose: the default action
+---keeps doing what it does -- multi-select, quickfix, `<C-x>` variants stay
+---telescope's -- and only the picked entry is read in `pre`, before the picker
+---closes. The enhancement lasts for this picker only, like any `attach_mappings`.
+---@param orig (fun(prompt_bufnr: integer, map: function): boolean|nil)|nil
+---@param on_select (fun(path: string))|nil
+---@param cwd string|nil  # Root the entry's relative name is against.
+---@return (fun(prompt_bufnr: integer, map: function): boolean|nil)|nil
+local function with_on_select(orig, on_select, cwd)
+  if type(on_select) ~= "function" then return orig end
+  return function(prompt_bufnr, map)
+    local actions = require("telescope.actions")
+    local state = require("telescope.actions.state")
+    local chosen
+    actions.select_default:enhance({
+      pre = function()
+        local entry = state.get_selected_entry()
+        local name = entry and (entry.path or entry.filename or entry.value)
+        if type(name) == "string" and name ~= "" then
+          chosen = is_absolute(name) and name or ((cwd or vim.uv.cwd()) .. "/" .. name)
+        end
+      end,
+      post = function()
+        local path = chosen
+        chosen = nil
+        if path then
+          vim.schedule(function()
+            on_select(vim.fs.normalize(path))
+          end)
+        end
+      end,
+    })
+    if orig then return orig(prompt_bufnr, map) end
+    return true
+  end
+end
+
 ---@param opts Pickers.EngineOpts
 function M.pick_files(opts)
   local ok, builtin = pcall(require, "telescope.builtin")
@@ -145,7 +193,11 @@ function M.pick_files(opts)
     end
   end
 
-  call_opts.attach_mappings = require("pickers.result_count").wrap_attach_mappings(nil)
+  call_opts.attach_mappings = with_on_select(
+    require("pickers.result_count").wrap_attach_mappings(nil),
+    opts.on_select,
+    call_opts.cwd
+  )
   call_opts.history = history_opts()
   call_opts.path_display = path_display_opts()
   -- nil leaves find_files' own default previewer in place: `pickers.new(opts,

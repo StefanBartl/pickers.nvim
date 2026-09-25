@@ -67,6 +67,25 @@ local function preview_fn()
   return require("pickers.integrations.images.adapters.snacks").preview_fn()
 end
 
+---A `confirm` that does what snacks' own does (`actions.jump`: close, open, jump)
+---and then reports the picked file. The item is read before the jump because a
+---closing picker no longer answers `selected()`; the report is scheduled because
+---`jump` re-schedules itself once when confirmed from insert mode.
+---@internal
+---@param on_select (fun(path: string))|nil
+---@return (fun(picker: table, item: table, action: table))|nil
+local function confirm_with(on_select)
+  if type(on_select) ~= "function" then return nil end
+  return function(picker, item, action)
+    local items = picker:selected({ fallback = true })
+    local target = require("snacks.picker.util").path(items[1] or item)
+    require("snacks.picker.actions").jump(picker, item, action)
+    if target then vim.schedule(function()
+      on_select(target)
+    end) end
+  end
+end
+
 -- ── Public engine interface ───────────────────────────────────────────────────
 
 ---@return boolean
@@ -91,6 +110,7 @@ function M.pick_files(opts)
       source = "files",
       title = opts.prompt,
       preview = preview_fn(),
+      confirm = confirm_with(opts.on_select),
       finder = function(_, ctx)
         return require("snacks.picker.source.proc").proc(
           ctx:opts({
@@ -117,6 +137,7 @@ function M.pick_files(opts)
     follow = f.follow,
     exclude = f.exclude,
     preview = preview_fn(),
+    confirm = confirm_with(opts.on_select),
   }
 
   if #opts.roots > 1 then
