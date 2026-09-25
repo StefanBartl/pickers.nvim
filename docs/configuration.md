@@ -145,6 +145,13 @@ require("pickers").setup({
   images = {
     enabled = true,
   },
+
+  -- filetree.nvim's `f` / `gr` run through this plugin when it is installed.
+  -- On by default; false makes filetree fall back to its own backends.
+  -- See "filetree.nvim integration".
+  filetree = {
+    enabled = true,
+  },
 })
 ```
 
@@ -355,6 +362,31 @@ separately whether PDF pages can be rasterized.
 
 Full details, and why each engine draws the line where it does, in
 [FEATURES/IMAGES.md](FEATURES/IMAGES.md).
+
+## filetree.nvim integration
+
+With [filetree.nvim](https://github.com/StefanBartl/filetree.nvim) installed,
+its `f` (find files) and `gr` (grep) on a tree node, and `tf` / `tg` which force
+this plugin, hand the node's directory to pickers.nvim. Engine choice, `find.*`
+flags and entry actions are then the ones the rest of your setup uses. Nothing
+needs wiring on either side, and **it is on by default**.
+
+Either end can switch it off; filetree then falls back to its own backends
+(telescope, fzf-lua, ...):
+
+```lua
+require("pickers").setup({
+  filetree = { enabled = false },   -- do not let filetree.nvim drive pickers.nvim
+})
+-- and, on filetree.nvim's side:
+require("filetree").setup({ integrations = { pickers = false } })
+```
+
+The entry point is `require("pickers.integrations.filetree")`:
+`files(dir, { query })` and `grep(dir, { query, extra_args })`, both returning
+`false` when disabled or when no engine is installed.
+
+---
 
 ## Quickfix
 

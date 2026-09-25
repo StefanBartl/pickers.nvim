@@ -358,6 +358,7 @@ local TOP_LEVEL_OPTS = {
   "smart",
   "display",
   "images",
+  "filetree",
   "tabs",
   "quickfix",
   -- Removed keys: kept "known" here so opts.selected_index/experimental reach
@@ -429,6 +430,7 @@ local NESTED_OPTS = {
   ["smart.frecency"] = { "enabled", "weight", "dir" },
   display = { "path_shorten" },
   images = { "enabled" },
+  filetree = { "enabled" },
   tabs = { "groups" }, -- "groups"' own keys are user-named group names, not validated
   quickfix = { "enabled", "preview", "keys" },
   ["quickfix.preview"] = { "enabled", "height", "context", "border", "delay_ms" },
@@ -581,6 +583,12 @@ function M.apply(opts)
   if type(sanitized.images) == "table" then
     if type(sanitized.images.enabled) == "boolean" then
       cfg.images.enabled = sanitized.images.enabled
+    end
+  end
+
+  if type(sanitized.filetree) == "table" then
+    if type(sanitized.filetree.enabled) == "boolean" then
+      cfg.filetree.enabled = sanitized.filetree.enabled
     end
   end
 
