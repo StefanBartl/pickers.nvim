@@ -10,6 +10,29 @@ a changelog.
 
 ---
 
+[x] **One `setup()` per engine: the engine patcher.** Keys, entry actions, history,
+  `find.exclude`, `display.*` and the PDF text preview each called the engine's
+  `setup()` on their own -- up to five `telescope.setup()` and four `fzf-lua.setup()`
+  at the moment the engine loaded, each re-reading what the previous one had just
+  written (LUA-90). They now only *contribute* (`contribute(cfg) -> { [engine] =
+  fun(current) }`); `pickers.engines.patcher` takes one snapshot of the engine's
+  config, collects the parts, deep-merges them in a fixed order and applies them
+  with a single call (snacks: one merge into `Snacks.config.picker`). Contributions
+  fold the host's own values in, so the host still wins; one that throws is reported
+  and skipped. `bindings.setup` installs everything together; `keys.patch`,
+  `history.patch`, `find_native.patch`, ... stay as thin single-contributor installs.
+  `pickers.setup` no longer patches history separately -- the history contribution
+  is gated on `history.enabled` inside the patcher. An engine that is already loaded
+  is patched at once even when an earlier waiter never fired.
+
+[x] **`when_loaded` without lazy.nvim no longer loads the engine.** The fallback was a
+  `vim.schedule`, which `require`d telescope/fzf-lua/snacks at startup -- the load
+  cost the module exists to avoid. It is now a one-shot searcher hook: the patch runs,
+  scheduled, after the first `require` of the engine returns (after the host's own
+  `setup()` in that chunk), and never if the engine is never required. The hook
+  resolves the real loader itself: LuaJIT parks a sentinel in `package.loaded` while a
+  loader runs, so a nested `require` of the same module would fail.
+
 [x] **Fix: telescope excludes no longer match as substrings.** The first `find_native`
   wrote the globs into `file_ignore_patterns`, which telescope applies with
   `string.find` -- as substrings -- to every result: `out` hid `layout.lua` and

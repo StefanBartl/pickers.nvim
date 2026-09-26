@@ -37,6 +37,11 @@ means.
 - **An engine is required lazily.** `engines/when_loaded.lua` exists so that
   nothing pulls telescope, fzf-lua or snacks into startup. Resolve at call
   time, not at `setup()`.
+- **One `setup()` per engine.** A feature that has to reach an engine's global
+  config does not call the engine's `setup()` itself: it exposes
+  `contribute(cfg)` and is listed in `engines/patcher.lua`'s `CONTRIBUTORS`.
+  The contribution reads the engine's current values from the snapshot it is
+  given and folds the host's own in, so the host wins.
 - **A missing CLI tool costs one source.** `rg`, `fd` and `fzf` are detected at
   runtime; without them the sources that need them say so and the rest keeps
   working. Declare a new one in [`install.json`](install.json) and report it in
@@ -58,7 +63,7 @@ means.
 | `lua/pickers/sources/` | One file per scope: cwd, config, folder, repos, system, drives, collection |
 | `lua/pickers/actions/` | `files`, `grep`, `smart`, and `dir` navigation |
 | `lua/pickers/builtins/` | The `:Pickers builtin <name>` registry over the engines' own pickers |
-| `lua/pickers/engines/` | `telescope.lua`, `fzf.lua`, `snacks.lua`, and `when_loaded.lua` — the lazy resolution |
+| `lua/pickers/engines/` | `telescope.lua`, `fzf.lua`, `snacks.lua`, `when_loaded.lua` — the lazy resolution — and `patcher.lua`, the one-call-per-engine global patch |
 | `lua/pickers/entry_actions/`, `mappings/`, `keys/` | What a key does to an entry, and where the keys are registered |
 | `lua/pickers/refine/`, `smart/`, `result_count/` | Narrowing a result set, the ranked merge, and the count in the prompt |
 | `lua/pickers/history/` | Persistence across sessions |

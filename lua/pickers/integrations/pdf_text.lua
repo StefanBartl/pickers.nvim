@@ -39,17 +39,17 @@ local function pdfport()
 end
 
 ---@param cfg Pickers.Config|nil
-function M.patch(cfg)
+---@return table<string, fun(current: table): table|nil>
+function M.contribute(cfg)
   cfg = cfg or require("pickers.config").get()
-  if cfg.images and cfg.images.pdf_text == false then return end
+  if cfg.images and cfg.images.pdf_text == false then return {} end
 
-  require("pickers.engines.when_loaded").run("telescope", function()
-    if not pcall(require, "telescope") then return end
-    pcall(function()
-      local preview = (require("telescope.config").values or {}).preview
+  return {
+    telescope = function(current)
+      local preview = (current.defaults or {}).preview
       preview = type(preview) == "table" and preview or {}
       local existing = preview.filetype_hook
-      if existing ~= nil and existing == installed then return end
+      if existing ~= nil and existing == installed then return nil end
 
       installed = function(filepath, bufnr, opts)
         if type(existing) == "function" then
@@ -63,11 +63,18 @@ function M.patch(cfg)
         return pdf.filetype_hook(filepath, bufnr, opts)
       end
 
-      require("telescope").setup({
+      return {
         defaults = { preview = vim.tbl_extend("force", preview, { filetype_hook = installed }) },
-      })
-    end)
-  end)
+      }
+    end,
+  }
+end
+
+---Patch on its own (a host that wants only this). `bindings.setup` installs
+---every contributor together instead.
+---@param cfg Pickers.Config|nil
+function M.patch(cfg)
+  require("pickers.engines.patcher").install(cfg, { "pickers.integrations.pdf_text" })
 end
 
 return M

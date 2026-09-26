@@ -77,42 +77,43 @@ function M.fzf_opts(cfg)
   return { ["--history"] = M.dir(cfg) .. "/fzf_global.txt" }
 end
 
----Install pickers.nvim's history as the engines' own default, without the
----user touching their own `telescope.setup()`/`fzf-lua.setup()` calls.
+---Contributions for `pickers.engines.patcher`: pickers.nvim's history as the
+---engines' own default, without the user touching their own
+---`telescope.setup()`/`fzf-lua.setup()` calls. Empty unless `history.enabled`.
 ---
---- Each engine is patched only once it is actually loaded, via
---- `pickers.engines.when_loaded` — so this never forces a
---- `require("telescope")` (or fzf-lua) on a startup where the user opens no
---- picker. This was a `vim.schedule()` with the same intent, but that only
---- defers to the end of the current event-loop iteration, which is still
---- startup; the engine got loaded there regardless.
+--- Each engine is patched only once it is actually loaded -- so this never
+--- forces a `require("telescope")` (or fzf-lua) on a startup where the user
+--- opens no picker.
 ---
---- Telescope: call order never mattered for correctness anyway — it merges
---- `defaults.history` with "keep" semantics (see
---- `telescope/config.lua:set_defaults`), so deferring is free.
+--- Telescope: `defaults.history`, "keep" semantics in telescope's own
+--- `set_defaults`, so ordering never mattered for correctness.
 ---
---- fzf-lua (only when `fzf_scope == "patch"`): `fzf-lua.setup()` resets the
---- whole config from scratch unless `do_not_reset_defaults=true` is passed,
---- so a plain immediate call here could be wiped out by a later user
---- `setup()` call — deferring makes it land after the user's own config
+--- fzf-lua (only when `fzf_scope == "patch"`): `fzf_opts["--history"]`. The
+--- patcher's `setup(.., true)` keeps the host's own config, and lands after it
 --- regardless of plugin declaration order.
 ---@param cfg Pickers.Config
-function M.patch(cfg)
-  local when_loaded = require("pickers.engines.when_loaded")
-
-  when_loaded.run("telescope", function()
-    pcall(function()
-      require("telescope").setup({ defaults = { history = M.telescope_opts(cfg) } })
-    end)
-  end)
-
+---@return table<string, function>
+function M.contribute(cfg)
+  if not (cfg.history and cfg.history.enabled) then return {} end
+  local out = {
+    -- The directory is created when the engine loads, not at startup.
+    telescope = function()
+      return { defaults = { history = M.telescope_opts(cfg) } }
+    end,
+  }
   if cfg.history.fzf_scope == "patch" then
-    when_loaded.run("fzf-lua", function()
-      pcall(function()
-        require("fzf-lua").setup({ fzf_opts = M.fzf_opts(cfg) }, true)
-      end)
-    end)
+    out["fzf-lua"] = function()
+      return { fzf_opts = M.fzf_opts(cfg) }
+    end
   end
+  return out
+end
+
+---Install the history patch on its own (the patcher installs every feature
+---together in one call instead). No-op unless `history.enabled`.
+---@param cfg Pickers.Config
+function M.patch(cfg)
+  require("pickers.engines.patcher").install(cfg, { "pickers.history" })
 end
 
 return M

@@ -75,19 +75,31 @@ function M.skipped(resolved)
   return out
 end
 
---- Install the builtin keys globally via `fzf-lua.setup(..., true)`. The second
---- arg keeps fzf-lua's existing defaults (it otherwise resets from scratch).
---- No-op when fzf-lua is not installed.
+--- Contribution for `pickers.engines.patcher`: `keymap.builtin`, or nothing
+--- when no bound action translates to fzf-lua.
+---@param resolved table<string, { lhs: string[], modes: string[] }>
+---@return fun(): table|nil
+function M.contribute(resolved)
+  return function()
+    local builtin = M.keymap(resolved)
+    if vim.tbl_isempty(builtin) then return nil end
+    return { keymap = { builtin = builtin } }
+  end
+end
+
+--- Install the builtin keys globally via `fzf-lua.setup(..., true)` on their
+--- own (the patcher installs every feature together in one call instead). The
+--- second arg keeps fzf-lua's existing defaults (it otherwise resets from
+--- scratch). No-op when fzf-lua is not installed.
 ---@param resolved table<string, { lhs: string[], modes: string[] }>
 function M.patch(resolved)
   local ok, fzf = pcall(require, "fzf-lua")
   if not ok then return end
 
-  local builtin = M.keymap(resolved)
-  if vim.tbl_isempty(builtin) then return end
-
+  local part = M.contribute(resolved)()
+  if not part then return end
   pcall(function()
-    fzf.setup({ keymap = { builtin = builtin } }, true)
+    fzf.setup(part, true)
   end)
 end
 
