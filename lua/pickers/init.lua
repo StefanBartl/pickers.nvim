@@ -50,7 +50,6 @@ function M.setup(opts)
   local cfg = require("pickers.config").get()
   require("pickers.bindings").setup(cfg)
 
-  if cfg.history.enabled then require("pickers.history").patch(cfg) end
   if cfg.smart.frecency and cfg.smart.frecency.enabled then
     require("pickers.smart.frecency").patch(cfg)
   end

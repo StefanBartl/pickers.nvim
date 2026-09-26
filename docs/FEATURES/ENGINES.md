@@ -56,13 +56,29 @@ caller narrow a grep to a handful of files rather than a whole tree.
 
 ## Deferred engine wiring
 
-Engine setup that must happen *after* the engine loads — patching in the
-in-picker keys, the result-count poller, history options — is registered
-against the engine's own load event rather than run at `setup()` time. A
-lazy-loaded telescope is therefore still patched, and pickers.nvim does not
-force any engine to load just to configure it.
+Everything pickers.nvim puts onto an engine's *global* config — the in-picker
+keys and entry actions, history, `find.exclude`, the `display.*` switches, the
+PDF text preview — is applied after the engine has loaded, not at `setup()`
+time. A lazy-loaded telescope is therefore still patched, and pickers.nvim
+does not force any engine to load just to configure it.
 
-- **Module:** [`engines/when_loaded.lua`](../../lua/pickers/engines/when_loaded.lua)
+- **Under lazy.nvim** the wait is its `User LazyLoad` event, which fires after
+  the plugin's own `config`/`opts` ran: the host's `setup()` is always first.
+- **Without lazy.nvim** nothing announces a load, so pickers.nvim hooks the
+  first `require` of the engine (a one-shot searcher) and patches, scheduled,
+  right after it returns — after the host's own `setup()` in the same chunk.
+  An engine the host never requires is never loaded by this plugin either.
+- **One call per engine.** A feature only *contributes* a part
+  (`contribute(cfg) -> { [engine] = fun(current) }`); `engines/patcher.lua`
+  takes one snapshot of the engine's current configuration, collects every
+  part, deep-merges them in a fixed order and applies the result with a single
+  `telescope.setup()` / `fzf-lua.setup(…, true)` (snacks: one merge into
+  `Snacks.config.picker`). Each contribution folds the host's own values in, so
+  the host's key or action still wins over ours. A contribution that throws is
+  reported and skipped; the others still land.
+
+- **Modules:** [`engines/patcher.lua`](../../lua/pickers/engines/patcher.lua),
+  [`engines/when_loaded.lua`](../../lua/pickers/engines/when_loaded.lua)
 
 ## External tool dependencies, declared
 

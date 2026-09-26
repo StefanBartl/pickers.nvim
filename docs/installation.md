@@ -113,11 +113,12 @@ and configured yourself (the spec above). It never calls `Snacks.setup()` at
 all — it patches `Snacks.config.picker` instead (keys and entry actions, your
 own bindings winning; see docs/keymaps.md). For
 telescope and fzf-lua it stops short of full ownership too, but not all the
-way to "never calls setup()": the opt-in key/history patches
-(`keys.enable`/`history.enabled`, on and off by default respectively — see
-docs/keymaps.md and the "History" section below) do call `telescope.setup()`/
-`fzf-lua.setup()` a second time, deep-merging their own values in rather than
-replacing your config wholesale. Nothing else — dashboard, extensions,
+way to "never calls setup()": what it patches onto the engines (the in-picker
+keys and entry actions, `history`, `find.exclude`, the `display.*` switches, the
+PDF text preview — see docs/keymaps.md and docs/configuration.md) is applied
+with ONE `telescope.setup()` / `fzf-lua.setup()` call per engine, once the
+engine has loaded, deep-merging its own values in rather than replacing your
+config wholesale. Nothing else — dashboard, extensions,
 winopts, … — is ever touched.
 
 If you'd rather have pickers.nvim install **and** configure the engine too —

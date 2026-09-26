@@ -6,8 +6,8 @@
 --- `setup()` by hand (`adapters.*.get_*()`), which made every config carry a
 --- glue module per engine. This does the merge itself, the same way
 --- `pickers.keys.patch` already does for the built-in actions -- each engine
---- patched once it is loaded (`pickers.engines.when_loaded`), so nothing is
---- forced to load early.
+--- patched once it is loaded, in one call per engine (`pickers.engines.patcher`),
+--- so nothing is forced to load early.
 ---
 --- The host's own configuration always wins on conflict: a key or action it
 --- already bound is left alone, pickers.nvim only fills in what is missing.
@@ -27,78 +27,100 @@
 
 local M = {}
 
-local function telescope()
-  local ok = pcall(require, "telescope")
-  if not ok then return end
-  pcall(function()
-    local current = (require("telescope.config").values or {}).mappings or {}
-    local ours = require("pickers.entry_actions.adapters.telescope").get_mappings()
-    require("telescope").setup({
-      defaults = {
-        mappings = {
-          i = vim.tbl_extend("keep", current.i or {}, ours.i),
-          n = vim.tbl_extend("keep", current.n or {}, ours.n),
-        },
-      },
-    })
-  end)
+---Host entries first: what the host already bound is kept, ours fills the gaps.
+---@param current table|nil
+---@param ours table
+---@return table
+local function fold(current, ours)
+  return vim.tbl_extend("keep", current or {}, ours)
 end
 
+---@return fun(current: table): table|nil
+local function telescope()
+  return function(current)
+    local mappings = (current.defaults or {}).mappings or {}
+    local ours = require("pickers.entry_actions.adapters.telescope").get_mappings()
+    return {
+      defaults = { mappings = { i = fold(mappings.i, ours.i), n = fold(mappings.n, ours.n) } },
+    }
+  end
+end
+
+---@return fun(current: table): table|nil
 local function fzf()
-  local ok, fzf_lua = pcall(require, "fzf-lua")
-  if not ok then return end
-  pcall(function()
+  return function(current)
     local ours = require("pickers.entry_actions.adapters.fzf").get_actions()
-    if vim.tbl_isempty(ours) then return end
+    if vim.tbl_isempty(ours) then return nil end
     -- fzf-lua keys its global actions per provider: `actions.files` is the
     -- table the files/grep/buffers/... pickers inherit from. A flat
     -- `actions = { ["ctrl-a"] = ... }` is not read by any of them.
+    --
     -- A user-supplied `actions.files` REPLACES fzf-lua's defaults rather than
     -- merging into them, so start from what is in force: the host's own table
     -- if it set one, otherwise fzf-lua's defaults (enter, ctrl-s/v/t, alt-q...).
-    local current = ((require("fzf-lua.config").setup_opts or {}).actions or {}).files
-    if type(current) ~= "table" then
-      current = vim.deepcopy(require("fzf-lua.defaults").defaults.actions.files)
+    local files = ((current.setup_opts or {}).actions or {}).files
+    if type(files) ~= "table" then
+      local ok, defaults = pcall(require, "fzf-lua.defaults")
+      files = ok and vim.deepcopy(defaults.defaults.actions.files) or {}
     end
-    fzf_lua.setup({ actions = { files = vim.tbl_extend("keep", current, ours) } }, true)
-  end)
+    return { actions = { files = fold(files, ours) } }
+  end
 end
 
 ---@param cfg Pickers.Config
+---@return fun(current: table): table|nil
 local function snacks(cfg)
-  local ok, Snacks = pcall(require, "snacks")
-  if not ok then return end
-  pcall(function()
+  return function(current)
     local keys = require("pickers.keys")
     local ea = require("pickers.entry_actions.adapters.snacks")
     local win = keys.snacks_win(cfg)
+    local picker = current.picker or {}
+    local cur_win = picker.win or {}
 
-    local ours = {
-      actions = vim.tbl_extend("force", keys.snacks_actions(), ea.get_actions()),
+    -- Only the subtrees touched here are returned (`actions`, `win.*.keys`),
+    -- each with the host's own entries first -- never the whole picker table,
+    -- so this cannot overwrite what another contribution sets next to it.
+    return {
+      actions = fold(
+        picker.actions,
+        vim.tbl_extend("force", keys.snacks_actions(), ea.get_actions())
+      ),
       win = {
         -- entry_actions bind on BOTH windows: a picker opens with focus in
         -- the input prompt, so a list-only binding would be unreachable.
-        input = { keys = vim.tbl_extend("force", win.input.keys, ea.get_input_keys()) },
-        list = { keys = vim.tbl_extend("force", win.list.keys, ea.get_keys()) },
-        preview = { keys = win.preview.keys },
+        input = {
+          keys = fold(
+            (cur_win.input or {}).keys,
+            vim.tbl_extend("force", win.input.keys, ea.get_input_keys())
+          ),
+        },
+        list = {
+          keys = fold(
+            (cur_win.list or {}).keys,
+            vim.tbl_extend("force", win.list.keys, ea.get_keys())
+          ),
+        },
+        preview = { keys = fold((cur_win.preview or {}).keys, win.preview.keys) },
       },
     }
-    Snacks.config.picker = vim.tbl_deep_extend("keep", Snacks.config.picker or {}, ours)
-  end)
+  end
 end
 
----Patch every engine once it is loaded. No-op when `keys.enable == false`.
+---Contributions for `pickers.engines.patcher`. Empty when `keys.enable` is
+---false.
+---@param cfg Pickers.Config|nil
+---@return table<string, fun(current: table): table|nil>
+function M.contribute(cfg)
+  cfg = cfg or require("pickers.config").get()
+  if cfg.keys and cfg.keys.enable == false then return {} end
+  return { telescope = telescope(), ["fzf-lua"] = fzf(), snacks = snacks(cfg) }
+end
+
+---Patch on its own (a host that wants only this). `bindings.setup` installs
+---every contributor together instead.
 ---@param cfg Pickers.Config|nil
 function M.patch(cfg)
-  cfg = cfg or require("pickers.config").get()
-  if cfg.keys and cfg.keys.enable == false then return end
-
-  local when_loaded = require("pickers.engines.when_loaded")
-  when_loaded.run("telescope", telescope)
-  when_loaded.run("fzf-lua", fzf)
-  when_loaded.run("snacks", function()
-    snacks(cfg)
-  end)
+  require("pickers.engines.patcher").install(cfg, { "pickers.entry_actions.patch" })
 end
 
 return M

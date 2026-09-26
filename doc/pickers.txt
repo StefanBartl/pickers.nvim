@@ -124,10 +124,11 @@ Optional engine ownership + auto-install~
   declared/configured yourself.  It never calls Snacks.setup() at all (it patches
   Snacks.config.picker instead).  For telescope/fzf-lua
   it stops short of full ownership too, but not all the way to "never calls
-  setup()": the opt-in key/history patches call telescope.setup()/
-  fzf-lua's setup() a second time, deep-merging in rather than replacing
-  your config wholesale (see |pickers-keymaps| and the History section
-  above).  To have it install AND
+  setup()": what it patches onto the engines (keys, entry actions, history,
+  find.exclude, display.*, PDF text preview) is applied with ONE
+  telescope.setup()/fzf-lua's setup() call per engine, once it has loaded,
+  deep-merging in rather than replacing your config wholesale (see
+  |pickers-keymaps| and the History section above).  To have it install AND
   configure the engine too, use require("pickers").plugin_spec() from your
   OWN plugin list, at spec-build time (NOT from setup() -- lazy.nvim
   resolves `dependencies` before `config()` runs, so the engine choice must

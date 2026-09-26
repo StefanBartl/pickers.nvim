@@ -260,40 +260,38 @@ function M.fzf_skipped(cfg)
   return require("pickers.keys.adapters.fzf").skipped(M.resolve(cfg))
 end
 
---- Install the in-picker keys onto each available engine's global config, so
---- they apply to every picker that engine opens. No-op when disabled.
+--- Contributions for `pickers.engines.patcher`: the in-picker keys (preview
+--- scroll, history, split/tab, ...) for telescope and fzf-lua. Empty when the
+--- whole feature is off or nothing is bound. Snacks gets its keys through
+--- `pickers.entry_actions.patch`, which also carries the entry actions.
 ---
---- Each engine is patched only once it is actually loaded, via
---- `pickers.engines.when_loaded`. This used to be a `vim.schedule` with the
---- stated intent of not forcing telescope to load on every startup — but
---- `vim.schedule` only defers to the end of the current event-loop iteration,
---- which is still startup, so `require("telescope")` ran there anyway and
---- pulled in its whole module tree (measured: ~117ms, and it dragged
---- telescope-github.nvim and pdfport.nvim along with it). The telescope
---- adapter's own `patch()` deep-merges `defaults.mappings` itself (reading
---- and folding into whatever is already configured, rather than relying on
---- telescope to do it), so as long as the user's own `telescope.setup()`
---- call runs before this one, waiting longer wouldn't change the end result
---- either — see `pickers.keys.adapters.telescope`. Snacks is not patched
---- here — pickers.nvim does not own `Snacks.setup()`; use `keys.snacks_win()`.
+--- The keys land on each engine's GLOBAL config, so they apply to every picker
+--- it opens -- pickers.nvim's own AND native builtins (git/lsp/...). The
+--- patcher waits until the engine is actually loaded (`when_loaded`), so this
+--- never forces `require("telescope")` on a startup that opens no picker; the
+--- telescope contribution folds into `defaults.mappings` itself (telescope
+--- replaces that table on a second `setup()`), the user's own lhs winning --
+--- see `pickers.keys.adapters.telescope`.
+---@param cfg Pickers.Config|nil
+---@return table<string, function>
+function M.contribute(cfg)
+  cfg = cfg or require("pickers.config").get()
+  if cfg.keys and cfg.keys.enable == false then return {} end
+  local resolved = M.resolve(cfg)
+  if vim.tbl_isempty(resolved) then return {} end
+  return {
+    telescope = require("pickers.keys.adapters.telescope").contribute(resolved),
+    ["fzf-lua"] = require("pickers.keys.adapters.fzf").contribute(resolved),
+  }
+end
+
+--- Install the in-picker keys AND the entry actions on their own. No-op when
+--- disabled. `bindings.setup` installs every feature together through
+--- `pickers.engines.patcher` instead; this stays for a host that wants just
+--- these two.
 ---@param cfg Pickers.Config|nil
 function M.patch(cfg)
-  cfg = cfg or require("pickers.config").get()
-  local resolved = M.resolve(cfg)
-  if vim.tbl_isempty(resolved) then return end
-
-  -- Entry actions + snacks keys (create_file, open_background, cheatsheet,
-  -- path_copy, tab groups): merged into each engine's global config, the
-  -- host's own bindings winning on conflict. Snacks is patched there too.
-  require("pickers.entry_actions.patch").patch(cfg)
-
-  local when_loaded = require("pickers.engines.when_loaded")
-  when_loaded.run("telescope", function()
-    require("pickers.keys.adapters.telescope").patch(resolved)
-  end)
-  when_loaded.run("fzf-lua", function()
-    require("pickers.keys.adapters.fzf").patch(resolved)
-  end)
+  require("pickers.engines.patcher").install(cfg, { "pickers.keys", "pickers.entry_actions.patch" })
 end
 
 return M

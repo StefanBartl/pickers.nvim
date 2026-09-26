@@ -107,26 +107,38 @@ function M.mappings(resolved)
   return out
 end
 
---- Install the mappings globally via `telescope.setup()`, deep-merged on top
---- of whatever is already in `telescope.config.values.mappings` (the user's
---- own prior `setup()` call, if any) -- never replacing it wholesale, since
---- telescope's own `setup()` does not deep-merge this key itself (see the
---- module doc above). No-op when telescope is not installed.
+--- Contribution for `pickers.engines.patcher`: our mappings folded into what
+--- the host already has in `defaults.mappings` (the `current` snapshot) --
+--- never replacing it wholesale, since telescope's own `setup()` does not
+--- deep-merge this key itself (see the module doc above). The user's own lhs
+--- wins on conflict: pickers.nvim only fills in additions.
+---@param resolved table<string, { lhs: string[], modes: string[] }>
+---@return fun(current: table): table
+function M.contribute(resolved)
+  return function(current)
+    local mappings = (current.defaults or {}).mappings or {}
+    local ours = M.mappings(resolved)
+    return {
+      defaults = {
+        mappings = {
+          i = vim.tbl_extend("keep", mappings.i or {}, ours.i),
+          n = vim.tbl_extend("keep", mappings.n or {}, ours.n),
+        },
+      },
+    }
+  end
+end
+
+--- Install the mappings globally via `telescope.setup()` on their own (the
+--- patcher installs every feature together in one call instead). No-op when
+--- telescope is not installed.
 ---@param resolved table<string, { lhs: string[], modes: string[] }>
 function M.patch(resolved)
-  local ok = pcall(require, "telescope")
-  if not ok then return end
-
+  if not pcall(require, "telescope") then return end
   pcall(function()
-    local current = (require("telescope.config").values or {}).mappings or {}
-    local ours = M.mappings(resolved)
-    -- The user's own lhs wins on conflict -- pickers.nvim only fills in
-    -- additions, it never fights over a key the user already bound.
-    local merged = {
-      i = vim.tbl_extend("keep", current.i or {}, ours.i),
-      n = vim.tbl_extend("keep", current.n or {}, ours.n),
-    }
-    require("telescope").setup({ defaults = { mappings = merged } })
+    local config = require("telescope.config")
+    local part = M.contribute(resolved)({ defaults = config.values or {} })
+    require("telescope").setup(part)
   end)
 end
 

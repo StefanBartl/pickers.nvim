@@ -15,12 +15,19 @@
 --- was used here, but it never addressed the load cost.
 ---
 --- So: patch immediately when the engine is already loaded, otherwise wait for
---- it. Under lazy.nvim that means its `User LazyLoad` event; without a plugin
---- manager that reports loads, fall back to the previous `vim.schedule`
---- behaviour rather than silently never patching.
+--- it. Under lazy.nvim that means its `User LazyLoad` event, which fires after
+--- the plugin's own `config`/`opts` ran (the host's `setup()` is done by then).
 ---
---- Call order stays irrelevant for correctness -- both engines deep-merge the
---- tables involved (see `pickers.keys.patch` and `pickers.history.patch`).
+--- Without lazy.nvim nothing reports loads, so the wait is a one-shot hook on
+--- `require` itself (`on_require`): the patch runs, scheduled, right after the
+--- first `require` of the engine returns -- i.e. after the host's own
+--- `setup()` call in the same chunk -- and an engine the user never loads is
+--- never loaded by this plugin either. (An earlier fallback was a plain
+--- `vim.schedule`, which `require`d the engine at startup and put back the
+--- exact load cost this module exists to avoid.)
+---
+--- Call order stays irrelevant for correctness -- each contribution is folded
+--- into what the host already configured (see `pickers.engines.patcher`).
 ---
 --- lib.nvim is a hard dependency (see pickers.bindings.util); this requires
 --- lib.nvim.bindings.autocmd the same way, with no standalone fallback
@@ -38,6 +45,53 @@ local PLUGIN_NAMES = {
   snacks = "snacks.nvim",
 }
 
+---@return table  # `package.searchers` (5.2 name) or `package.loaders` (LuaJIT)
+local function searcher_list()
+  return rawget(package, "searchers") or package.loaders
+end
+
+---Run `fn`, scheduled, right after the first `require(module)` returns.
+---
+---Implemented as a one-shot searcher at the front of the searcher list. It
+---must NOT simply call `require(module)` from its loader: LuaJIT parks a
+---sentinel in `package.loaded[module]` while a loader runs, so a nested
+---`require` of the same name raises "loop or previous error loading module".
+---It resolves the real loader itself, through the other searchers, and hands
+---that back wrapped -- `require` then caches exactly what the real loader
+---returned. Several waiters on the same module stack and all fire.
+---@param module string
+---@param fn fun()
+local function on_require(module, fn)
+  local searchers = searcher_list()
+
+  ---@type function
+  local searcher
+  searcher = function(name)
+    if name ~= module then return nil end
+    -- One-shot, and before the chain below runs: it must not find us again.
+    for i, s in ipairs(searchers) do
+      if s == searcher then
+        table.remove(searchers, i)
+        break
+      end
+    end
+    for _, other in ipairs(searchers) do
+      local loader, extra = other(name)
+      if type(loader) == "function" then
+        return function(...)
+          local result = loader(...)
+          vim.schedule(fn)
+          return result
+        end,
+          extra
+      end
+    end
+    return nil
+  end
+
+  table.insert(searchers, 1, searcher)
+end
+
 ---Run `fn` once `module` is loaded (or right away if it already is).
 ---@param module string  # the Lua module the patch will require, e.g. "telescope"
 ---@param fn fun()
@@ -50,9 +104,8 @@ function M.run(module, fn)
 
   local ok_lazy = pcall(require, "lazy.core.config")
   if not ok_lazy then
-    -- No lazy.nvim: nothing tells us when the engine shows up. Keep the old
-    -- behaviour so the patch still lands on a plain packadd/rtp setup.
-    vim.schedule(fn)
+    -- No lazy.nvim: nothing announces a load, so hook `require` itself.
+    on_require(module, fn)
     return
   end
 

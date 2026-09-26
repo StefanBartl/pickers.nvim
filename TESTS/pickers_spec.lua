@@ -4280,18 +4280,47 @@ do
   end)
   check("when_loaded: already-loaded module runs fn immediately", ran)
 
-  -- Not loaded, no lazy.nvim: falls back to vim.schedule.
+  -- Not loaded, no lazy.nvim: a one-shot hook on `require`. Registering must
+  -- NOT load the engine (the old fallback was a vim.schedule that did), and fn
+  -- only runs, scheduled, after the engine's first require returned.
   package.loaded["telescope"] = nil
   package.loaded["lazy.core.config"] = nil
-  local scheduled = false
+  local engine_loads = 0
+  package.preload["telescope"] = function()
+    engine_loads = engine_loads + 1
+    return { fake = true }
+  end
+  local searchers_before = #(rawget(package, "searchers") or package.loaders)
+  local scheduled, scheduled2 = 0, 0
   when_loaded.run("telescope", function()
-    scheduled = true
+    scheduled = scheduled + 1
   end)
-  check("when_loaded: not scheduled synchronously without lazy.nvim", not scheduled)
+  when_loaded.run("telescope", function()
+    scheduled2 = scheduled2 + 1
+  end)
+  check("when_loaded: registering does not load the engine", engine_loads == 0)
   vim.wait(50, function()
-    return scheduled
+    return scheduled > 0
   end)
-  check("when_loaded: vim.schedule fallback eventually runs fn", scheduled)
+  check("when_loaded: without a require, fn never runs", scheduled == 0 and engine_loads == 0)
+  local mod = require("telescope")
+  check("when_loaded: require still hands back the engine's own module", mod.fake == true)
+  check("when_loaded: the engine is loaded exactly once", engine_loads == 1)
+  check("when_loaded: fn is not run synchronously inside require", scheduled == 0)
+  vim.wait(200, function()
+    return scheduled > 0 and scheduled2 > 0
+  end)
+  check("when_loaded: fn runs after the first require", scheduled == 1)
+  check("when_loaded: two waiters on one module both fire", scheduled2 == 1)
+  check(
+    "when_loaded: the require hooks remove themselves",
+    #(rawget(package, "searchers") or package.loaders) == searchers_before
+  )
+  require("telescope")
+  vim.wait(50)
+  check("when_loaded: a second require does not re-run fn", scheduled == 1)
+  package.preload["telescope"] = nil
+  package.loaded["telescope"] = nil
 
   -- Not loaded, lazy.nvim present: waits for a matching `User LazyLoad`,
   -- ignores a non-matching one, and fires exactly once.
@@ -5051,8 +5080,7 @@ end
 do
   local calls
   local function reset_calls()
-    calls =
-      { composer = 0, keymaps = 0, usrcmds = 0, collections = 0, mappings = 0, keys_patch = 0 }
+    calls = { composer = 0, keymaps = 0, usrcmds = 0, collections = 0, mappings = 0, patcher = 0 }
   end
 
   local prev = {
@@ -5061,7 +5089,7 @@ do
     ["pickers.bindings.usrcmds"] = package.loaded["pickers.bindings.usrcmds"],
     ["pickers.bindings.collections"] = package.loaded["pickers.bindings.collections"],
     ["pickers.mappings"] = package.loaded["pickers.mappings"],
-    ["pickers.keys"] = package.loaded["pickers.keys"],
+    ["pickers.engines.patcher"] = package.loaded["pickers.engines.patcher"],
   }
 
   package.loaded["pickers.command.composer"] = {
@@ -5089,9 +5117,9 @@ do
       calls.mappings = calls.mappings + 1
     end,
   }
-  package.loaded["pickers.keys"] = {
-    patch = function()
-      calls.keys_patch = calls.keys_patch + 1
+  package.loaded["pickers.engines.patcher"] = {
+    install = function()
+      calls.patcher = calls.patcher + 1
     end,
   }
   package.loaded["pickers.bindings"] = nil
@@ -5109,7 +5137,7 @@ do
   check("bindings.setup: usercmds.enable=true -> registered", calls.usrcmds == 1)
   check("bindings.setup: one collections.register() per collection", calls.collections == 2)
   check("bindings.setup: mappings.apply always runs", calls.mappings == 1)
-  check("bindings.setup: keys.enable=true -> keys.patch runs", calls.keys_patch == 1)
+  check("bindings.setup: installs the engine patcher once", calls.patcher == 1)
 
   reset_calls()
   bindings.setup({
@@ -5124,13 +5152,14 @@ do
     "bindings.setup: no collections -> collections.register never called",
     calls.collections == 0
   )
-  check("bindings.setup: keys.enable=false -> keys.patch skipped", calls.keys_patch == 0)
+  -- keys.enable is decided inside the contributions now, not by the caller.
+  check("bindings.setup: keys.enable=false still installs the patcher once", calls.patcher == 1)
   check("bindings.setup: composer still registers", calls.composer == 1)
   check("bindings.setup: mappings.apply still runs", calls.mappings == 1)
 
   reset_calls()
   bindings.setup({ keymaps = { enable = false }, usercmds = { enable = false }, collections = {} })
-  check("bindings.setup: keys defaults to enabled when cfg.keys is nil", calls.keys_patch == 1)
+  check("bindings.setup: cfg.keys nil still installs the patcher", calls.patcher == 1)
 
   for name, mod in pairs(prev) do
     package.loaded[name] = mod
@@ -5238,7 +5267,6 @@ do
     vim.g.pickers_nvim_setup_called == true
   )
   check("pickers.setup: always calls bindings.setup", calls.bindings_setup == 1)
-  check("pickers.setup: history.enabled=false -> history.patch skipped", calls.history_patch == 0)
   check(
     "pickers.setup: frecency.enabled=false -> frecency.patch skipped",
     calls.frecency_patch == 0
@@ -5248,7 +5276,6 @@ do
   fake_cfg =
     { history = { enabled = true }, smart = { frecency = { enabled = true } }, deps_popup = false }
   pickers.setup({})
-  check("pickers.setup: history.enabled=true -> history.patch runs", calls.history_patch == 1)
   check("pickers.setup: frecency.enabled=true -> frecency.patch runs", calls.frecency_patch == 1)
 
   for name, mod in pairs(prev) do
@@ -5997,6 +6024,260 @@ do
   package.loaded["telescope"] = prev.telescope
   package.loaded["telescope.config"] = prev.tcfg
   package.loaded["pdfport.integrations.telescope"] = prev.pdf
+end
+
+-- ── pickers.engines.patcher — one setup() per engine, contributions merged ──
+do
+  local config = require("pickers.config")
+  local patcher = require("pickers.engines.patcher")
+  local prev = {
+    telescope = package.loaded["telescope"],
+    tcfg = package.loaded["telescope.config"],
+    fzf = package.loaded["fzf-lua"],
+    fzf_cfg = package.loaded["fzf-lua.config"],
+    fzf_defaults = package.loaded["fzf-lua.defaults"],
+    snacks = package.loaded["snacks"],
+    lazy = package.loaded["lazy.core.config"],
+  }
+  package.loaded["lazy.core.config"] = nil
+
+  local tel_calls, fzf_calls = {}, {}
+  package.loaded["telescope"] = {
+    setup = function(o)
+      tel_calls[#tel_calls + 1] = o
+    end,
+  }
+  package.loaded["telescope.config"] = {
+    values = { mappings = { i = { ["<C-a>"] = "host" } } },
+    pickers = {},
+  }
+  package.loaded["fzf-lua"] = {
+    setup = function(o)
+      fzf_calls[#fzf_calls + 1] = o
+    end,
+  }
+  package.loaded["fzf-lua.config"] =
+    { setup_opts = {}, globals = { files = { fd_opts = "--type f" } } }
+  package.loaded["fzf-lua.defaults"] = { defaults = { actions = { files = { enter = "edit" } } } }
+  local fake = { config = { picker = { win = { list = { keys = { ["<C-a>"] = "host" } } } } } }
+  package.loaded["snacks"] = fake
+
+  config.reset()
+  config.apply({
+    find = { exclude = { "node_modules" } },
+    display = { cycle = true, preview_wrap = false },
+    history = { enabled = true, fzf_scope = "patch", dir = vim.fn.tempname() },
+  })
+  local cfg = config.get()
+
+  local real_executable = vim.fn.executable
+  vim.fn.executable = function(name)
+    return name == "rg" and 1 or 0
+  end
+  patcher.install(cfg)
+  vim.fn.executable = real_executable
+
+  -- The whole point: every feature landed in ONE setup() call per engine.
+  check("patcher: telescope.setup() called exactly once", #tel_calls == 1)
+  check("patcher: fzf-lua.setup() called exactly once", #fzf_calls == 1)
+  local t = tel_calls[1] or {}
+  check(
+    "patcher: telescope call carries keys, display, history, find and pdf_text together",
+    t.defaults
+      and t.defaults.mappings
+      and t.defaults.scroll_strategy == "cycle"
+      and t.defaults.history ~= nil
+      and t.defaults.preview
+      and t.defaults.preview.filetype_hook ~= nil
+      and t.pickers
+      and t.pickers.find_files
+      and t.pickers.find_files.find_command ~= nil
+  )
+  check(
+    "patcher: telescope keeps the host's own mapping and adds ours",
+    t.defaults.mappings.i["<C-a>"] == "host" and t.defaults.mappings.n ~= nil
+  )
+  local f = fzf_calls[1] or {}
+  check(
+    "patcher: fzf call carries keymap, actions.files, fzf_opts and files together",
+    f.keymap
+      and f.actions
+      and f.actions.files
+      and f.actions.files.enter == "edit"
+      and f.fzf_opts
+      and f.fzf_opts["--cycle"] == true
+      and f.fzf_opts["--history"] ~= nil
+      and f.files
+      and f.files.fd_opts:find("--exclude", 1, true) ~= nil
+  )
+  check(
+    "patcher: fzf preview wrap goes in the same call",
+    f.winopts and f.winopts.preview.wrap == false
+  )
+  local picker = fake.config.picker
+  check(
+    "patcher: snacks got actions, keys, sources and wrap in one merge",
+    picker.actions
+      and picker.actions.create_file ~= nil
+      and picker.win.list.keys["<C-a>"] == "host"
+      and picker.win.input.keys ~= nil
+      and picker.sources
+      and picker.sources.files.exclude[1] == "node_modules"
+      and picker.win.preview.wo.wrap == false
+  )
+
+  -- Re-installing patches again without stacking anything.
+  patcher.install(cfg)
+  check("patcher: a second install re-patches a loaded engine", #tel_calls == 2 and #fzf_calls == 2)
+
+  -- Disabled features contribute nothing: keys off, no switches, no exclude
+  -- (and the default-on PDF text preview off too).
+  config.reset()
+  config.apply({ keys = { enable = false }, images = { pdf_text = false } })
+  tel_calls = {}
+  patcher.install(config.get())
+  check("patcher: nothing configured -> no setup() call at all", #tel_calls == 0)
+
+  -- A failing contribution is skipped and reported; the others still land.
+  package.loaded["fake.good"] = {
+    contribute = function()
+      return {
+        telescope = function()
+          return { defaults = { good = true } }
+        end,
+      }
+    end,
+  }
+  package.loaded["fake.bad"] = {
+    contribute = function()
+      return {
+        telescope = function()
+          error("boom")
+        end,
+      }
+    end,
+  }
+  package.loaded["fake.throws"] = {
+    contribute = function()
+      error("cannot even build")
+    end,
+  }
+  tel_calls = {}
+  patcher.install(nil, { "fake.bad", "fake.throws", "fake.good" })
+  check(
+    "patcher: a failing contribution does not stop the others",
+    #tel_calls == 1 and tel_calls[1].defaults.good == true
+  )
+
+  -- Later contributions win on a key two of them touch.
+  package.loaded["fake.a"] = {
+    contribute = function()
+      return {
+        telescope = function()
+          return { defaults = { shared = "a", only_a = 1 } }
+        end,
+      }
+    end,
+  }
+  package.loaded["fake.b"] = {
+    contribute = function()
+      return {
+        telescope = function()
+          return { defaults = { shared = "b" } }
+        end,
+      }
+    end,
+  }
+  tel_calls = {}
+  patcher.install(nil, { "fake.a", "fake.b" })
+  check(
+    "patcher: merge order -- the later contribution wins, the rest is kept",
+    tel_calls[1].defaults.shared == "b" and tel_calls[1].defaults.only_a == 1
+  )
+
+  -- Engine not loaded yet: ONE waiter however often install runs, the latest
+  -- contributions win, and the engine is not loaded by installing.
+  package.loaded["telescope"] = nil
+  local engine_loads = 0
+  package.preload["telescope"] = function()
+    engine_loads = engine_loads + 1
+    return package.loaded["fake.telescope.module"]
+  end
+  package.loaded["fake.telescope.module"] = {
+    setup = function(o)
+      tel_calls[#tel_calls + 1] = o
+    end,
+  }
+  package.loaded["fake.late"] = {
+    contribute = function(c)
+      return {
+        telescope = function()
+          return { defaults = { value = c.value } }
+        end,
+      }
+    end,
+  }
+  tel_calls = {}
+  patcher.install({ value = 1 }, { "fake.late" })
+  patcher.install({ value = 2 }, { "fake.late" })
+  check("patcher: installing does not load a lazy engine", engine_loads == 0 and #tel_calls == 0)
+  require("telescope")
+  vim.wait(300, function()
+    return #tel_calls > 0
+  end)
+  check("patcher: one setup() once the engine loads", #tel_calls == 1)
+  check("patcher: the latest install wins while queued", tel_calls[1].defaults.value == 2)
+
+  package.preload["telescope"] = nil
+  package.loaded["fake.telescope.module"] = nil
+  for _, m in ipairs({ "fake.good", "fake.bad", "fake.throws", "fake.a", "fake.b", "fake.late" }) do
+    package.loaded[m] = nil
+  end
+  config.reset()
+  package.loaded["telescope"] = prev.telescope
+  package.loaded["telescope.config"] = prev.tcfg
+  package.loaded["fzf-lua"] = prev.fzf
+  package.loaded["fzf-lua.config"] = prev.fzf_cfg
+  package.loaded["fzf-lua.defaults"] = prev.fzf_defaults
+  package.loaded["snacks"] = prev.snacks
+  package.loaded["lazy.core.config"] = prev.lazy
+end
+
+-- ── contributor gating — nothing contributes while its feature is off ───────
+do
+  local config = require("pickers.config")
+  config.reset()
+  local cfg = config.get()
+  check(
+    "history.contribute: disabled -> nothing",
+    next(require("pickers.history").contribute(cfg)) == nil
+  )
+  check(
+    "find_native.contribute: no exclude -> nothing",
+    next(require("pickers.find_native").contribute(cfg)) == nil
+  )
+  check(
+    "display_native.contribute: no switch set -> nothing",
+    next(require("pickers.display_native").contribute(cfg)) == nil
+  )
+  config.apply({ keys = { enable = false } })
+  local off = config.get()
+  check(
+    "keys.contribute: keys.enable=false -> nothing",
+    next(require("pickers.keys").contribute(off)) == nil
+  )
+  check(
+    "entry_actions.contribute: keys.enable=false -> nothing",
+    next(require("pickers.entry_actions.patch").contribute(off)) == nil
+  )
+  config.reset()
+  config.apply({ history = { enabled = true, fzf_scope = "plugin" } })
+  local hc = require("pickers.history").contribute(config.get())
+  check(
+    "history.contribute: telescope always, fzf only for fzf_scope=patch",
+    hc.telescope ~= nil and hc["fzf-lua"] == nil
+  )
+  config.reset()
 end
 
 -- ── Summary ─────────────────────────────────────────────────────────────────

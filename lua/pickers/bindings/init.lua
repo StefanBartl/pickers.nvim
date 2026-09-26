@@ -30,18 +30,14 @@ function M.setup(cfg)
   -- optional per-entry engine override). No-op when cfg.mappings is unset.
   require("pickers.mappings").apply(cfg)
 
-  -- Patch the in-picker keys onto each engine's global config. Placed here (not
-  -- in pickers.setup) so it also fires on the VimEnter fallback when the user
-  -- never called setup() — keys default to enabled, so they should apply either
-  -- way. Unlike history (opt-in), this honours "same keys for every picker".
-  if not cfg.keys or cfg.keys.enable ~= false then require("pickers.keys").patch(cfg) end
-
-  -- find.exclude onto the engines' native pickers (:FzfLua files, :Telescope
-  -- find_files, Snacks.picker files, ...), so the same list applies whether a
-  -- picker was opened through :Pickers or straight from the engine.
-  require("pickers.find_native").patch(cfg)
-  require("pickers.display_native").patch(cfg)
-  require("pickers.integrations.pdf_text").patch(cfg)
+  -- Everything pickers.nvim puts onto the engines' GLOBAL config, so it holds
+  -- for every picker they open (native ones included): in-picker keys and
+  -- entry actions, history, find.exclude, the display.* switches, the PDF text
+  -- preview. One call per engine, once it is loaded -- see
+  -- pickers.engines.patcher. Placed here (not in pickers.setup) so it also
+  -- fires on the VimEnter fallback when the user never called setup(): the
+  -- keys default to enabled, and should apply either way.
+  require("pickers.engines.patcher").install(cfg)
 
   -- The quickfix window's preview + filter: a FileType qf trigger, so it
   -- applies to every list however it was filled (:grep, :make, an LSP

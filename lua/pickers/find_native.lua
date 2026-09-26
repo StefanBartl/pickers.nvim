@@ -6,7 +6,7 @@
 --- builtin dispatched to the engine, never passes through those calls -- so
 --- the same exclude list used to be kept by hand once per engine config. This
 --- patches it onto each engine's own global config instead, once the engine is
---- loaded (`pickers.engines.when_loaded`):
+--- loaded (one call per engine, see `pickers.engines.patcher`):
 ---
 ---   telescope -> `pickers.find_files.find_command` (rg/fd with the globs) and
 ---                `pickers.live_grep.additional_args` -- not
@@ -111,10 +111,10 @@ local installed = {}
 ---... to the table it is given, so a shared static table would grow with every
 ---call. A `find_command` / `additional_args` the host set itself is left alone.
 ---@param exclude string[]
+---@return fun(current: table): table|nil
 local function telescope(exclude)
-  if not pcall(require, "telescope") then return end
-  pcall(function()
-    local pickers = require("telescope.config").pickers or {}
+  return function(current)
+    local pickers = current.pickers or {}
     local find = vim.deepcopy(pickers.find_files or {})
     local grep = vim.deepcopy(pickers.live_grep or {})
 
@@ -136,10 +136,9 @@ local function telescope(exclude)
       grep.additional_args = installed.grep
       patched = true
     end
-    if patched then
-      require("telescope").setup({ pickers = { find_files = find, live_grep = grep } })
-    end
-  end)
+    -- telescope replaces `pickers.<name>` wholesale, hence the folded copies.
+    if patched then return { pickers = { find_files = find, live_grep = grep } } end
+  end
 end
 
 ---Append `flag` + quoted glob for every exclude the option string lacks.
@@ -165,61 +164,55 @@ local function append_globs(base, exclude, flag, negate)
 end
 
 ---@param exclude string[]
+---@return fun(current: table): table|nil
 local function fzf(exclude)
-  local ok, fzf_lua = pcall(require, "fzf-lua")
-  if not ok then return end
-  pcall(function()
-    local globals = require("fzf-lua.config").globals or {}
-    local files = (globals.files or {}).fd_opts
-    local grep = (globals.grep or {}).rg_opts
-    fzf_lua.setup({
-      files = { fd_opts = append_globs(files, exclude, "--exclude", false) },
-      grep = { rg_opts = append_globs(grep, exclude, "-g", true) },
-    }, true)
-  end)
+  return function(current)
+    local globals = current.globals or {}
+    return {
+      files = { fd_opts = append_globs((globals.files or {}).fd_opts, exclude, "--exclude", false) },
+      grep = { rg_opts = append_globs((globals.grep or {}).rg_opts, exclude, "-g", true) },
+    }
+  end
 end
 
 ---@param exclude string[]
+---@return fun(current: table): table|nil
 local function snacks(exclude)
-  local ok, Snacks = pcall(require, "snacks")
-  if not ok then return end
-  pcall(function()
-    local picker = Snacks.config.picker or {}
-    picker.sources = picker.sources or {}
+  return function(current)
+    local sources = (current.picker or {}).sources or {}
+    local out = {}
     for _, source in ipairs({ "files", "grep" }) do
-      local s = picker.sources[source] or {}
-      local have, list = {}, vim.deepcopy(s.exclude or {})
+      local have, list = {}, vim.deepcopy((sources[source] or {}).exclude or {})
       for _, g in ipairs(list) do
         have[g] = true
       end
       for _, g in ipairs(exclude) do
         if not have[g] then list[#list + 1] = g end
       end
-      s.exclude = list
-      picker.sources[source] = s
+      out[source] = { exclude = list }
     end
-    Snacks.config.picker = picker
-  end)
+    return { sources = out }
+  end
 end
 
+---Contributions for `pickers.engines.patcher`. None while `find.native` is
+---false or the effective exclude list is empty.
 ---@param cfg Pickers.Config|nil
-function M.patch(cfg)
+---@return table<string, fun(current: table): table|nil>
+function M.contribute(cfg)
   cfg = cfg or require("pickers.config").get()
   local find = cfg.find or {}
-  if find.native == false then return end
+  if find.native == false then return {} end
   local exclude = find.exclude
-  if type(exclude) ~= "table" or #exclude == 0 then return end
+  if type(exclude) ~= "table" or #exclude == 0 then return {} end
+  return { telescope = telescope(exclude), ["fzf-lua"] = fzf(exclude), snacks = snacks(exclude) }
+end
 
-  local when_loaded = require("pickers.engines.when_loaded")
-  when_loaded.run("telescope", function()
-    telescope(exclude)
-  end)
-  when_loaded.run("fzf-lua", function()
-    fzf(exclude)
-  end)
-  when_loaded.run("snacks", function()
-    snacks(exclude)
-  end)
+---Patch on its own (a host that wants only this). `bindings.setup` installs
+---every contributor together instead.
+---@param cfg Pickers.Config|nil
+function M.patch(cfg)
+  require("pickers.engines.patcher").install(cfg, { "pickers.find_native" })
 end
 
 return M

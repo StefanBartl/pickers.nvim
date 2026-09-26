@@ -1,9 +1,9 @@
 ---@module 'pickers.display_native'
 ---@brief Apply the cosmetic `display.*` switches to the engines' global config.
 ---@description
---- Three opt-in switches, each `nil` (the engine's own default stays) until the
---- host sets a boolean. Patched onto every engine once it is loaded
---- (`pickers.engines.when_loaded`), so they hold for native pickers
+--- Opt-in switches, each `nil` (the engine's own default stays) until the host
+--- sets a value. Patched onto every engine once it is loaded (one call per
+--- engine, see `pickers.engines.patcher`), so they hold for native pickers
 --- (`:FzfLua files`, `:Telescope find_files`, ...) as well as pickers.nvim's own:
 ---
 ---   cycle         wrap around at either end of the result list
@@ -40,19 +40,20 @@ local function any_set(display)
 end
 
 ---@param display Pickers.DisplayConfig
+---@return fun(current: table): table|nil
 local function telescope(display)
-  if not pcall(require, "telescope") then return end
-  pcall(function()
-    local values = require("telescope.config").values or {}
+  return function(current)
     local defaults = {}
     if type(display.cycle) == "boolean" then
       defaults.scroll_strategy = display.cycle and "cycle" or "limit"
     end
     if type(display.prompt_top) == "boolean" then
       defaults.sorting_strategy = display.prompt_top and "ascending" or "descending"
-      defaults.layout_config = vim.tbl_deep_extend("force", values.layout_config or {}, {
-        prompt_position = display.prompt_top and "top" or "bottom",
-      })
+      defaults.layout_config = vim.tbl_deep_extend(
+        "force",
+        (current.defaults or {}).layout_config or {},
+        { prompt_position = display.prompt_top and "top" or "bottom" }
+      )
     end
     if display.path_adaptive == true then
       local ok, shorten = pcall(require, "lib.nvim.fs.path_shorten")
@@ -64,17 +65,15 @@ local function telescope(display)
         end
       end
     end
-    if next(defaults) then require("telescope").setup({ defaults = defaults }) end
-  end)
+    if next(defaults) then return { defaults = defaults } end
+  end
 end
 
 ---@param display Pickers.DisplayConfig
+---@return fun(current: table): table|nil
 local function fzf(display)
-  local ok, fzf_lua = pcall(require, "fzf-lua")
-  if not ok then return end
-  pcall(function()
-    local opts = {}
-    local fzf_opts = {}
+  return function()
+    local opts, fzf_opts = {}, {}
     -- `false` (not nil) so a `--cycle` the host set earlier is switched off too.
     if type(display.cycle) == "boolean" then fzf_opts["--cycle"] = display.cycle end
     if type(display.prompt_top) == "boolean" then
@@ -84,40 +83,36 @@ local function fzf(display)
     if type(display.preview_wrap) == "boolean" then
       opts.winopts = { preview = { wrap = display.preview_wrap } }
     end
-    if next(opts) then fzf_lua.setup(opts, true) end
-  end)
+    if next(opts) then return opts end
+  end
 end
 
 ---@param display Pickers.DisplayConfig
+---@return fun(current: table): table|nil
 local function snacks(display)
-  if type(display.preview_wrap) ~= "boolean" then return end
-  local ok, Snacks = pcall(require, "snacks")
-  if not ok then return end
-  pcall(function()
-    -- "force": an explicit display switch wins over the host's own snacks
-    -- config, like it does on telescope/fzf-lua.
-    Snacks.config.picker = vim.tbl_deep_extend("force", Snacks.config.picker or {}, {
-      win = { preview = { wo = { wrap = display.preview_wrap } } },
-    })
-  end)
+  if type(display.preview_wrap) ~= "boolean" then return nil end
+  -- The patcher deep-merges this over the host's own snacks config with
+  -- "force": an explicit display switch wins, like it does on telescope/fzf-lua.
+  return function()
+    return { win = { preview = { wo = { wrap = display.preview_wrap } } } }
+  end
 end
 
+---Contributions for `pickers.engines.patcher`. Empty while no switch is set.
 ---@param cfg Pickers.Config|nil
-function M.patch(cfg)
+---@return table<string, fun(current: table): table|nil>
+function M.contribute(cfg)
   cfg = cfg or require("pickers.config").get()
   local display = cfg.display or {}
-  if not any_set(display) then return end
+  if not any_set(display) then return {} end
+  return { telescope = telescope(display), ["fzf-lua"] = fzf(display), snacks = snacks(display) }
+end
 
-  local when_loaded = require("pickers.engines.when_loaded")
-  when_loaded.run("telescope", function()
-    telescope(display)
-  end)
-  when_loaded.run("fzf-lua", function()
-    fzf(display)
-  end)
-  when_loaded.run("snacks", function()
-    snacks(display)
-  end)
+---Patch on its own (a host that wants only this). `bindings.setup` installs
+---every contributor together instead.
+---@param cfg Pickers.Config|nil
+function M.patch(cfg)
+  require("pickers.engines.patcher").install(cfg, { "pickers.display_native" })
 end
 
 return M
