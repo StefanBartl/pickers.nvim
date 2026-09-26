@@ -10,6 +10,18 @@ a changelog.
 
 ---
 
+[x] **Fix: telescope excludes no longer match as substrings.** The first `find_native`
+  wrote the globs into `file_ignore_patterns`, which telescope applies with
+  `string.find` -- as substrings -- to every result: `out` hid `layout.lua` and
+  `output.lua`, `bin` hid `combine.lua`, and each pattern cost every entry. The
+  excludes now go to `pickers.find_files.find_command` (a function: telescope appends
+  flags to the table it gets) and `pickers.live_grep.additional_args`, i.e. to rg/fd,
+  which match whole path components. A `find_command`/`additional_args` the host set
+  is left alone. Other telescope lists (oldfiles, LSP) are no longer filtered.
+  Also: `display.cycle = false` now switches an earlier `--cycle` off, snacks
+  `preview_wrap` follows the same explicit-switch-wins rule, and the PDF text hook
+  looks pdfport up once and tests the extension before anything else.
+
 [x] **`display.path_adaptive` (telescope).** Global `path_display` that shortens a path
   to the picker's own width via lib.nvim's `fs.path_shorten`; the boolean
   `path_shorten` (fixed native "shorten") is unchanged. fzf-lua and snacks have no equivalent.
@@ -44,7 +56,7 @@ a changelog.
 
 [x] **`find.exclude` reaches the engines' native pickers; `find.ignore_list`.**
   `pickers.find_native` patches the effective exclude list onto telescope
-  (`file_ignore_patterns`, globs escaped to Lua patterns), fzf-lua (`files.fd_opts`
+  (`pickers.find_files.find_command` / `pickers.live_grep.additional_args`, see the fix below), fzf-lua (`files.fd_opts`
   / `grep.rg_opts`) and snacks (`sources.{files,grep}.exclude`) once each is
   loaded, so a keymap calling `:FzfLua files` directly honours the same list as
   `:Pickers cwd files`. Entries already present are not duplicated;

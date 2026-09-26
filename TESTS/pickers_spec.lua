@@ -5762,7 +5762,7 @@ do
       ts_seen = o
     end,
   }
-  package.loaded["telescope.config"] = { values = { file_ignore_patterns = { "^keep$" } } }
+  package.loaded["telescope.config"] = { pickers = { find_files = { hidden = true } } }
   package.loaded["fzf-lua"] = {
     setup = function(o)
       fzf_seen = o
@@ -5774,14 +5774,78 @@ do
   local fake = { config = { picker = { sources = { files = { exclude = { "old" } } } } } }
   package.loaded["snacks"] = fake
 
+  local real_executable = vim.fn.executable
+  vim.fn.executable = function(name)
+    return name == "rg" and 1 or 0
+  end
   fn.patch({ find = { exclude = { "node_modules", "*.min.js", "old" }, native = true } })
-  local pats = ts_seen and ts_seen.defaults.file_ignore_patterns or {}
-  check("find_native: telescope keeps the existing pattern", vim.tbl_contains(pats, "^keep$"))
+  -- Snapshot: the later patch() calls below reuse the same fake snacks table.
+  local snacks_files = vim.deepcopy(fake.config.picker.sources.files.exclude)
+  local snacks_grep = vim.deepcopy(fake.config.picker.sources.grep.exclude)
+  local tp = ts_seen and ts_seen.pickers
   check(
-    "find_native: telescope glob escaped to a Lua pattern",
-    vim.tbl_contains(pats, "node_modules")
+    "find_native: telescope find_files keeps the host's own options",
+    tp and tp.find_files.hidden == true
   )
-  check("find_native: telescope * becomes .*", vim.tbl_contains(pats, ".*%.min%.js"))
+  check(
+    "find_native: telescope find_command is a function (telescope appends flags to it)",
+    tp and type(tp.find_files.find_command) == "function"
+  )
+  local cmd = tp and tp.find_files.find_command()
+  check(
+    "find_native: telescope rg command carries the excludes as negated globs",
+    cmd
+      and cmd[1] == "rg"
+      and vim.tbl_contains(cmd, "!node_modules")
+      and vim.tbl_contains(cmd, "!*.min.js")
+  )
+  local cmd2 = tp and tp.find_files.find_command()
+  check("find_native: each find_command call is a fresh table", cmd ~= cmd2)
+  local gargs = tp and tp.live_grep.additional_args()
+  check(
+    "find_native: telescope live_grep additional_args",
+    gargs and vim.tbl_contains(gargs, "!node_modules")
+  )
+  check(
+    "find_native: telescope no longer touches file_ignore_patterns (substring match)",
+    ts_seen and ts_seen.defaults == nil
+  )
+
+  -- fd fallback when rg is missing; nothing installed when neither exists.
+  vim.fn.executable = function(name)
+    return name == "fd" and 1 or 0
+  end
+  local fd_cmd = tp.find_files.find_command()
+  check(
+    "find_native: fd fallback uses --exclude",
+    fd_cmd and fd_cmd[1] == "fd" and vim.tbl_contains(fd_cmd, "--exclude")
+  )
+  vim.fn.executable = function()
+    return 0
+  end
+  ts_seen = nil
+  package.loaded["telescope.config"] = { pickers = {} }
+  fn.patch({ find = { exclude = { "x" }, native = true } })
+  check(
+    "find_native: neither rg nor fd -> no find_command, grep args still set",
+    ts_seen and ts_seen.pickers.find_files.find_command == nil
+  )
+  vim.fn.executable = real_executable
+
+  -- A find_command / additional_args the host set is left alone.
+  local mine = function()
+    return { "mine" }
+  end
+  local mine_args = function()
+    return { "--mine" }
+  end
+  package.loaded["telescope.config"] = {
+    pickers = { find_files = { find_command = mine }, live_grep = { additional_args = mine_args } },
+  }
+  ts_seen = nil
+  fn.patch({ find = { exclude = { "x" }, native = true } })
+  check("find_native: host find_command / additional_args untouched", ts_seen == nil)
+
   check(
     "find_native: fzf fd_opts gets --exclude",
     fzf_seen and fzf_seen.files.fd_opts:find("--exclude", 1, true) ~= nil
@@ -5794,12 +5858,11 @@ do
     "find_native: fzf rg_opts keeps its trailing -e last",
     fzf_seen and fzf_seen.grep.rg_opts:match("%s%-e$") ~= nil
   )
-  local ex = fake.config.picker.sources.files.exclude
   check(
     "find_native: snacks files.exclude appended without duplicates",
-    #ex == 3 and ex[1] == "old"
+    #snacks_files == 3 and snacks_files[1] == "old"
   )
-  check("find_native: snacks grep.exclude created", #fake.config.picker.sources.grep.exclude == 3)
+  check("find_native: snacks grep.exclude created", #snacks_grep == 3)
 
   -- native = false and an empty list both patch nothing.
   ts_seen = nil
@@ -5852,6 +5915,19 @@ do
   )
   check("display_native: fzf preview wrap", fzf_seen.winopts.preview.wrap == false)
   check("display_native: snacks preview wrap", fake.config.picker.win.preview.wo.wrap == false)
+
+  -- cycle = false must reach fzf as an explicit `false`, so a `--cycle` set
+  -- earlier by the host is switched off (nil would be dropped by the merge).
+  fzf_seen = nil
+  dn.patch({ display = { cycle = false } })
+  check(
+    "display_native: cycle=false is an explicit false for fzf",
+    fzf_seen and fzf_seen.fzf_opts["--cycle"] == false
+  )
+  check(
+    "display_native: cycle=false -> telescope scroll_strategy limit",
+    ts_seen and ts_seen.defaults.scroll_strategy == "limit"
+  )
 
   dn.patch({ display = { path_adaptive = true } })
   local pd = ts_seen and ts_seen.defaults.path_display
@@ -5911,6 +5987,8 @@ do
   )
   check("pdf_text: the host's own hook runs first and can claim the file", hook("host.txt") == true)
   check("pdf_text: otherwise pdfport's hook answers", hook("a.pdf") == "pdf")
+  check("pdf_text: a non-PDF is declined without asking pdfport", hook("a.lua") == false)
+  check("pdf_text: a non-string path is declined", hook(nil) == false)
 
   seen = nil
   require("pickers.integrations.pdf_text").patch({ images = { pdf_text = false } })

@@ -24,6 +24,20 @@ local M = {}
 ---@type function|nil the hook installed by `patch()`, to avoid stacking on a re-run
 local installed
 
+---@type table|false|nil pdfport's telescope integration once looked up; `false` = not installed
+local pdf_mod
+
+---Looked up once. The hook runs for EVERY previewed file, and a failing
+---`require` walks the whole runtimepath each time it is repeated.
+---@return table|false
+local function pdfport()
+  if pdf_mod == nil then
+    local ok, mod = pcall(require, "pdfport.integrations.telescope")
+    pdf_mod = ok and mod or false
+  end
+  return pdf_mod
+end
+
 ---@param cfg Pickers.Config|nil
 function M.patch(cfg)
   cfg = cfg or require("pickers.config").get()
@@ -42,8 +56,10 @@ function M.patch(cfg)
           local handled = existing(filepath, bufnr, opts)
           if handled then return handled end
         end
-        local ok, pdf = pcall(require, "pdfport.integrations.telescope")
-        if not ok then return false end
+        -- Cheapest test first: almost every preview is not a PDF.
+        if type(filepath) ~= "string" or not filepath:lower():match("%.pdf$") then return false end
+        local pdf = pdfport()
+        if not pdf then return false end
         return pdf.filetype_hook(filepath, bufnr, opts)
       end
 

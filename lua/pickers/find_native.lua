@@ -8,7 +8,9 @@
 --- patches it onto each engine's own global config instead, once the engine is
 --- loaded (`pickers.engines.when_loaded`):
 ---
----   telescope -> `defaults.file_ignore_patterns` (Lua patterns, escaped)
+---   telescope -> `pickers.find_files.find_command` (rg/fd with the globs) and
+---                `pickers.live_grep.additional_args` -- not
+---                `file_ignore_patterns`, see `telescope()` below
 ---   fzf-lua   -> `files.fd_opts` (`--exclude`) and `grep.rg_opts` (`-g '!..'`)
 ---   snacks    -> `Snacks.config.picker.sources.{files,grep}.exclude`
 ---
@@ -58,32 +60,85 @@ function M.with_ignore_list(exclude)
   return out
 end
 
----Escape a glob into a Lua pattern for telescope's file_ignore_patterns.
----@param glob string
----@return string
-local function glob_to_lua_pattern(glob)
-  local escaped = glob:gsub("[%^%$%(%)%%%.%[%]%+%-%?]", "%%%0"):gsub("%*", ".*")
-  return escaped
+---The argv telescope's `find_files` should run, with the excludes as native
+---rg/fd globs. `nil` when neither is installed (telescope then keeps choosing
+---its own find/where fallback, which has no exclude flag to give).
+---@param exclude string[]
+---@return string[]|nil
+local function files_command(exclude)
+  local cmd
+  if vim.fn.executable("rg") == 1 then
+    cmd = { "rg", "--files", "--color", "never" }
+    for _, g in ipairs(exclude) do
+      cmd[#cmd + 1] = "-g"
+      cmd[#cmd + 1] = "!" .. g
+    end
+  else
+    local fd = vim.fn.executable("fd") == 1 and "fd"
+      or (vim.fn.executable("fdfind") == 1 and "fdfind")
+    if not fd then return nil end
+    cmd = { fd, "--type", "f", "--color", "never" }
+    for _, g in ipairs(exclude) do
+      cmd[#cmd + 1] = "--exclude"
+      cmd[#cmd + 1] = g
+    end
+  end
+  return cmd
 end
 
+---rg arguments for telescope's `live_grep`.
+---@param exclude string[]
+---@return string[]
+local function grep_args(exclude)
+  local args = {}
+  for _, g in ipairs(exclude) do
+    args[#args + 1] = "-g"
+    args[#args + 1] = "!" .. g
+  end
+  return args
+end
+
+---@type { find: function|nil, grep: function|nil } what a previous run installed
+local installed = {}
+
+---Telescope: not `file_ignore_patterns`. Those are Lua patterns that telescope
+---runs with `string.find` -- i.e. as SUBSTRINGS -- against every result, so
+---`out` would hide `layout.lua` and `output.lua`, and each extra pattern costs
+---every entry. The excludes go to rg/fd instead, which match whole path
+---components and never produce the entry at all.
+---
+---`find_command` is a function on purpose: telescope appends `--hidden`, `-L`,
+---... to the table it is given, so a shared static table would grow with every
+---call. A `find_command` / `additional_args` the host set itself is left alone.
 ---@param exclude string[]
 local function telescope(exclude)
   if not pcall(require, "telescope") then return end
   pcall(function()
-    local current = (require("telescope.config").values or {}).file_ignore_patterns or {}
-    local have = {}
-    for _, p in ipairs(current) do
-      have[p] = true
-    end
-    local merged = vim.deepcopy(current)
-    for _, g in ipairs(exclude) do
-      local p = glob_to_lua_pattern(g)
-      if not have[p] then
-        have[p] = true
-        merged[#merged + 1] = p
+    local pickers = require("telescope.config").pickers or {}
+    local find = vim.deepcopy(pickers.find_files or {})
+    local grep = vim.deepcopy(pickers.live_grep or {})
+
+    local patched = false
+    if
+      (find.find_command == nil or find.find_command == installed.find)
+      and files_command(exclude) ~= nil
+    then
+      installed.find = function()
+        return files_command(exclude)
       end
+      find.find_command = installed.find
+      patched = true
     end
-    require("telescope").setup({ defaults = { file_ignore_patterns = merged } })
+    if grep.additional_args == nil or grep.additional_args == installed.grep then
+      installed.grep = function()
+        return grep_args(exclude)
+      end
+      grep.additional_args = installed.grep
+      patched = true
+    end
+    if patched then
+      require("telescope").setup({ pickers = { find_files = find, live_grep = grep } })
+    end
   end)
 end
 

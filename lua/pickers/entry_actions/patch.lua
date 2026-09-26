@@ -27,8 +27,7 @@
 
 local M = {}
 
----@param cfg Pickers.Config
-local function telescope(cfg)
+local function telescope()
   local ok = pcall(require, "telescope")
   if not ok then return end
   pcall(function()
@@ -45,8 +44,7 @@ local function telescope(cfg)
   end)
 end
 
----@param cfg Pickers.Config
-local function fzf(cfg)
+local function fzf()
   local ok, fzf_lua = pcall(require, "fzf-lua")
   if not ok then return end
   pcall(function()
@@ -96,12 +94,8 @@ function M.patch(cfg)
   if cfg.keys and cfg.keys.enable == false then return end
 
   local when_loaded = require("pickers.engines.when_loaded")
-  when_loaded.run("telescope", function()
-    telescope(cfg)
-  end)
-  when_loaded.run("fzf-lua", function()
-    fzf(cfg)
-  end)
+  when_loaded.run("telescope", telescope)
+  when_loaded.run("fzf-lua", fzf)
   when_loaded.run("snacks", function()
     snacks(cfg)
   end)

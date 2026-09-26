@@ -75,7 +75,8 @@ local function fzf(display)
   pcall(function()
     local opts = {}
     local fzf_opts = {}
-    if type(display.cycle) == "boolean" then fzf_opts["--cycle"] = display.cycle or nil end
+    -- `false` (not nil) so a `--cycle` the host set earlier is switched off too.
+    if type(display.cycle) == "boolean" then fzf_opts["--cycle"] = display.cycle end
     if type(display.prompt_top) == "boolean" then
       fzf_opts["--layout"] = display.prompt_top and "reverse" or "default"
     end
@@ -93,7 +94,9 @@ local function snacks(display)
   local ok, Snacks = pcall(require, "snacks")
   if not ok then return end
   pcall(function()
-    Snacks.config.picker = vim.tbl_deep_extend("keep", Snacks.config.picker or {}, {
+    -- "force": an explicit display switch wins over the host's own snacks
+    -- config, like it does on telescope/fzf-lua.
+    Snacks.config.picker = vim.tbl_deep_extend("force", Snacks.config.picker or {}, {
       win = { preview = { wo = { wrap = display.preview_wrap } } },
     })
   end)
