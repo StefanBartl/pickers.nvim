@@ -122,7 +122,15 @@ function M.show(opts)
   local kit_ok, kit = pcall(require, "ui.kit")
   if not (kit_ok and kit and type(kit.viewer) == "function") then
     local surf = require("lib.nvim.output.viewer").show_lines("pickers.nvim keymaps", lines)
-    if surf and opts.on_close then surf:on_close(opts.on_close) end
+    if surf then
+      if opts.on_close then surf:on_close(opts.on_close) end
+    elseif opts.on_close then
+      -- The panel itself failed to open (e.g. nvim_open_win rejected the
+      -- geometry) -- still call on_close so a caller waiting on it to
+      -- resume something (fzf-lua.resume(), see entry_actions/adapters/fzf.lua)
+      -- is not left hanging forever.
+      opts.on_close()
+    end
     return
   end
 
