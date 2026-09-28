@@ -109,9 +109,11 @@ function M.hint(engine)
   return spec.lhs[1] .. " cheatsheet"
 end
 
----Open the cheatsheet panel. No-op (silently) when ui.nvim is not installed
------ same soft-dependency posture as `pickers.ui.action_picker`/`dir_nav_picker`
------ falling back to a single `vim.notify` dump so the keys are still visible.
+---Open the cheatsheet panel. Falls back to lib.nvim.output.viewer (lib.nvim
+---is a hard dependency, unlike ui.nvim) when ui.nvim's own `ui.kit.viewer`
+---is not installed -- same soft-dependency posture as
+---`pickers.ui.action_picker`/`dir_nav_picker`, minus the fallback ever being
+---a plain `vim.notify` dump.
 ---@param opts { overrides?: table<string, string>, on_close?: fun() }|nil
 function M.show(opts)
   opts = opts or {}
@@ -119,8 +121,8 @@ function M.show(opts)
 
   local kit_ok, kit = pcall(require, "ui.kit")
   if not (kit_ok and kit and type(kit.viewer) == "function") then
-    vim.notify(table.concat(lines, "\n"), vim.log.levels.INFO, { title = "pickers.nvim keymaps" })
-    if opts.on_close then opts.on_close() end
+    local surf = require("lib.nvim.output.viewer").show_lines("pickers.nvim keymaps", lines)
+    if surf and opts.on_close then surf:on_close(opts.on_close) end
     return
   end
 

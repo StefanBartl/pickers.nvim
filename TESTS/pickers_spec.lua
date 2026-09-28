@@ -2898,8 +2898,22 @@ do
   if captured_on_close then captured_on_close() end
   check("cheatsheet.show: on_close fires", closed)
 
-  -- Fallback when ui.kit has no viewer(): must not throw, must still call on_close.
+  -- Fallback when ui.kit has no viewer(): must not throw, and must wire
+  -- on_close through lib.nvim.output.viewer's surface (lib.nvim is a hard
+  -- dependency, unlike ui.nvim) the same way the primary path wires it
+  -- through ui.kit's -- on_close fires when the panel actually closes, not
+  -- eagerly.
   package.loaded["ui.kit"] = nil
+  local fallback_captured_on_close
+  package.loaded["lib.nvim.output.viewer"] = {
+    show_lines = function(_title, _lines)
+      return {
+        on_close = function(_self, fn)
+          fallback_captured_on_close = fn
+        end,
+      }
+    end,
+  }
   package.loaded["pickers.cheatsheet"] = nil
   local cheatsheet3 = require("pickers.cheatsheet")
   local fallback_closed = false
@@ -2909,9 +2923,15 @@ do
     end,
   })
   check("cheatsheet.show: fallback path does not throw", ok_fallback)
-  check("cheatsheet.show: fallback path still fires on_close", fallback_closed)
+  check(
+    "cheatsheet.show: fallback path wires on_close through lib.nvim.output.viewer",
+    type(fallback_captured_on_close) == "function"
+  )
+  if fallback_captured_on_close then fallback_captured_on_close() end
+  check("cheatsheet.show: fallback path fires on_close once the panel closes", fallback_closed)
 
   package.loaded["ui.kit"] = nil
+  package.loaded["lib.nvim.output.viewer"] = nil
   package.loaded["pickers.cheatsheet"] = nil
 end
 
