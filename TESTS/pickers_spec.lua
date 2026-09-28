@@ -2930,6 +2930,30 @@ do
   if fallback_captured_on_close then fallback_captured_on_close() end
   check("cheatsheet.show: fallback path fires on_close once the panel closes", fallback_closed)
 
+  -- Regression: if the fallback panel itself fails to open (show_lines
+  -- returns nil -- e.g. nvim_open_win rejected the geometry), on_close must
+  -- still fire. A caller like entry_actions/adapters/fzf.lua's do_cheatsheet()
+  -- uses it to resume the fzf-lua session; silently dropping it would leave
+  -- that session stuck forever.
+  package.loaded["lib.nvim.output.viewer"] = {
+    show_lines = function(_title, _lines)
+      return nil
+    end,
+  }
+  package.loaded["pickers.cheatsheet"] = nil
+  local cheatsheet4 = require("pickers.cheatsheet")
+  local open_failed_closed = false
+  local ok_open_failed = pcall(cheatsheet4.show, {
+    on_close = function()
+      open_failed_closed = true
+    end,
+  })
+  check("cheatsheet.show: a failed fallback open does not throw", ok_open_failed)
+  check(
+    "cheatsheet.show: on_close still fires when the fallback panel fails to open",
+    open_failed_closed
+  )
+
   package.loaded["ui.kit"] = nil
   package.loaded["lib.nvim.output.viewer"] = nil
   package.loaded["pickers.cheatsheet"] = nil
