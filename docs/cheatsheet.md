@@ -2,12 +2,21 @@
 
 This is the static reference. For the keys bound **inside an already-open
 picker** (preview scroll, history, create file, open in background, …),
-press `<C-/>` (`f1` on fzf-lua) while a picker is open — telescope and
-fzf-lua even show that hint in the title/header the moment the picker opens.
-On snacks, press `?` instead (in the input or list window, normal mode) for
-Snacks' own native keymap help — see
-[FEATURES/KEYS.md](FEATURES/KEYS.md#cheatsheet) for why snacks gets a
-different key.
+press `<C-/>` or `<M-?>` (`f1` on fzf-lua) while a picker is open. The two keys
+worth knowing first — the cheatsheet and `<S-CR>` (add the entry to the buffer
+list without leaving the picker) — are shown as a legend in the title/header of
+every picker the moment it opens. On snacks, `?` (in the input or list window,
+normal mode) additionally opens Snacks' own native keymap help — see
+[FEATURES/KEYS.md](FEATURES/KEYS.md#cheatsheet).
+
+The path/system keys work in the prompt: `<C-y>` copies the absolute path,
+`<M-y>` the parent directory, `<M-r>` the `$REPOS_DIR/…` form, `<M-g>` the
+project root, `<M-e>`/`<M-j>` the path relative to the project root/the open
+buffer, `<M-l>` a Markdown link, `<M-o>` opens with the system default
+application and `<M-x>` reveals in the file manager — on `<Tab>`-selected
+entries when there are any. In normal mode filetree.nvim's chords work too
+(`[a`, `]a`, `[e`, `[R`, `]R`, `]b`, `[f`, `ML`, `MM`, `<leader>sm`,
+`<leader>fm`).
 
 ## :Pickers command syntax
 

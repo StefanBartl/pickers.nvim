@@ -143,11 +143,20 @@ snacks. See `lua/pickers/keys/`.
 | `vsplit` | `<C-v>` | ✓ | native (`ctrl-v`) | ✓ |
 | `tab` | `<C-t>` | ✓ | native (`ctrl-t`) | ✓ |
 | `mouse_confirm` | `<2-LeftMouse>` | ✓ | native (fzf's own mouse handling) | native + patched |
-| `cheatsheet` | `<C-/>` | ✓ | fixed (`f1`) | ✓ |
-| `copy_absolute` | `[a` | ✓ (results only) | fixed (`ctrl-y`) | ✓ (list + input, normal mode) |
-| `copy_dirname` | `]a` | ✓ (results only) | fixed (`alt-y`) | ✓ (list + input, normal mode) |
-| `copy_env_rooted` | `[e` | ✓ (results only) | fixed (`alt-r`) | ✓ (list + input, normal mode) |
-| `markdown_link` | `ML` | ✓ (results only) | fixed (`alt-m`) | ✓ (list + input, normal mode) |
+| `cheatsheet` | `<C-/>`, `<M-?>` | ✓ | fixed (`f1`) | ✓ |
+| `copy_absolute` | `<C-y>` · `[a`, `[f` | ✓ | fixed (`ctrl-y`) | ✓ |
+| `copy_dirname` | `<M-y>` · `]a` | ✓ | fixed (`alt-y`) | ✓ |
+| `copy_env_rooted` | `<M-r>` · `[e` | ✓ | fixed (`alt-r`) | ✓ |
+| `copy_project_root` | `<M-g>` · `[R` | ✓ | fixed (`alt-g`) | ✓ |
+| `copy_project_relative` | `<M-e>` · `]R` | ✓ | fixed (`alt-e`) | ✓ |
+| `copy_buffer_relative` | `<M-j>` · `]b` | ✓ | fixed (`alt-j`) | ✓ |
+| `markdown_link` | `<M-l>` · `ML`, `MM` | ✓ | fixed (`alt-l`) | ✓ |
+| `open_system` | `<M-o>` · `<leader>sm` | ✓ | fixed (`alt-o`) | ✓ |
+| `reveal_in_manager` | `<M-x>` · `<leader>fm` | ✓ | fixed (`alt-x`) | ✓ |
+
+For the path/system actions the first lhs is a **direct key** (Ctrl/Alt — works
+in the prompt, insert *and* normal mode); everything after the `·` is a
+**chord** taken from filetree.nvim, bound in normal mode only (see below).
 
 fzf-lua is the capability gap: its builtin previewer has no horizontal preview
 scroll, its history is fzf's own `--history` bound to `ctrl-p`/`ctrl-n`
@@ -216,55 +225,82 @@ require("pickers").setup({
 ```
 
 **`cheatsheet`** opens a read-only panel listing every currently-bound key
-from this table (source-of-truth is `pickers.keys.resolve()`, so a remapped
-or unbound key shows up as what it actually is). Default `<C-/>` — **not**
-`<C-?>`: every picker prompt starts in insert mode, where a raw `?` just
-searches for a literal question mark, and Neovim resolves `<C-?>` to the same
-byte (`0x7F`/`DEL`) that Backspace sends in many terminals, so binding it
-would open the cheatsheet on every backspace instead. Like
+from this table, grouped, with the two keys worth knowing first — the
+cheatsheet itself and `open_background` (`<S-CR>`, "add to the buffer list, no
+focus switch") — under "Essentials". Source-of-truth is
+`pickers.keys.resolve()`, so a remapped or unbound key shows up as what it
+actually is. Default `<C-/>` and `<M-?>` — **not** `<C-?>`: every picker prompt
+starts in insert mode, where a raw `?` just searches for a literal question
+mark, and Neovim resolves `<C-?>` to the same byte (`0x7F`/`DEL`) that
+Backspace sends in many terminals, so binding it would open the cheatsheet on
+every backspace instead. `<M-?>` (Alt-Shift-/) has no such problem. Like
 `create_file`/`open_background`, this runs pickers.nvim-specific logic
 (`pickers.cheatsheet`), so it is patched into the engine the same
 way as the other entry actions — see `lua/pickers/entry_actions/README.md`. fzf-lua's binding is fixed to
 `f1`, same class as its `ctrl-a`/`ctrl-o`/`shift-enter`.
 
-The key itself is visible without pressing anything: telescope's
-`results_title` and fzf-lua's `--header` show a "`<C-/> cheatsheet`" /
-"`f1 cheatsheet`" hint as soon as a picker opens. Snacks has no equivalent
-static slot (its title only composes from a template plus the live `{flags}`
-toggle badges — see [FEATURES/KEYS.md#cheatsheet](FEATURES/KEYS.md#cheatsheet)
-for what those badges actually are, e.g. the "f"/"h" you may have seen in a
-`cwd files` picker's title — that's `follow`/`hidden` being on by default, not
-a typed query); snacks users get the same information a different way —
-`?` in the picker's input or list window (normal mode) opens Snacks' own
-**native** keymap help.
+Those two keys are also the **legend**, visible without pressing anything:
+telescope's `results_title`, fzf-lua's `--header` and the snacks picker
+`title` show "`<C-/> cheatsheet · <S-CR> add to buffers`" (fzf-lua:
+"`f1 cheatsheet · shift-enter add to buffers`") as soon as a picker opens. Each
+half drops out when its action is unbound. On snacks the legend is appended to
+the title, next to the live `{flags}` toggle badges (see
+[FEATURES/KEYS.md#cheatsheet](FEATURES/KEYS.md#cheatsheet) for what those badges
+actually are, e.g. the "f"/"h" you may have seen in a `cwd files` picker's
+title — that's `follow`/`hidden` being on by default, not a typed query).
+Snacks' own **native** keymap help is still on `?` in the picker's input or
+list window (normal mode).
 
-**`copy_absolute`/`copy_dirname`/`copy_env_rooted`/`markdown_link`** copy the
-selected entry's path in various formats — the curated subset of
-filetree.nvim's `[a`/`]a`/`[e`/`ML` path-copy family that still makes sense
-on a picker result row (a plain path string, not a `FiletreeNode`). Every
-format writes to both the `"+"` and unnamed `"` registers and does **not**
-close the picker (filetree.nvim's own path-copy features are non-disruptive
-— fzf-lua's action table has to close+resume regardless, approximating the
-same effect). Deliberately not ported: marks/trash keymaps, and the
-recursive/from-marked Markdown-link variants (a result row is one file, not
-a directory subtree). filetree.nvim's `gb` ("add to buffer list") is not
+**Path copy and system actions** —
+`copy_absolute`/`copy_dirname`/`copy_env_rooted`/`copy_project_root`/
+`copy_project_relative`/`copy_buffer_relative`/`markdown_link` and
+`open_system`/`reveal_in_manager` — are the curated subset of filetree.nvim's
+path-copy, markdown-link and system features that still make sense on a
+picker result row (a plain path string, not a `FiletreeNode`):
+
+| Action | Copies | filetree chord |
+|---|---|---|
+| `copy_absolute` | `/repo/src/a.lua` (several selected → one line each, i.e. the file list) | `[a`, `[f` |
+| `copy_dirname` | `/repo/src` | `]a` |
+| `copy_env_rooted` | `$REPOS_DIR/repo/src/a.lua` | `[e` |
+| `copy_project_root` | `/repo` (nearest `.git` ancestor, else the cwd) | `[R` |
+| `copy_project_relative` | `src/a.lua` | `]R` |
+| `copy_buffer_relative` | `./a.lua` / `../src/a.lua` — relative to the buffer *behind* the picker | `]b` |
+| `markdown_link` | `[a.lua](src/a.lua)` | `ML`, `MM` |
+| `open_system` | opens the entry with the OS default application | `<leader>sm` |
+| `reveal_in_manager` | shows the entry in Explorer/Finder/… | `<leader>fm` |
+
+filetree.nvim's "marks if any, else the node under the cursor" idiom maps onto
+the picker's own multi-selection: press `<Tab>` to select entries and every
+copy action then takes **all** of them (one line each — that is `[f` and
+`MM`), otherwise just the current entry. The system actions use the current
+entry only. Every copy writes to both the `"+"` and unnamed `"` registers and
+does **not** close the picker (fzf-lua's action table has to close+resume
+regardless, approximating the same effect). Deliberately not ported: trash,
+and the recursive Markdown-link variant (`MR` — a result row is one file, not a
+directory subtree). filetree.nvim's `gb` ("add to buffer list") is not
 duplicated either — `open_background` above already is that action here.
 
-These four are **results-window/normal-mode only, never insert mode** —
-unlike every other in-picker key on this page, their default lhs (`[a`,
-`]a`, `[e`, `ML`) are plain printable characters rather than control/special
-keys, so binding them while typing a query would swallow those characters
-out of it. On snacks this means both the list window's own normal mode
-*and* the input window's normal mode (i.e. after pressing `<Esc>` there,
-which stays in that same window/buffer instead of moving focus to the
-list) — telescope only needs the latter since it has a single prompt
-buffer whose normal mode already covers both (`mappings.n`). fzf-lua's own
-`--bind` syntax additionally has no concept of a multi-keystroke chord like
-`[a` (it binds a single logical key, not a pending-key state machine), so
-its bindings are fixed to single physical keys instead — `ctrl-y`/`alt-y`/
-`alt-r`/`alt-m` — same class as its `ctrl-a`/`ctrl-o`/`shift-enter`/`f1`. See
-[`lua/pickers/entry_actions/README.md`](../lua/pickers/entry_actions/README.md#path-copy-actions-copy_absolutecopy_dirnamecopy_env_rootedmarkdown_link)
-for the full table and the `$REPOS_DIR` fallback rules for `copy_env_rooted`.
+**Why direct keys *and* chords.** A picker prompt is always in insert mode,
+where `[`, `a`, `M`, `L` are just characters of the query — filetree.nvim's
+chords can never fire there. So each action carries a direct Ctrl/Alt key
+(bound in insert *and* normal mode, so it works while typing) plus the
+filetree chord, which is bound in **normal mode only** so it never swallows
+typed characters (`<Esc>` in the prompt to get there). The rule is per lhs:
+a single non-printing key press (`<C-y>`, `<M-l>`, `<S-CR>`) is direct;
+anything else (`[a`, `ML`, `<leader>sm`, `<Space>`) is a chord. On snacks
+normal mode means both the list window's *and* the input window's own normal
+mode; telescope only needs the latter since it has a single prompt buffer
+whose normal mode already covers both (`mappings.n`). fzf-lua's own `--bind`
+syntax has no concept of a multi-keystroke chord (it binds a single logical
+key, not a pending-key state machine), so its bindings are fixed to the same
+single physical keys the direct lhs resolve to (`ctrl-y`/`alt-y`/`alt-r`/
+`alt-g`/`alt-e`/`alt-j`/`alt-l`/`alt-o`/`alt-x`) — same class as its
+`ctrl-a`/`ctrl-o`/`shift-enter`/`f1`. The Alt keys are chosen to stay clear of
+the engines' own defaults (snacks `<A-m>`/`<A-p>`/`<A-h>`/…, fzf's `alt-b`/
+`alt-f`/`alt-d`). See
+[`lua/pickers/entry_actions/README.md`](../lua/pickers/entry_actions/README.md#path-copy-and-system-actions)
+for the `$REPOS_DIR` fallback rules for `copy_env_rooted`.
 
 Each action takes a single lhs, a list of lhs, or `false` to unbind it:
 ```lua

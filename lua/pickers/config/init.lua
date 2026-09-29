@@ -417,7 +417,13 @@ local NESTED_OPTS = {
     "copy_absolute",
     "copy_dirname",
     "copy_env_rooted",
+    "copy_project_root",
+    "copy_project_relative",
+    "copy_buffer_relative",
     "markdown_link",
+    -- System entry actions (pickers.entry_actions.system).
+    "open_system",
+    "reveal_in_manager",
     -- Opt-in tab-group switch actions (pickers.keys.ACTIONS.tab_next/tab_prev);
     -- absent from DEFAULTS.keys because their default is `false`, not nil.
     "tab_next",

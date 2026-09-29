@@ -23,10 +23,17 @@
 ---@field vsplit?               Pickers.KeyBinding Open selected entry in a vertical split. Default: "<C-v>"
 ---@field tab?                  Pickers.KeyBinding Open selected entry in a new tab. Default: "<C-t>"
 ---@field mouse_confirm?        Pickers.KeyBinding Double-click a result to open it. Default: "<2-LeftMouse>"
----@field cheatsheet?           Pickers.KeyBinding Show the in-picker keymap cheatsheet. Default: "<C-/>"
----@field copy_absolute?        Pickers.KeyBinding Copy the selected entry's absolute path. Default: "[a" (results/normal-mode only)
----@field copy_dirname?         Pickers.KeyBinding Copy the selected entry's parent directory (absolute). Default: "]a" (results/normal-mode only)
----@field copy_env_rooted?      Pickers.KeyBinding Copy the selected entry's path with $REPOS_DIR folded in. Default: "[e" (results/normal-mode only)
----@field markdown_link?        Pickers.KeyBinding Copy the selected entry as a Markdown link. Default: "ML" (results/normal-mode only)
+---@field cheatsheet?           Pickers.KeyBinding Show the in-picker keymap cheatsheet. Default: { "<C-/>", "<M-?>" }
+---@field copy_absolute?        Pickers.KeyBinding Copy the selected entries' absolute paths. Default: { "<C-y>", "[a", "[f" }
+---@field copy_dirname?         Pickers.KeyBinding Copy the parent directory (absolute). Default: { "<M-y>", "]a" }
+---@field copy_env_rooted?      Pickers.KeyBinding Copy the path with $REPOS_DIR folded in. Default: { "<M-r>", "[e" }
+---@field copy_project_root?    Pickers.KeyBinding Copy the absolute project root. Default: { "<M-g>", "[R" }
+---@field copy_project_relative? Pickers.KeyBinding Copy the path relative to the project root. Default: { "<M-e>", "]R" }
+---@field copy_buffer_relative? Pickers.KeyBinding Copy the path relative to the open buffer. Default: { "<M-j>", "]b" }
+---@field markdown_link?        Pickers.KeyBinding Copy the entries as Markdown links. Default: { "<M-l>", "ML", "MM" }
+---@field open_system?          Pickers.KeyBinding Open the current entry with the system default application. Default: { "<M-o>", "<leader>sm" }
+---@field reveal_in_manager?    Pickers.KeyBinding Reveal the current entry in the system file manager. Default: { "<M-x>", "<leader>fm" }
+---@field tab_next?             Pickers.KeyBinding Next target of the active tab group. Default: false (opt-in)
+---@field tab_prev?             Pickers.KeyBinding Previous target of the active tab group. Default: false (opt-in)
 
 return {}

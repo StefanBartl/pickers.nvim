@@ -137,6 +137,19 @@ require("pickers").setup({
     vsplit               = "<C-v>", -- open selected entry in a vertical split
     tab                  = "<C-t>", -- open selected entry in a new tab
     mouse_confirm        = "<2-LeftMouse>", -- double-click a result to open it
+    cheatsheet           = { "<C-/>", "<M-?>" }, -- keymap panel; also the title legend (with <S-CR>)
+    -- Path copy + system actions: a direct key (works in the prompt) plus
+    -- filetree.nvim's chords (normal mode only). Copies take the <Tab>-selected
+    -- entries, else the current one.
+    copy_absolute         = { "<C-y>", "[a", "[f" },
+    copy_dirname          = { "<M-y>", "]a" },
+    copy_env_rooted       = { "<M-r>", "[e" },
+    copy_project_root     = { "<M-g>", "[R" },
+    copy_project_relative = { "<M-e>", "]R" },
+    copy_buffer_relative  = { "<M-j>", "]b" },
+    markdown_link         = { "<M-l>", "ML", "MM" },
+    open_system           = { "<M-o>", "<leader>sm" },
+    reveal_in_manager     = { "<M-x>", "<leader>fm" },
     -- fzf-lua only binds the vertical preview scroll and the fixed ctrl-a/
     -- ctrl-o/shift-enter entry actions -- everything else is fzf-native/fixed.
     -- split/vsplit/tab are fzf-native too (fixed ctrl-s/ctrl-v/ctrl-t), and

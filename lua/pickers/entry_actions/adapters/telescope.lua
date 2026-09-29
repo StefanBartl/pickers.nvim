@@ -1,27 +1,24 @@
 ---@module 'pickers.entry_actions.adapters.telescope'
 ---@brief Telescope entry-action mappings: create_file + open_background +
 ---cheatsheet + path_copy (copy_absolute/copy_dirname/copy_env_rooted/
----markdown_link).
+---copy_project_root/copy_project_relative/copy_buffer_relative/markdown_link)
+---+ system (open_system/reveal_in_manager).
 ---@description
 --- Single canonical source for these mappings — collapses the pre-existing
 --- duplicate config.telescope.actions.open_badd / config.telescope.open_background
 --- pair from the nvim config (both bound <S-CR>/<C-o> to the same effect and
 --- silently collided via merge order).
+---
+--- Each lhs is bound in the modes `pickers.keys.modes_for` allows: direct
+--- Ctrl/Alt keys in insert AND normal mode (the prompt is always in insert
+--- mode), filetree-style chords (`[a`, `ML`, `<leader>sm`) in normal mode only.
 
 local notify = require("lib.nvim.notify").create("[pickers.entry_actions.adapters.telescope]")
 local extract = require("pickers.entry_actions.extract.telescope")
 local create_file = require("pickers.entry_actions.create_file")
 local open_background = require("pickers.entry_actions.open_background")
 local path_copy = require("pickers.entry_actions.path_copy")
-
----@internal
----path_copy format name -> pickers.keys action name.
-local FMT_TO_ACTION = {
-  absolute = "copy_absolute",
-  dirname = "copy_dirname",
-  env_rooted = "copy_env_rooted",
-  markdown_link = "markdown_link",
-}
+local system = require("pickers.entry_actions.system")
 
 local M = {}
 
@@ -48,17 +45,50 @@ local function do_create_file(prompt_bufnr)
 end
 
 ---@internal
+---The paths a copy action works on: every multi-selected (Tab) entry when
+---there are any, else the current one -- filetree.nvim's "marks if any, else
+---the node under the cursor" idiom -- and the window behind the picker (the
+---base of `buffer_relative`).
+---@param prompt_bufnr integer
+---@return string[] paths
+---@return integer|nil win
+local function selected_paths(prompt_bufnr)
+  local action_state = require("telescope.actions.state")
+  local picker = action_state.get_current_picker(prompt_bufnr)
+  local entries = picker and picker:get_multi_selection() or {}
+  if #entries == 0 then entries = { action_state.get_selected_entry() } end
+
+  local paths = {}
+  for _, entry in ipairs(entries) do
+    local path = extract(entry)
+    if path then paths[#paths + 1] = path end
+  end
+  return paths, picker and picker.original_win_id or nil
+end
+
+---@internal
 ---Path-copy entry action (see pickers.entry_actions.path_copy): copy the
----selected entry's path in `fmt`, without closing or otherwise disturbing
+---selected entries' paths in `fmt`, without closing or otherwise disturbing
 ---the picker -- same non-disruptive "stay in place" behavior as
 ---filetree.nvim's own path_copy/markdown_links features.
 ---@param fmt string
 ---@return fun(prompt_bufnr: integer)
 local function do_copy(fmt)
+  return function(prompt_bufnr)
+    local paths, win = selected_paths(prompt_bufnr)
+    path_copy.run(fmt, paths, { win = win })
+  end
+end
+
+---@internal
+---System entry action (see pickers.entry_actions.system) on the CURRENT entry
+---only; the picker stays open.
+---@param action "open"|"reveal"
+---@return fun()
+local function do_system(action)
   return function()
     local action_state = require("telescope.actions.state")
-    local path = extract(action_state.get_selected_entry())
-    path_copy.run(fmt, path)
+    system.run(action, extract(action_state.get_selected_entry()))
   end
 end
 
@@ -81,39 +111,35 @@ local function do_open_background(prompt_bufnr)
 end
 
 ---Build the {i={...}, n={...}} mapping table for telescope.setup()'s
----defaults.mappings, honouring `keys.enable`/`keys.create_file`/
----`keys.open_background`/`keys.cheatsheet` (via `pickers.keys.resolve()`, the
----single source of truth for in-picker keys).
+---defaults.mappings, honouring `keys.enable` and every entry-action lhs (via
+---`pickers.keys.resolve()`, the single source of truth for in-picker keys).
 ---@return table mappings
 function M.get_mappings()
-  local resolved = require("pickers.keys").resolve()
+  local keys = require("pickers.keys")
+  local resolved = keys.resolve()
   local mappings = { i = {}, n = {} }
 
-  for _, key in ipairs((resolved.create_file or {}).lhs or {}) do
-    mappings.i[key] = do_create_file
-    mappings.n[key] = do_create_file
-  end
-
-  for _, key in ipairs((resolved.open_background or {}).lhs or {}) do
-    mappings.i[key] = do_open_background
-    mappings.n[key] = do_open_background
-  end
-
-  for _, key in ipairs((resolved.cheatsheet or {}).lhs or {}) do
-    mappings.i[key] = do_cheatsheet
-    mappings.n[key] = do_cheatsheet
-  end
-
-  -- Path-copy entry actions: results-window/normal-mode ONLY (`n`, never
-  -- `i`) -- their default lhs are plain printable characters (`[`, `]`,
-  -- `a`, `e`, `M`, `L`), not control/special keys, so binding them in the
-  -- prompt's insert mode would swallow those characters out of any typed
-  -- query containing them. See pickers.keys' @description.
-  for _, fmt in ipairs(path_copy.FORMAT_ORDER) do
-    local action = FMT_TO_ACTION[fmt]
-    for _, key in ipairs((resolved[action] or {}).lhs or {}) do
-      mappings.n[key] = do_copy(fmt)
+  ---@param action string
+  ---@param handler function
+  local function bind(action, handler)
+    local spec = resolved[action]
+    if not spec then return end
+    for _, lhs in ipairs(spec.lhs) do
+      for _, mode in ipairs(keys.modes_for(spec, lhs)) do
+        if mappings[mode] then mappings[mode][lhs] = handler end
+      end
     end
+  end
+
+  bind("create_file", do_create_file)
+  bind("open_background", do_open_background)
+  bind("cheatsheet", do_cheatsheet)
+
+  for _, fmt in ipairs(path_copy.FORMAT_ORDER) do
+    bind(path_copy.ACTION_FOR[fmt], do_copy(fmt))
+  end
+  for action, key_action in pairs(system.ACTION_FOR) do
+    bind(key_action, do_system(action))
   end
 
   return mappings

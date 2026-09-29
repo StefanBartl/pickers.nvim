@@ -1,7 +1,8 @@
 ---@module 'pickers.entry_actions.adapters.snacks'
 ---@brief snacks.nvim entry-action registrations: create_file + open_background +
 ---cheatsheet + path_copy (copy_absolute/copy_dirname/copy_env_rooted/
----markdown_link).
+---copy_project_root/copy_project_relative/copy_buffer_relative/markdown_link)
+---+ system (open_system/reveal_in_manager).
 ---@description
 --- Two-part registration, matching Snacks.picker's own convention: named
 --- actions via `get_actions()` (merged into `opts.actions`), plus separate
@@ -26,15 +27,7 @@ local extract = require("pickers.entry_actions.extract.snacks")
 local create_file = require("pickers.entry_actions.create_file")
 local open_background = require("pickers.entry_actions.open_background")
 local path_copy = require("pickers.entry_actions.path_copy")
-
----@internal
----path_copy format name -> pickers.keys action name.
-local FMT_TO_ACTION = {
-  absolute = "copy_absolute",
-  dirname = "copy_dirname",
-  env_rooted = "copy_env_rooted",
-  markdown_link = "markdown_link",
-}
+local system = require("pickers.entry_actions.system")
 
 local M = {}
 
@@ -61,15 +54,35 @@ local function do_create_file(picker, item)
 end
 
 ---@internal
----Path-copy entry action (see pickers.entry_actions.path_copy). Does NOT
----close the picker -- same non-disruptive "stay in place" behavior as
----filetree.nvim's own path_copy/markdown_links features.
+---Path-copy entry action (see pickers.entry_actions.path_copy) on the
+---multi-selection when there is one, else the current item -- what
+---`picker:selected({ fallback = true })` already answers. Does NOT close the
+---picker -- same non-disruptive "stay in place" behavior as filetree.nvim's
+---own path_copy/markdown_links features.
 ---@param fmt string
 ---@return fun(picker: any, item: any)
 local function do_copy(fmt)
+  return function(picker, item)
+    ---@diagnostic disable-next-line: undefined-field
+    local items = picker and picker:selected({ fallback = true }) or {}
+    if #items == 0 and item then items = { item } end
+
+    local paths = {}
+    for _, it in ipairs(items) do
+      local path = extract(it)
+      if path then paths[#paths + 1] = path end
+    end
+    path_copy.run(fmt, paths, { win = picker and picker.main or nil })
+  end
+end
+
+---@internal
+---System entry action (see pickers.entry_actions.system) on the current item.
+---@param action "open"|"reveal"
+---@return fun(picker: any, item: any)
+local function do_system(action)
   return function(_picker, item)
-    local path = extract(item)
-    path_copy.run(fmt, path)
+    system.run(action, extract(item))
   end
 end
 
@@ -108,37 +121,40 @@ function M.get_actions()
     open_background = { action = do_open_background, desc = desc.open_background },
     cheatsheet = { action = do_cheatsheet, desc = desc.cheatsheet },
   }
-  for fmt, action_name in pairs(FMT_TO_ACTION) do
+  for fmt, action_name in pairs(path_copy.ACTION_FOR) do
     actions[action_name] = { action = do_copy(fmt), desc = desc[action_name] }
+  end
+  for action, action_name in pairs(system.ACTION_FOR) do
+    actions[action_name] = { action = do_system(action), desc = desc[action_name] }
   end
   return actions
 end
 
+---Every entry action's name, in binding order.
+---@return string[]
+local function action_names()
+  local names = { "create_file", "open_background", "cheatsheet" }
+  for _, fmt in ipairs(path_copy.FORMAT_ORDER) do
+    names[#names + 1] = path_copy.ACTION_FOR[fmt]
+  end
+  for _, action_name in pairs(system.ACTION_FOR) do
+    names[#names + 1] = action_name
+  end
+  return names
+end
+
 ---Key -> action-name bindings for `win.list.keys` (bare-string form; the
 ---snacks list window is normal-mode only), honouring `pickers.keys`' resolved
----`create_file`/`open_background`/`cheatsheet`/path_copy config.
+---config for every entry action.
 ---
----The path_copy actions (copy_absolute/copy_dirname/copy_env_rooted/
----markdown_link) are ALSO bound in `get_input_keys()` below, mode "n" only --
----see that function's doc for why the list window alone is not enough.
+---The same lhs are ALSO bound in `get_input_keys()` below -- see that
+---function's doc for why the list window alone is not enough.
 ---@return table<string, string> keys
 function M.get_keys()
   local resolved = require("pickers.keys").resolve()
   local keys = {}
 
-  for _, key in ipairs((resolved.create_file or {}).lhs or {}) do
-    keys[key] = "create_file"
-  end
-
-  for _, key in ipairs((resolved.open_background or {}).lhs or {}) do
-    keys[key] = "open_background"
-  end
-
-  for _, key in ipairs((resolved.cheatsheet or {}).lhs or {}) do
-    keys[key] = "cheatsheet"
-  end
-
-  for _, action_name in pairs(FMT_TO_ACTION) do
+  for _, action_name in ipairs(action_names()) do
     for _, key in ipairs((resolved[action_name] or {}).lhs or {}) do
       keys[key] = action_name
     end
@@ -149,41 +165,32 @@ end
 
 ---Key -> action-name bindings for `win.input.keys`, in snacks'
 ---mode-qualified form so the actions are reachable while the prompt has focus
----(which is where every picker starts). Modes come from `pickers.keys.ACTIONS`.
+---(which is where every picker starts). Modes come from
+---`pickers.keys.modes_for`: a direct Ctrl/Alt key binds in insert AND normal
+---mode, a filetree-style chord (`[a`, `ML`, `<leader>sm`) in normal mode only
+---so it never swallows typed characters.
 ---
----Includes the path_copy actions too, mode "n" only (`resolved[...].modes`
----is already `{ "n" }` for those four -- see `pickers.keys.ACTIONS` --  so
----this never re-adds insert mode). They cannot rely on `get_keys()` (list
----window) alone: snacks' input and list windows are two separate buffers
----with two separate key tables, and pressing `<Esc>` in the input window
----(insert mode) does not move focus to the list -- plain Neovim `<Esc>`
----behavior just drops the INPUT buffer into ITS OWN normal mode (snacks'
----own default `win.input.keys["<Esc>"] = "cancel"` carries no `mode` field,
----so it only fires there, not in insert -- see snacks' own comment: "to
----close the picker on ESC instead of going to normal mode, add..."). A
----list-only registration is therefore unreachable from that state. This is
----unlike telescope, which has a single prompt buffer whose normal mode IS
----`mappings.n` (see `pickers.entry_actions.adapters.telescope`), so no
----equivalent second registration is needed there.
+---The list-only `get_keys()` cannot cover the input window: snacks' input and
+---list windows are two separate buffers with two separate key tables, and
+---pressing `<Esc>` in the input window (insert mode) does not move focus to
+---the list -- plain Neovim `<Esc>` behavior just drops the INPUT buffer into
+---ITS OWN normal mode (snacks' own default `win.input.keys["<Esc>"] = "cancel"`
+---carries no `mode` field, so it only fires there, not in insert -- see
+---snacks' own comment: "to close the picker on ESC instead of going to normal
+---mode, add..."). This is unlike telescope, which has a single prompt buffer
+---whose normal mode IS `mappings.n` (see
+---`pickers.entry_actions.adapters.telescope`).
 ---@return table<string, { [1]: string, mode: string[] }> keys
 function M.get_input_keys()
-  local resolved = require("pickers.keys").resolve()
+  local keys_mod = require("pickers.keys")
+  local resolved = keys_mod.resolve()
   local keys = {}
 
-  for _, action in ipairs({ "create_file", "open_background", "cheatsheet" }) do
-    local spec = resolved[action]
-    if spec then
-      for _, key in ipairs(spec.lhs or {}) do
-        keys[key] = { action, mode = spec.modes }
-      end
-    end
-  end
-
-  for _, action_name in pairs(FMT_TO_ACTION) do
+  for _, action_name in ipairs(action_names()) do
     local spec = resolved[action_name]
     if spec then
       for _, key in ipairs(spec.lhs or {}) do
-        keys[key] = { action_name, mode = spec.modes }
+        keys[key] = { action_name, mode = vim.deepcopy(keys_mod.modes_for(spec, key)) }
       end
     end
   end

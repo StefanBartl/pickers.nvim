@@ -148,19 +148,29 @@ local M = {
     -- raw "?" just searches for a literal question mark, and Neovim resolves
     -- "<C-?>" to the same byte (0x7F/DEL) that Backspace sends in many
     -- terminals -- that would fire the cheatsheet on every backspace instead.
-    -- fzf-lua's binding is fixed regardless of this value, same class as its
-    -- ctrl-a/ctrl-o/shift-enter entry actions above.
-    cheatsheet = "<C-/>",
-    -- Curated subset of filetree.nvim's path-copy family ([a/]a/[e/ML),
-    -- applied to the selected picker entry's path. Results-window/normal-
-    -- mode only (see pickers.keys' @description for why) -- see
-    -- pickers.entry_actions.path_copy. Fixed on fzf-lua (ctrl-y/alt-y/
-    -- alt-r/alt-m; fzf's bind syntax has no multi-keystroke chord like
-    -- "[a", see pickers.entry_actions.adapters.fzf).
-    copy_absolute = "[a",
-    copy_dirname = "]a",
-    copy_env_rooted = "[e",
-    markdown_link = "ML",
+    -- "<M-?>" (Alt-Shift-/) has no such problem. fzf-lua's binding is fixed
+    -- (f1) regardless of this value, same class as its ctrl-a/ctrl-o/
+    -- shift-enter entry actions above.
+    cheatsheet = { "<C-/>", "<M-?>" },
+    -- Curated subset of filetree.nvim's path-copy family, applied to the
+    -- selected picker entries (the multi-selection when there is one, else the
+    -- current entry) -- see pickers.entry_actions.path_copy. Every action has
+    -- a direct Ctrl/Alt key (works in the prompt, which is always in insert
+    -- mode) plus filetree.nvim's own chords, which bind in normal mode only
+    -- (see pickers.keys.modes_for). Fixed on fzf-lua (ctrl-y/alt-y/alt-r/
+    -- alt-g/alt-e/alt-j/alt-l; fzf's bind syntax has no chords, see
+    -- pickers.entry_actions.adapters.fzf).
+    copy_absolute = { "<C-y>", "[a", "[f" }, -- absolute path(s); "[f" = the file list
+    copy_dirname = { "<M-y>", "]a" }, -- absolute parent directory
+    copy_env_rooted = { "<M-r>", "[e" }, -- $REPOS_DIR/... form
+    copy_project_root = { "<M-g>", "[R" }, -- absolute project root (.git)
+    copy_project_relative = { "<M-e>", "]R" }, -- relative to the project root
+    copy_buffer_relative = { "<M-j>", "]b" }, -- relative to the open buffer
+    markdown_link = { "<M-l>", "ML", "MM" }, -- [name](path); "MM" = the marked ones
+    -- Hand the current entry to the OS (pickers.entry_actions.system): open
+    -- with the default application / reveal in the file manager.
+    open_system = { "<M-o>", "<leader>sm" },
+    reveal_in_manager = { "<M-x>", "<leader>fm" },
   },
 
   -- Native picker-history file(s) under stdpath("data")/pickers.nvim/history.

@@ -57,6 +57,20 @@ local function safe_call(fn, opts)
   if not ok then notify.error("snacks error: " .. tostring(err)) end
 end
 
+---`title` for a picker: the prompt plus the legend of the two keys worth
+---knowing first (`pickers.cheatsheet.hint`) -- snacks has no header slot of its
+---own, but composes its window title from `title`. Unchanged when the legend is
+---empty (`keys.enable = false`, both actions unbound).
+---@internal
+---@param prompt string|nil
+---@return string|nil
+local function titled(prompt)
+  local ok, cheatsheet = pcall(require, "pickers.cheatsheet")
+  local hint = ok and cheatsheet.hint("snacks") or ""
+  if hint == "" then return prompt end
+  return ((prompt and prompt ~= "") and (prompt .. "  ") or "") .. "(" .. hint .. ")"
+end
+
 ---The image-preview function for this call, or nil when image previews do not
 ---apply (see `pickers.integrations.images`). Resolved per picker, not cached:
 ---the terminal, the configuration and images.nvim's own availability can all
@@ -108,7 +122,7 @@ function M.pick_files(opts)
   if opts.find_command then
     safe_call(Picker.pick, {
       source = "files",
-      title = opts.prompt,
+      title = titled(opts.prompt),
       preview = preview_fn(),
       confirm = confirm_with(opts.on_select),
       finder = function(_, ctx)
@@ -131,7 +145,7 @@ function M.pick_files(opts)
 
   local f = opts.find or {}
   local call_opts = {
-    title = opts.prompt,
+    title = titled(opts.prompt),
     hidden = f.hidden,
     ignored = f.no_ignore,
     follow = f.follow,
@@ -167,7 +181,7 @@ function M.live_grep(opts)
   end
   vim.list_extend(args, extra)
 
-  local call_opts = { title = opts.prompt, args = args }
+  local call_opts = { title = titled(opts.prompt), args = args }
   if #opts.roots > 1 then
     call_opts.dirs = opts.roots
   else
@@ -198,7 +212,7 @@ function M.smart(opts)
 
   safe_call(Picker.pick, {
     source = "smart",
-    title = opts.prompt or "Smart> ",
+    title = titled(opts.prompt or "Smart> "),
     live = true,
     format = "file",
     preview = preview_fn(),
