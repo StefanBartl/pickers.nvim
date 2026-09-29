@@ -10,6 +10,30 @@ a changelog.
 
 ---
 
+[x] **In-picker path/system keys that work in the prompt, plus a grouped cheatsheet
+  and legend.** filetree.nvim's `[a`/`]a`/`[e`/`ML` (results, normal mode only) were
+  unreachable while typing: every prompt starts in insert mode, where those are just
+  query characters. Every path/system action now carries a *direct* Ctrl/Alt key, bound
+  in insert **and** normal mode (`<C-y>` abs, `<M-y>` dirname, `<M-r>` env-rooted,
+  `<M-g>` project root, `<M-e>`/`<M-j>` relative to root/open buffer, `<M-l>` Markdown
+  link, `<M-o>` open with the OS, `<M-x>` reveal in file manager), plus filetree's
+  chords (`[a [f ]a [e [R ]R ]b ML MM <leader>sm <leader>fm`), bound in normal mode
+  only. `pickers.keys.modes_for` decides per lhs (`chord_modes` on the action spec), so
+  a chord never swallows typed characters. New actions: `copy_project_root`,
+  `copy_project_relative`, `copy_buffer_relative` (relative to the buffer behind the
+  picker, `./`-marked), `open_system`, `reveal_in_manager` (`pickers.entry_actions.system`,
+  via `lib.nvim.cross.open_default`/`reveal_in_fm`). filetree's "marks if any, else the
+  current node" maps onto the picker's `<Tab>` multi-selection: every copy takes all
+  selected entries, one line each, which is `[f` and `MM`. fzf-lua gets the same physical
+  keys (`ctrl-y alt-y alt-r alt-g alt-e alt-j alt-l alt-o alt-x`); `markdown_link` moved
+  from `alt-m` to `alt-l` to stay clear of snacks' `<A-m>` (toggle_maximize). Default
+  `keys.copy_*`/`markdown_link`/`cheatsheet` values are now lists (`cheatsheet` also
+  binds `<M-?>`). The cheatsheet panel is grouped, "Essentials" (the cheatsheet key and
+  `<S-CR>` = add to buffer list) first, and those two keys are the legend every picker
+  shows: telescope `results_title`, fzf-lua `--header`, and now the snacks `title`
+  (`pickers.cheatsheet.hint`). The path_copy/system engine wiring is one shared table per
+  engine adapter instead of three copies of `FMT_TO_ACTION`.
+
 [x] **One `setup()` per engine: the engine patcher.** Keys, entry actions, history,
   `find.exclude`, `display.*` and the PDF text preview each called the engine's
   `setup()` on their own -- up to five `telescope.setup()` and four `fzf-lua.setup()`

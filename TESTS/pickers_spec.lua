@@ -917,10 +917,13 @@ do
   local keys = require("pickers.keys")
 
   local cfg0 = config.get()
-  check("keys: default cheatsheet lhs", cfg0.keys.cheatsheet == "<C-/>")
+  check("keys: default cheatsheet lhs", vim.deep_equal(cfg0.keys.cheatsheet, { "<C-/>", "<M-?>" }))
 
   local r = keys.resolve(cfg0)
-  check("keys.resolve: cheatsheet lhs", has(r.cheatsheet.lhs, "<C-/>"))
+  check(
+    "keys.resolve: cheatsheet lhs",
+    has(r.cheatsheet.lhs, "<C-/>") and has(r.cheatsheet.lhs, "<M-?>")
+  )
   check(
     "keys.resolve: cheatsheet modes i+n",
     has(r.cheatsheet.modes, "i") and has(r.cheatsheet.modes, "n")
@@ -1161,21 +1164,51 @@ do
   local keys = require("pickers.keys")
 
   local cfg0 = config.get()
-  check("keys: default copy_absolute", cfg0.keys.copy_absolute == "[a")
-  check("keys: default copy_dirname", cfg0.keys.copy_dirname == "]a")
-  check("keys: default copy_env_rooted", cfg0.keys.copy_env_rooted == "[e")
-  check("keys: default markdown_link", cfg0.keys.markdown_link == "ML")
+  check(
+    "keys: default copy_absolute",
+    has(cfg0.keys.copy_absolute, "<C-y>") and has(cfg0.keys.copy_absolute, "[a")
+  )
+  check(
+    "keys: default copy_dirname",
+    has(cfg0.keys.copy_dirname, "<M-y>") and has(cfg0.keys.copy_dirname, "]a")
+  )
+  check("keys: default copy_env_rooted", has(cfg0.keys.copy_env_rooted, "[e"))
+  check(
+    "keys: default markdown_link",
+    has(cfg0.keys.markdown_link, "<M-l>") and has(cfg0.keys.markdown_link, "MM")
+  )
 
   local r = keys.resolve(cfg0)
   check("keys.resolve: copy_absolute lhs", has(r.copy_absolute.lhs, "[a"))
   check("keys.resolve: markdown_link lhs", has(r.markdown_link.lhs, "ML"))
+  -- Direct keys work in the prompt (insert) too; the filetree chords are
+  -- normal-mode only (they would swallow typed characters in insert mode).
   check(
-    "keys.resolve: copy_absolute is results/normal-mode only",
-    has(r.copy_absolute.modes, "n") and not has(r.copy_absolute.modes, "i")
+    "keys.modes_for: direct <C-y> binds in insert + normal",
+    has(keys.modes_for(r.copy_absolute, "<C-y>"), "i")
+      and has(keys.modes_for(r.copy_absolute, "<C-y>"), "n")
   )
   check(
-    "keys.resolve: markdown_link is results/normal-mode only",
-    has(r.markdown_link.modes, "n") and not has(r.markdown_link.modes, "i")
+    "keys.modes_for: chord [a is normal mode only",
+    vim.deep_equal(keys.modes_for(r.copy_absolute, "[a"), { "n" })
+  )
+  check(
+    "keys.modes_for: <leader>sm chord is normal mode only",
+    vim.deep_equal(keys.modes_for(r.open_system, "<leader>sm"), { "n" })
+  )
+  check(
+    "keys.modes_for: an action without chord_modes keeps its modes for any lhs",
+    vim.deep_equal(keys.modes_for(r.create_file, "gx"), r.create_file.modes)
+  )
+  check(
+    "keys.is_direct: <M-l> yes, <Space>/<leader>/[a/ML no",
+    keys.is_direct("<M-l>")
+      and keys.is_direct("<S-CR>")
+      and not keys.is_direct("<Space>")
+      and not keys.is_direct("<leader>")
+      and not keys.is_direct("[a")
+      and not keys.is_direct("ML")
+      and not keys.is_direct("<leader>sm")
   )
 
   -- NESTED_OPTS round-trip: a custom lhs must not be silently dropped as an
@@ -1198,7 +1231,7 @@ do
     check("keys.telescope: degrades to empty (telescope absent)", vim.tbl_isempty(tm.n))
   end
 
-  config.apply({ keys = { copy_absolute = "[a" } })
+  config.apply({ keys = { copy_absolute = { "<C-y>", "[a", "[f" } } })
 
   -- snacks' generic keys.adapters.snacks.win() must exclude these four --
   -- they are entry_actions concerns (bound only via
@@ -1226,7 +1259,37 @@ do
   local ts = require("pickers.entry_actions.adapters.telescope")
   local tm = ts.get_mappings()
   check("entry_actions.telescope: copy_absolute bound (n)", tm.n["[a"] ~= nil)
-  check("entry_actions.telescope: copy_absolute NOT bound (i)", tm.i["[a"] == nil)
+  check("entry_actions.telescope: chord [a NOT bound (i)", tm.i["[a"] == nil)
+  check(
+    "entry_actions.telescope: direct <C-y> bound in the prompt (i) and normal (n)",
+    tm.i["<C-y>"] ~= nil and tm.n["<C-y>"] ~= nil
+  )
+  check("entry_actions.telescope: markdown_link direct <M-l> in (i)", tm.i["<M-l>"] ~= nil)
+  check(
+    "entry_actions.telescope: project root [R (n) / <M-g> (i)",
+    tm.n["[R"] ~= nil and tm.i["<M-g>"] ~= nil
+  )
+  check("entry_actions.telescope: ]R and ]b bound", tm.n["]R"] ~= nil and tm.n["]b"] ~= nil)
+  check(
+    "entry_actions.telescope: MM and [f are chords too",
+    tm.n["MM"] ~= nil and tm.n["[f"] ~= nil
+  )
+  check(
+    "entry_actions.telescope: system keys: <M-o>/<M-x> (i), <leader>sm/<leader>fm (n only)",
+    tm.i["<M-o>"] ~= nil
+      and tm.i["<M-x>"] ~= nil
+      and tm.n["<leader>sm"] ~= nil
+      and tm.n["<leader>fm"] ~= nil
+      and tm.i["<leader>sm"] == nil
+  )
+  -- (earlier suites reset keys.cheatsheet to the single "<C-/>"; the default
+  -- is the list below)
+  config.apply({ keys = { cheatsheet = { "<C-/>", "<M-?>" } } })
+  local tm_sheet = ts.get_mappings()
+  check(
+    "entry_actions.telescope: <M-?> also opens the cheatsheet, in the prompt",
+    tm_sheet.i["<M-?>"] ~= nil and tm_sheet.i["<C-/>"] ~= nil
+  )
   check("entry_actions.telescope: copy_dirname bound (n)", tm.n["]a"] ~= nil)
   check("entry_actions.telescope: copy_env_rooted bound (n)", tm.n["[e"] ~= nil)
   check("entry_actions.telescope: markdown_link bound (n)", tm.n["ML"] ~= nil)
@@ -1237,7 +1300,11 @@ do
   check("entry_actions.fzf: ctrl-y (copy_absolute) present", type(fa["ctrl-y"]) == "function")
   check("entry_actions.fzf: alt-y (copy_dirname) present", type(fa["alt-y"]) == "function")
   check("entry_actions.fzf: alt-r (copy_env_rooted) present", type(fa["alt-r"]) == "function")
-  check("entry_actions.fzf: alt-m (markdown_link) present", type(fa["alt-m"]) == "function")
+  check("entry_actions.fzf: alt-l (markdown_link) present", type(fa["alt-l"]) == "function")
+  check("entry_actions.fzf: alt-m (snacks toggle_maximize key) left alone", fa["alt-m"] == nil)
+  for _, key in ipairs({ "alt-g", "alt-e", "alt-j", "alt-o", "alt-x" }) do
+    check("entry_actions.fzf: " .. key .. " present", type(fa[key]) == "function")
+  end
 
   -- snacks: get_keys() (list window, normal mode) carries them; get_actions()
   -- carries a desc; get_input_keys() must ALSO carry them, mode "n" only
@@ -1252,7 +1319,20 @@ do
   check("entry_actions.snacks: markdown_link key", sk["ML"] == "markdown_link")
   local sik = snacks_adapter.get_input_keys()
   check(
-    "entry_actions.snacks: copy_absolute in input keys, normal-mode only",
+    "entry_actions.snacks: direct <C-y> in input keys for insert AND normal",
+    sik["<C-y>"] ~= nil
+      and sik["<C-y>"][1] == "copy_absolute"
+      and has(sik["<C-y>"].mode, "i")
+      and has(sik["<C-y>"].mode, "n")
+  )
+  check(
+    "entry_actions.snacks: <leader>sm chord is normal-mode only",
+    sik["<leader>sm"] ~= nil
+      and sik["<leader>sm"][1] == "open_system"
+      and vim.deep_equal(sik["<leader>sm"].mode, { "n" })
+  )
+  check(
+    "entry_actions.snacks: chord [a in input keys, normal-mode only",
     sik["[a"] ~= nil
       and sik["[a"][1] == "copy_absolute"
       and has(sik["[a"].mode, "n")
@@ -1297,10 +1377,10 @@ do
       create_file = "<C-a>",
       open_background = { "<S-CR>", "<C-o>" },
       cheatsheet = "<C-/>",
-      copy_absolute = "[a",
-      copy_dirname = "]a",
-      copy_env_rooted = "[e",
-      markdown_link = "ML",
+      copy_absolute = { "<C-y>", "[a", "[f" },
+      copy_dirname = { "<M-y>", "]a" },
+      copy_env_rooted = { "<M-r>", "[e" },
+      markdown_link = { "<M-l>", "ML", "MM" },
     },
   })
 
@@ -1314,6 +1394,282 @@ do
     "\n"
   )
   check("cheatsheet: fzf override shows ctrl-y, not [a", fzf_lines:find("ctrl%-y") ~= nil)
+end
+
+-- ── pickers.entry_actions.path_copy — project/buffer-relative, multi-select ─
+do
+  local path_copy = require("pickers.entry_actions.path_copy")
+
+  -- A real temp repo: <tmp>/proj/.git + <tmp>/proj/src/a.lua, b.lua
+  local tmp = vim.fn.tempname()
+  local proj = tmp .. "/proj"
+  vim.fn.mkdir(proj .. "/.git", "p")
+  vim.fn.mkdir(proj .. "/src/deep", "p")
+  vim.fn.mkdir(proj .. "/docs", "p")
+  local a = proj .. "/src/a.lua"
+  local b = proj .. "/src/deep/b.lua"
+  vim.fn.writefile({ "" }, a)
+  vim.fn.writefile({ "" }, b)
+  local function slash(p)
+    return (p:gsub("\\", "/"))
+  end
+  proj = slash(vim.fn.fnamemodify(proj, ":p")):gsub("/$", "")
+  a, b = slash(vim.fn.fnamemodify(a, ":p")), slash(vim.fn.fnamemodify(b, ":p"))
+
+  check(
+    "path_copy.build: project_root is the .git ancestor",
+    path_copy.build("project_root", a) == proj
+  )
+  check(
+    "path_copy.build: project_relative is relative to that root",
+    path_copy.build("project_relative", b) == "src/deep/b.lua",
+    tostring(path_copy.build("project_relative", b))
+  )
+
+  -- Several entries: one line each, and the same root is not repeated.
+  check(
+    "path_copy.build: several entries -> one project_root line (deduped)",
+    path_copy.build("project_root", { a, b }) == proj
+  )
+  check(
+    "path_copy.build: several entries -> one absolute line each (the file list, [f)",
+    path_copy.build("absolute", { a, b }) == a .. "\n" .. b
+  )
+  check(
+    "path_copy.build: blank paths are skipped inside a list",
+    path_copy.build("absolute", { "", a }) == a
+  )
+  check(
+    "path_copy.build: an empty list has nothing to copy",
+    path_copy.build("absolute", {}) == nil
+  )
+
+  -- buffer_relative: relative to the window behind the picker.
+  local win_buf = vim.api.nvim_create_buf(false, true)
+  vim.api.nvim_buf_set_name(win_buf, proj .. "/docs/note.md")
+  local win = vim.api.nvim_open_win(win_buf, false, {
+    relative = "editor",
+    width = 10,
+    height = 2,
+    row = 0,
+    col = 0,
+  })
+  check(
+    "path_copy.build: buffer_relative climbs out of the buffer's directory",
+    path_copy.build("buffer_relative", a, { win = win }) == "../src/a.lua",
+    tostring(path_copy.build("buffer_relative", a, { win = win }))
+  )
+  local sibling = proj .. "/docs/other.md"
+  check(
+    "path_copy.build: buffer_relative marks a sibling with ./",
+    path_copy.build("buffer_relative", sibling, { win = win }) == "./other.md",
+    tostring(path_copy.build("buffer_relative", sibling, { win = win }))
+  )
+  check(
+    "path_copy.build: buffer_relative marks a descendant with ./",
+    path_copy.build("buffer_relative", proj .. "/docs/sub/x.md", { win = win }) == "./sub/x.md"
+  )
+  vim.api.nvim_win_close(win, true)
+  vim.api.nvim_buf_delete(win_buf, { force = true })
+
+  -- run(): a list writes one line per entry, and both registers get it.
+  vim.fn.setreg("+", "")
+  vim.fn.setreg('"', "")
+  check("path_copy.run: a list returns true", path_copy.run("absolute", { a, b }) == true)
+  check(
+    "path_copy.run: both registers hold the joined lines",
+    vim.fn.getreg("+") == a .. "\n" .. b and vim.fn.getreg('"') == a .. "\n" .. b
+  )
+  check("path_copy.run: an empty list returns false", path_copy.run("absolute", {}) == false)
+
+  -- Every format has a keys action, every one of them declared in keys.ACTIONS.
+  local keys = require("pickers.keys")
+  local all_bound = true
+  for _, fmt in ipairs(path_copy.FORMAT_ORDER) do
+    if not keys.ACTIONS[path_copy.ACTION_FOR[fmt]] then all_bound = false end
+  end
+  check("path_copy: every format maps to a declared keys action", all_bound)
+
+  vim.fn.delete(tmp, "rf")
+end
+
+-- ── pickers.entry_actions.system — open / reveal via lib.nvim ────────────────
+do
+  local system = require("pickers.entry_actions.system")
+  local calls = {}
+  local prev_open = package.loaded["lib.nvim.cross.open_default"]
+  local prev_reveal = package.loaded["lib.nvim.cross.reveal_in_fm"]
+  package.loaded["lib.nvim.cross.open_default"] = function(path)
+    calls[#calls + 1] = { "open", path }
+    return true
+  end
+  package.loaded["lib.nvim.cross.reveal_in_fm"] = function(path, opts)
+    calls[#calls + 1] = { "reveal", path, opts }
+    return true
+  end
+
+  local target = vim.fn.fnamemodify("sys_test_file.txt", ":p")
+  check("system.run: open returns true", system.run("open", "sys_test_file.txt") == true)
+  check(
+    "system.run: open hands lib.nvim the absolute path",
+    calls[1] and calls[1][1] == "open" and calls[1][2] == target,
+    calls[1] and tostring(calls[1][2])
+  )
+  check("system.run: reveal returns true", system.run("reveal", "sys_test_file.txt") == true)
+  check(
+    "system.run: reveal asks for the file to be selected in its folder",
+    calls[2] and calls[2][1] == "reveal" and calls[2][3].reveal == true
+  )
+  check(
+    "system.run: empty path -> false, no launch",
+    system.run("open", "") == false and #calls == 2
+  )
+  check("system.run: nil path -> false", system.run("reveal", nil) == false and #calls == 2)
+  check("system.run: unknown action -> false", system.run("bogus", "x") == false)
+
+  package.loaded["lib.nvim.cross.open_default"] = function()
+    return false, "no handler"
+  end
+  check("system.run: a launcher failure -> false", system.run("open", "sys_test_file.txt") == false)
+
+  package.loaded["lib.nvim.cross.open_default"] = prev_open
+  package.loaded["lib.nvim.cross.reveal_in_fm"] = prev_reveal
+
+  -- Every system action maps to a declared keys action, bound in i+n (direct) /
+  -- n (chord) and defaulting to the filetree keys.
+  local keys = require("pickers.keys")
+  local r = keys.resolve(require("pickers.config").get())
+  check(
+    "keys.resolve: open_system carries <M-o> and filetree's <leader>sm",
+    has(r.open_system.lhs, "<M-o>") and has(r.open_system.lhs, "<leader>sm")
+  )
+  check(
+    "keys.resolve: reveal_in_manager carries <M-x> and filetree's <leader>fm",
+    has(r.reveal_in_manager.lhs, "<M-x>") and has(r.reveal_in_manager.lhs, "<leader>fm")
+  )
+end
+
+-- ── entry_actions — copy handlers use the multi-selection, else the entry ───
+do
+  local config = require("pickers.config")
+  config.apply({
+    keys = { enable = true, copy_absolute = { "<C-y>", "[a", "[f" } },
+  })
+  local x, y = vim.fn.fnamemodify("ms_x.lua", ":p"), vim.fn.fnamemodify("ms_y.lua", ":p")
+  local function slash(p)
+    return (p:gsub("\\", "/"))
+  end
+  x, y = slash(x), slash(y)
+
+  -- telescope: stub the state module the handler reads lazily.
+  local prev_state = package.loaded["telescope.actions.state"]
+  local multi = {}
+  package.loaded["telescope.actions.state"] = {
+    get_current_picker = function()
+      return {
+        get_multi_selection = function()
+          return multi
+        end,
+        original_win_id = nil,
+      }
+    end,
+    get_selected_entry = function()
+      return { path = x }
+    end,
+  }
+  local ts = require("pickers.entry_actions.adapters.telescope").get_mappings()
+  vim.fn.setreg("+", "")
+  ts.i["<C-y>"](1)
+  check("entry_actions.telescope: no multi-selection -> the current entry", vim.fn.getreg("+") == x)
+  multi = { { path = x }, { path = y } }
+  ts.i["<C-y>"](1)
+  check(
+    "entry_actions.telescope: multi-selection -> every selected entry, one per line",
+    vim.fn.getreg("+") == x .. "\n" .. y,
+    vim.fn.getreg("+")
+  )
+  package.loaded["telescope.actions.state"] = prev_state
+
+  -- snacks: `picker:selected({ fallback = true })` already folds "selection or current".
+  local sn = require("pickers.entry_actions.adapters.snacks").get_actions()
+  local picker = {
+    selected = function()
+      return { { file = x }, { file = y } }
+    end,
+  }
+  vim.fn.setreg("+", "")
+  sn.copy_absolute.action(picker, { file = x })
+  check(
+    "entry_actions.snacks: selected items -> one line each",
+    vim.fn.getreg("+") == x .. "\n" .. y,
+    vim.fn.getreg("+")
+  )
+  sn.copy_absolute.action({
+    selected = function()
+      return {}
+    end,
+  }, { file = y })
+  check("entry_actions.snacks: nothing selected -> the item itself", vim.fn.getreg("+") == y)
+end
+
+-- ── pickers.cheatsheet — grouped, Essentials first ──────────────────────────
+do
+  local config = require("pickers.config")
+  config.apply({
+    keys = {
+      enable = true,
+      cheatsheet = { "<C-/>", "<M-?>" },
+      open_background = { "<S-CR>", "<C-o>" },
+    },
+  })
+  package.loaded["pickers.cheatsheet"] = nil
+  local cheatsheet = require("pickers.cheatsheet")
+  local lines = cheatsheet.lines()
+  local text = table.concat(lines, "\n")
+
+  local function index_of(needle)
+    for i, l in ipairs(lines) do
+      if l:find(needle, 1, true) then return i end
+    end
+  end
+
+  local essentials, copy = index_of(" Essentials"), index_of(" Copy path")
+  check("cheatsheet: has an Essentials section", essentials ~= nil)
+  check(
+    "cheatsheet: Essentials comes before every other section",
+    essentials ~= nil and copy ~= nil and essentials < copy and essentials <= 2
+  )
+  local sheet_row, bg_row =
+    index_of("Show this cheatsheet"), index_of("Add entry to the buffer list")
+  check(
+    "cheatsheet: the cheatsheet key and <S-CR> are the first two rows",
+    sheet_row == essentials + 1 and bg_row == essentials + 2,
+    tostring(sheet_row) .. "/" .. tostring(bg_row)
+  )
+  check("cheatsheet: <S-CR> is listed", text:find("<S-CR> / <C-o>", 1, true) ~= nil)
+  check(
+    "cheatsheet: the new copy/system rows are listed",
+    text:find("Copy absolute project root", 1, true) ~= nil
+      and text:find("Copy path relative to the open buffer", 1, true) ~= nil
+      and text:find("Reveal in the system file manager", 1, true) ~= nil
+  )
+  check(
+    "cheatsheet: explains the insert/normal-mode split",
+    text:find("only fire in normal mode", 1, true) ~= nil
+  )
+
+  -- An unbound action leaves its row out, and an empty group its title.
+  config.apply({ keys = { open_system = false, reveal_in_manager = false } })
+  local without = table.concat(cheatsheet.lines(), "\n")
+  check("cheatsheet: an empty System group is not printed", without:find(" System", 1, true) == nil)
+
+  config.apply({
+    keys = {
+      open_system = { "<M-o>", "<leader>sm" },
+      reveal_in_manager = { "<M-x>", "<leader>fm" },
+    },
+  })
+  package.loaded["pickers.cheatsheet"] = nil
 end
 
 -- ── pickers.entry_actions.extract.fzf — clean fields vs raw display line ────
@@ -2965,21 +3321,36 @@ do
   package.loaded["pickers.cheatsheet"] = nil
   local cheatsheet = require("pickers.cheatsheet")
 
-  config.apply({ keys = { enable = true, cheatsheet = "<C-/>" } })
+  config.apply({
+    keys = { enable = true, cheatsheet = "<C-/>", open_background = { "<S-CR>", "<C-o>" } },
+  })
   check(
-    "cheatsheet.hint: telescope names the bound key",
-    cheatsheet.hint("telescope") == "<C-/> cheatsheet"
+    "cheatsheet.hint: telescope legend names the cheatsheet key and <S-CR>",
+    cheatsheet.hint("telescope") == "<C-/> cheatsheet · <S-CR> add to buffers",
+    cheatsheet.hint("telescope")
   )
   check(
-    "cheatsheet.hint: fzf-lua always says f1 (fixed, ignores keys.cheatsheet's lhs)",
-    cheatsheet.hint("fzf-lua") == "f1 cheatsheet"
+    "cheatsheet.hint: snacks gets the same legend",
+    cheatsheet.hint("snacks") == "<C-/> cheatsheet · <S-CR> add to buffers"
+  )
+  check(
+    "cheatsheet.hint: fzf-lua always says f1/shift-enter (fixed, ignores keys.* lhs)",
+    cheatsheet.hint("fzf-lua") == "f1 cheatsheet · shift-enter add to buffers"
   )
 
   config.apply({ keys = { cheatsheet = false } })
-  check("cheatsheet.hint: telescope is empty when unbound", cheatsheet.hint("telescope") == "")
   check(
-    "cheatsheet.hint: fzf-lua still says f1 when keys.cheatsheet=false (fixed binding)",
-    cheatsheet.hint("fzf-lua") == "f1 cheatsheet"
+    "cheatsheet.hint: unbound cheatsheet drops that part of the legend",
+    cheatsheet.hint("telescope") == "<S-CR> add to buffers"
+  )
+  config.apply({ keys = { open_background = false } })
+  check(
+    "cheatsheet.hint: telescope is empty when both are unbound",
+    cheatsheet.hint("telescope") == ""
+  )
+  check(
+    "cheatsheet.hint: fzf-lua still says f1 when unbound (fixed binding)",
+    cheatsheet.hint("fzf-lua") == "f1 cheatsheet · shift-enter add to buffers"
   )
 
   config.apply({ keys = { enable = false } })
@@ -2989,7 +3360,9 @@ do
   )
   check("cheatsheet.hint: fzf-lua empty when keys.enable=false", cheatsheet.hint("fzf-lua") == "")
 
-  config.apply({ keys = { enable = true, cheatsheet = "<C-/>" } })
+  config.apply({
+    keys = { enable = true, cheatsheet = "<C-/>", open_background = { "<S-CR>", "<C-o>" } },
+  })
   package.loaded["pickers.cheatsheet"] = nil
 end
 -- (the actual results_title/--header wiring into engines.telescope/engines.fzf
@@ -3814,7 +4187,7 @@ do
     check("fzf live_grep: no search_dirs, which fzf-lua would ignore", got.search_dirs == nil)
     check(
       "fzf live_grep: --header names the cheatsheet key, visible on open",
-      got.fzf_opts and got.fzf_opts["--header"] == "f1 cheatsheet",
+      got.fzf_opts and got.fzf_opts["--header"] == "f1 cheatsheet · shift-enter add to buffers",
       got.fzf_opts and vim.inspect(got.fzf_opts)
     )
 
@@ -3832,7 +4205,7 @@ do
     )
     check(
       "telescope live_grep: results_title names the cheatsheet key, visible on open",
-      got.results_title == "<C-/> cheatsheet",
+      got.results_title == "<C-/> cheatsheet · <S-CR> add to buffers",
       tostring(got.results_title)
     )
 
@@ -3867,6 +4240,11 @@ do
       "snacks live_grep: roots go to dirs",
       got ~= nil and vim.deep_equal(got.dirs, roots),
       got and vim.inspect(got.dirs)
+    )
+    check(
+      "snacks live_grep: title = prompt + the cheatsheet/<S-CR> legend",
+      got.title == "P  (<C-/> cheatsheet · <S-CR> add to buffers)",
+      tostring(got.title)
     )
 
     for k, v in pairs(prev) do

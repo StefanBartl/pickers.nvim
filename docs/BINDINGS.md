@@ -119,8 +119,20 @@ All of these live in the augroup `"pickers.nvim"` when lib.nvim is present; with
 | `vsplit` | `<C-v>` | patched | native `ctrl-v`, not ours | export only¹ |
 | `tab` | `<C-t>` | patched | native `ctrl-t`, not ours | export only¹ |
 | `mouse_confirm` | `<2-LeftMouse>` | patched (telescope's only gap) | native (fzf's own mouse handling) | export only¹ (native default too) |
+| `cheatsheet` | `<C-/>`, `<M-?>` | patched | fixed (`f1`) | export only¹ |
+| `copy_absolute` | `<C-y>` · chords `[a`, `[f` | patched | fixed (`ctrl-y`) | export only¹ |
+| `copy_dirname` | `<M-y>` · chord `]a` | patched | fixed (`alt-y`) | export only¹ |
+| `copy_env_rooted` | `<M-r>` · chord `[e` | patched | fixed (`alt-r`) | export only¹ |
+| `copy_project_root` | `<M-g>` · chord `[R` | patched | fixed (`alt-g`) | export only¹ |
+| `copy_project_relative` | `<M-e>` · chord `]R` | patched | fixed (`alt-e`) | export only¹ |
+| `copy_buffer_relative` | `<M-j>` · chord `]b` | patched | fixed (`alt-j`) | export only¹ |
+| `markdown_link` | `<M-l>` · chords `ML`, `MM` | patched | fixed (`alt-l`) | export only¹ |
+| `open_system` | `<M-o>` · chord `<leader>sm` | patched | fixed (`alt-o`) | export only¹ |
+| `reveal_in_manager` | `<M-x>` · chord `<leader>fm` | patched | fixed (`alt-x`) | export only¹ |
 | `tab_next` | *(off, opt-in)* | patched (a pickers.tabs function) | — (fzf gap: no Lua in `keymap.builtin`) | export only¹ + `keys.snacks_actions()` |
 | `tab_prev` | *(off, opt-in)* | patched (a pickers.tabs function) | — (fzf gap) | export only¹ + `keys.snacks_actions()` |
+
+The path-copy/system rows carry a **direct key** (Ctrl/Alt, bound in insert *and* normal mode — the prompt is always in insert mode) and filetree.nvim's **chords** (`[a`, `ML`, `<leader>sm`, …), which bind in normal mode only so they never swallow typed characters. Copies act on the `<Tab>`-selected entries, else the current one. See [docs/keymaps.md](keymaps.md#in-picker-keys-preview-scroll--history--entry-actions).
 
 ¹ snacks: pickers.nvim doesn't own `Snacks.setup()`, but snacks reads `Snacks.config.picker` each time a picker opens — so the keys are patched into that table once snacks is loaded (`pickers.entry_actions.patch`), a key you already bound winning. `keys.snacks_win()` stays exported for merging by hand.
 
@@ -134,7 +146,7 @@ Buffer-local to a quickfix or location buffer, bound by the `FileType qf` autocm
 | `restore` | `zF` | Put the full list back and clear the stack |
 | `toggle_preview` | `p` | Preview float on/off for the session |
 
-`create_file`/`open_background`/`cheatsheet`/path-copy run pickers.nvim-specific logic (`lua/pickers/entry_actions/`), not a built-in engine action — they are patched into the engine's global config by `pickers.entry_actions.patch` (telescope `defaults.mappings`, fzf-lua `actions`, snacks `Snacks.config.picker`), your own bindings winning on conflict. `entry_actions/adapters/{telescope,fzf,snacks}.lua`'s `get_*()` stay public for merging by hand.
+`create_file`/`open_background`/`cheatsheet`/path-copy/system run pickers.nvim-specific logic (`lua/pickers/entry_actions/`), not a built-in engine action — they are patched into the engine's global config by `pickers.entry_actions.patch` (telescope `defaults.mappings`, fzf-lua `actions`, snacks `Snacks.config.picker`), your own bindings winning on conflict. `entry_actions/adapters/{telescope,fzf,snacks}.lua`'s `get_*()` stay public for merging by hand.
 
 ---
 

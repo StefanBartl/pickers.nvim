@@ -9,10 +9,16 @@
 ---
 --- A raw `?` cannot be the trigger: every picker prompt starts in insert
 --- mode, where `?` is just a character to search for. `pickers.keys.cheatsheet`
---- defaults to `<C-/>` instead -- see its @description for why `<C-?>` (the
+--- defaults to `<C-/>` instead (plus `<M-?>`) -- see its @description for why `<C-?>` (the
 --- literal Ctrl-Shift-/ chord some terminals send) was rejected: Neovim
 --- resolves it to the same byte (0x7F / DEL) that Backspace sends in many
 --- terminal+font setups, which would fire the cheatsheet on every backspace.
+--- `<M-?>` (Alt-Shift-/) has no such problem and is bound as a second lhs.
+---
+--- The panel is grouped and leads with "Essentials" -- the cheatsheet key
+--- itself and `open_background` (<S-CR>), the two keys worth knowing first --
+--- and `M.hint()` turns the same two into the legend every picker shows in its
+--- title/header.
 ---
 --- fzf-lua is a partial exception, same class as create_file/open_background
 --- (see `pickers.entry_actions`): its action-table keys are fzf's own bind
@@ -36,21 +42,61 @@ M.DESCRIPTIONS = {
   history_back = "Previous query in history",
   history_forward = "Next query in history",
   create_file = "Create file/folder",
-  open_background = "Open entry in background window",
+  open_background = "Add entry to the buffer list (no focus switch)",
   preview_toggle = "Toggle preview",
   split = "Open entry in a horizontal split",
   vsplit = "Open entry in a vertical split",
   tab = "Open entry in a new tab",
   mouse_confirm = "Double-click a result to open it",
   cheatsheet = "Show this cheatsheet",
-  copy_absolute = "Copy absolute path",
+  copy_absolute = "Copy absolute path(s)",
   copy_dirname = "Copy parent directory (absolute)",
   copy_env_rooted = "Copy path with $REPOS_DIR folded in",
-  markdown_link = "Copy as a Markdown link",
+  copy_project_root = "Copy absolute project root",
+  copy_project_relative = "Copy path relative to the project root",
+  copy_buffer_relative = "Copy path relative to the open buffer",
+  markdown_link = "Copy as Markdown link(s)",
+  open_system = "Open with the system default application",
+  reveal_in_manager = "Reveal in the system file manager",
+  tab_next = "Next tab-group target",
+  tab_prev = "Previous tab-group target",
 }
 
----Build the display lines: one row per action that is actually bound right
----now, widest-lhs-aligned.
+---Display groups, in order. "Essentials" leads on purpose: the cheatsheet key
+---itself and `open_background` are the two keys worth knowing before any other.
+---An action missing from every group still shows up, under "Other".
+---@type { [1]: string, [2]: string[] }[]
+local GROUPS = {
+  { "Essentials", { "cheatsheet", "open_background" } },
+  {
+    "Preview",
+    {
+      "preview_scroll_down",
+      "preview_scroll_up",
+      "preview_scroll_left",
+      "preview_scroll_right",
+      "preview_toggle",
+    },
+  },
+  { "History / tabs", { "history_back", "history_forward", "tab_next", "tab_prev" } },
+  { "Open / create", { "create_file", "split", "vsplit", "tab", "mouse_confirm" } },
+  {
+    "Copy path (Tab-selected entries, else the current one)",
+    {
+      "copy_absolute",
+      "copy_dirname",
+      "copy_env_rooted",
+      "copy_project_root",
+      "copy_project_relative",
+      "copy_buffer_relative",
+      "markdown_link",
+    },
+  },
+  { "System", { "open_system", "reveal_in_manager" } },
+}
+
+---Build the display lines: grouped rows, one per action that is actually
+---bound right now, widest-lhs-aligned across all groups.
 ---@param overrides table<string, string>|nil Engine-fixed lhs display text
 ---(fzf-lua bind syntax) that wins over `keys.resolve()`'s Neovim-notation lhs
 ---for that action, keyed by action name.
@@ -60,10 +106,9 @@ function M.lines(overrides)
   local keys = require("pickers.keys")
   local resolved = keys.resolve()
 
-  ---@type { lhs: string, desc: string }[]
-  local rows = {}
+  ---@type table<string, { lhs: string, desc: string }>
+  local row_of = {}
   local widest = 0
-
   for _, action in ipairs(keys.ORDER) do
     local lhs_display = overrides[action]
     if not lhs_display then
@@ -71,42 +116,76 @@ function M.lines(overrides)
       if spec and #spec.lhs > 0 then lhs_display = table.concat(spec.lhs, " / ") end
     end
     if lhs_display then
-      rows[#rows + 1] = { lhs = lhs_display, desc = M.DESCRIPTIONS[action] or action }
+      row_of[action] = { lhs = lhs_display, desc = M.DESCRIPTIONS[action] or action }
       widest = math.max(widest, #lhs_display)
     end
   end
 
-  local lines = { "" }
-  for _, row in ipairs(rows) do
-    lines[#lines + 1] = string.format("  %-" .. widest .. "s  %s", row.lhs, row.desc)
-  end
-  lines[#lines + 1] = ""
-  lines[#lines + 1] = "  :Pickers command syntax — see docs/cheatsheet.md"
-  lines[#lines + 1] = "  q / <Esc>  close"
+  local lines = {}
+  local placed = {}
 
+  ---@param title string
+  ---@param actions string[]
+  local function section(title, actions)
+    local rows = {}
+    for _, action in ipairs(actions) do
+      local row = row_of[action]
+      if row and not placed[action] then
+        placed[action] = true
+        rows[#rows + 1] = string.format("  %-" .. widest .. "s  %s", row.lhs, row.desc)
+      end
+    end
+    if #rows == 0 then return end
+    lines[#lines + 1] = ""
+    lines[#lines + 1] = " " .. title
+    vim.list_extend(lines, rows)
+  end
+
+  for _, group in ipairs(GROUPS) do
+    section(group[1], group[2])
+  end
+  local rest = {}
+  for _, action in ipairs(keys.ORDER) do
+    if not placed[action] then rest[#rest + 1] = action end
+  end
+  section("Other", rest)
+
+  vim.list_extend(lines, {
+    "",
+    "  The prompt is always in insert mode: Ctrl/Alt keys work there. Chords like",
+    "  [a, ML or <leader>sm only fire in normal mode (<Esc> in the prompt).",
+    "  Tab selects entries; the copy actions then take all of them.",
+    "  :Pickers command syntax — see docs/cheatsheet.md",
+    "  q / <Esc>  close",
+  })
   return lines
 end
 
----Short hint text for a picker's own title/header area (telescope
----`results_title`, fzf-lua `--header`) — `""` when the cheatsheet action is
----disabled or unbound, so a caller can skip setting the option entirely
----rather than showing an empty hint. Snacks has no equivalent static-text
----slot without pickers.nvim owning the user's layout config (its title only
----composes from a template + the live `{flags}` toggle badges — see
----`pickers.keys.adapters.snacks` for what those actually are); snacks users
----reach the same information through its OWN native `?` → `toggle_help_*`
----panel instead, which `pickers.entry_actions.adapters.snacks` feeds proper
----`desc` strings for.
----@param engine "telescope"|"fzf-lua"
+---Legend text for a picker's own title/header area (telescope
+---`results_title`, fzf-lua `--header`, snacks `title`): the two keys worth
+---knowing first -- the cheatsheet and `open_background` ("add to buffer list,
+---no focus switch", <S-CR>). Each part is left out when its action is
+---unbound; `""` when both are (or the whole feature is off), so a caller can
+---skip setting the option entirely rather than showing an empty hint.
+---
+---fzf-lua's keys are fixed (`f1`, `shift-enter`) regardless of `keys.*` -- see
+---`pickers.entry_actions.adapters.fzf` -- so its legend never asks
+---`pickers.keys.resolve()`.
+---@param engine "telescope"|"fzf-lua"|"snacks"
 ---@return string
 function M.hint(engine)
   if require("pickers.config").get().keys.enable == false then return "" end
 
-  if engine == "fzf-lua" then return "f1 cheatsheet" end
+  if engine == "fzf-lua" then return "f1 cheatsheet · shift-enter add to buffers" end
 
-  local spec = require("pickers.keys").resolve().cheatsheet
-  if not spec or #spec.lhs == 0 then return "" end
-  return spec.lhs[1] .. " cheatsheet"
+  local resolved = require("pickers.keys").resolve()
+  local parts = {}
+  local sheet, background = resolved.cheatsheet, resolved.open_background
+  if sheet and #sheet.lhs > 0 then parts[#parts + 1] = sheet.lhs[1] .. " cheatsheet" end
+  if background and #background.lhs > 0 then
+    parts[#parts + 1] = background.lhs[1] .. " add to buffers"
+  end
+  return table.concat(parts, " · ")
 end
 
 ---Open the cheatsheet panel. Falls back to lib.nvim.output.viewer (lib.nvim

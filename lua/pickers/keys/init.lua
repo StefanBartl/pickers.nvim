@@ -70,27 +70,33 @@
 ---               handles mouse clicks itself, same capability-gap class as
 ---               its history keys (see `pickers.keys.adapters.fzf`).
 ---
---- `copy_absolute`/`copy_dirname`/`copy_env_rooted`/`markdown_link` copy the
---- selected entry's path in various formats (see
---- `pickers.entry_actions.path_copy`) -- the curated subset of
---- filetree.nvim's `[a`/`]a`/`[e`/`ML` path-copy family that still makes
---- sense on a picker result row. Default lhs match filetree.nvim's own
---- defaults exactly. Results-window/normal-mode ONLY (`modes = { "n" }`,
---- same class as `mouse_confirm`), deliberately NOT bound in insert mode:
---- unlike every other in-picker key here, these lhs are plain printable
---- characters (`[`, `]`, `a`, `e`, `M`, `L`) rather than control/special
---- keys -- binding them in the prompt's insert mode would swallow those
---- characters out of any typed query that happens to contain them. Like
---- `create_file`/`open_background`/`cheatsheet`, these run pickers.nvim-
---- specific logic (`pickers.entry_actions.path_copy`), so they are NOT
---- patched globally by `M.patch()` -- telescope/snacks read `keys.resolve()`
---- directly in their entry_actions adapters, and fzf-lua's bindings are
---- fixed (`ctrl-y`/`alt-y`/`alt-r`/`alt-m`; fzf's own bind syntax has no
---- multi-keystroke chord like `[a`, so the fzf-lua adapter uses single
---- physical keys instead -- see `pickers.entry_actions.adapters.fzf`).
+--- `copy_absolute`/`copy_dirname`/`copy_env_rooted`/`copy_project_root`/
+--- `copy_project_relative`/`copy_buffer_relative`/`markdown_link` copy the
+--- selected entries' paths in various formats (see
+--- `pickers.entry_actions.path_copy`) -- the curated subset of filetree.nvim's
+--- path-copy family that still makes sense on a picker result row -- and
+--- `open_system`/`reveal_in_manager` hand the entry to the OS (default
+--- application / file manager, `pickers.entry_actions.system`). "Selected"
+--- follows filetree.nvim's marks idiom: the multi-selection (Tab) when there
+--- is one, else the current entry.
+---
+--- Every prompt starts in INSERT mode, where plain printable keys are just
+--- characters of the query -- filetree.nvim's chords (`[a`, `ML`, `<leader>sm`)
+--- can never fire there. So each of these actions carries TWO kinds of lhs:
+--- a direct Ctrl/Alt key (`<C-y>`, `<M-l>`, ...) bound in insert AND normal
+--- mode, and the filetree chords, bound in normal mode only (`chord_modes`,
+--- resolved per lhs by `M.modes_for`) so they never swallow typed characters.
+--- Like `create_file`/`open_background`/`cheatsheet`, these run pickers.nvim-
+--- specific logic, so they are NOT patched globally by `M.patch()` --
+--- telescope/snacks read `keys.resolve()` directly in their entry_actions
+--- adapters, and fzf-lua's bindings are fixed (`ctrl-y`/`alt-y`/`alt-r`/`alt-g`/
+--- `alt-e`/`alt-j`/`alt-l`/`alt-o`/`alt-x`; fzf's own bind syntax has no
+--- multi-keystroke chord, so the fzf-lua adapter uses the same single physical
+--- keys the direct lhs above resolve to -- see
+--- `pickers.entry_actions.adapters.fzf`).
 ---
 --- `cheatsheet` opens a read-only panel (`pickers.cheatsheet`) listing every
---- currently-bound action in this table. Defaults to `<C-/>`, NOT `<C-?>`:
+--- currently-bound action in this table. Defaults to `<C-/>` (plus `<M-?>`), NOT `<C-?>`:
 --- every picker prompt starts in insert mode, where a raw `?` just searches
 --- for a literal question mark, and `<C-?>` resolves (in Neovim's own
 --- termcode translation, verified via `keytrans()`) to the same byte
@@ -109,7 +115,7 @@ local M = {}
 --- The concrete lhs come from `cfg.keys`; `modes` are fixed per action (preview
 --- scroll works in insert + normal, history only in insert, matching how the
 --- prompt is used).
----@type table<string, { default: string|string[]|false, modes: string[] }>
+---@type table<string, { default: string|string[]|false, modes: string[], chord_modes: string[]|nil }>
 M.ACTIONS = {
   preview_scroll_down = { default = "<PageDown>", modes = { "i", "n" } },
   preview_scroll_up = { default = "<PageUp>", modes = { "i", "n" } },
@@ -134,16 +140,48 @@ M.ACTIONS = {
   -- never in insert mode (only the prompt buffer is), so "n" is the only
   -- mode that can ever see this lhs.
   mouse_confirm = { default = "<2-LeftMouse>", modes = { "n" } },
-  -- Read-only keymap cheatsheet (pickers.cheatsheet). NOT "<C-?>" -- see the
-  -- @description block above.
-  cheatsheet = { default = "<C-/>", modes = { "i", "n" } },
-  -- Path-copy entry actions (pickers.entry_actions.path_copy) -- results-
-  -- window/normal-mode only, see @description above for why these four
-  -- cannot follow create_file/open_background into insert mode too.
-  copy_absolute = { default = "[a", modes = { "n" } },
-  copy_dirname = { default = "]a", modes = { "n" } },
-  copy_env_rooted = { default = "[e", modes = { "n" } },
-  markdown_link = { default = "ML", modes = { "n" } },
+  -- Read-only keymap cheatsheet (pickers.cheatsheet). NOT a bare "<C-?>" -- see
+  -- the @description block above; "<M-?>" (Alt-Shift-/) is safe, it has no
+  -- byte in common with Backspace.
+  cheatsheet = { default = { "<C-/>", "<M-?>" }, modes = { "i", "n" } },
+  -- Path-copy + system entry actions (pickers.entry_actions.path_copy/system).
+  -- Each default is a direct key (Ctrl/Alt, works in the prompt too) plus the
+  -- filetree.nvim chords, which only ever bind in normal mode -- see
+  -- `chord_modes` and `M.modes_for`. Ctrl-y/Alt-y/Alt-r/Alt-l are the same
+  -- physical keys fzf-lua gets (its bind syntax has no chords at all).
+  copy_absolute = {
+    default = { "<C-y>", "[a", "[f" },
+    modes = { "i", "n" },
+    chord_modes = { "n" },
+  },
+  copy_dirname = { default = { "<M-y>", "]a" }, modes = { "i", "n" }, chord_modes = { "n" } },
+  copy_env_rooted = { default = { "<M-r>", "[e" }, modes = { "i", "n" }, chord_modes = { "n" } },
+  copy_project_root = { default = { "<M-g>", "[R" }, modes = { "i", "n" }, chord_modes = { "n" } },
+  copy_project_relative = {
+    default = { "<M-e>", "]R" },
+    modes = { "i", "n" },
+    chord_modes = { "n" },
+  },
+  copy_buffer_relative = {
+    default = { "<M-j>", "]b" },
+    modes = { "i", "n" },
+    chord_modes = { "n" },
+  },
+  markdown_link = {
+    default = { "<M-l>", "ML", "MM" },
+    modes = { "i", "n" },
+    chord_modes = { "n" },
+  },
+  open_system = {
+    default = { "<M-o>", "<leader>sm" },
+    modes = { "i", "n" },
+    chord_modes = { "n" },
+  },
+  reveal_in_manager = {
+    default = { "<M-x>", "<leader>fm" },
+    modes = { "i", "n" },
+    chord_modes = { "n" },
+  },
   -- Opt-in (false = unbound): switch to the next/previous target of the
   -- active pickers.tabs group, the typed query carried along. Unbound by
   -- default because <Tab> is telescope's multi-select toggle -- a host that
@@ -174,7 +212,12 @@ M.ORDER = {
   "copy_absolute",
   "copy_dirname",
   "copy_env_rooted",
+  "copy_project_root",
+  "copy_project_relative",
+  "copy_buffer_relative",
   "markdown_link",
+  "open_system",
+  "reveal_in_manager",
   "tab_next",
   "tab_prev",
 }
@@ -202,7 +245,7 @@ end
 --- Returns an empty table when the whole feature is disabled (`keys.enable=false`),
 --- keeping every adapter fully inert.
 ---@param cfg Pickers.Config|nil
----@return table<string, { lhs: string[], modes: string[] }>
+---@return table<string, { lhs: string[], modes: string[], chord_modes: string[]|nil }>
 function M.resolve(cfg)
   cfg = cfg or require("pickers.config").get()
   local kc = cfg.keys or {}
@@ -213,9 +256,38 @@ function M.resolve(cfg)
     local spec = M.ACTIONS[name]
     local raw = kc[name]
     if raw == nil then raw = spec.default end
-    out[name] = { lhs = to_lhs_list(raw), modes = spec.modes }
+    out[name] = { lhs = to_lhs_list(raw), modes = spec.modes, chord_modes = spec.chord_modes }
   end
   return out
+end
+
+--- Tokens that look like one special key but really produce text (or open a
+--- chord): binding them in the prompt's insert mode would swallow typed input.
+local TEXT_TOKENS = { space = true, lt = true, bar = true, bslash = true }
+TEXT_TOKENS.leader, TEXT_TOKENS.localleader = true, true
+
+--- Whether `lhs` is one non-printing key press (`<C-y>`, `<M-l>`, `<S-CR>`,
+--- `<F1>`), as opposed to a chord of several presses (`[a`, `ML`,
+--- `<leader>sm`) or a printable one.
+---@param lhs string
+---@return boolean
+function M.is_direct(lhs)
+  local inner = lhs:match("^<([^<>]+)>$")
+  return inner ~= nil and not TEXT_TOKENS[inner:lower()]
+end
+
+--- The modes `lhs` may bind in for a resolved action. A chord lhs of an action
+--- that declares `chord_modes` is limited to those (normal mode): in the
+--- prompt's insert mode `[`, `a`, `M`, `L` are just characters of the query,
+--- and every picker prompt starts in insert mode -- which is exactly why
+--- filetree.nvim's chords did nothing there. Every other lhs keeps the
+--- action's own modes.
+---@param spec { lhs: string[], modes: string[], chord_modes: string[]|nil }
+---@param lhs string
+---@return string[]
+function M.modes_for(spec, lhs)
+  if spec.chord_modes and not M.is_direct(lhs) then return spec.chord_modes end
+  return spec.modes
 end
 
 -- ── Engine exports ────────────────────────────────────────────────────────────

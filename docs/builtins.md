@@ -106,8 +106,8 @@ Two different things that both talk about "git status":
   filterable to staged/unstaged/both, with the filter switchable via three
   rows at the top of the list (`[x] show: ...`) rather than a raw keypress —
   `pick_item()` has no per-call custom-keymap hook on any of the three
-  engines. Picking a file row opens it; `pickers.entry_actions` (`[a`/`]a`/
-  `[e`/`ML`, …) apply automatically, same as any other `pick_item()`-based
+  engines. Picking a file row opens it; `pickers.entry_actions` (`<C-y>`/`<M-y>`/
+  `<M-l>`, `[a`/`ML`, …) apply automatically, same as any other `pick_item()`-based
   list here.
 
 ## Notes on specific gaps
