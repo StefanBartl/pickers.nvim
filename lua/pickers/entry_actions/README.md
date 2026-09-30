@@ -48,6 +48,7 @@ path string, not a `FiletreeNode`:
 | `copy_project_relative` | `<M-e>` · `]R` | path relative to that root | `alt-e` |
 | `copy_buffer_relative` | `<M-j>` · `]b` | path relative to the buffer behind the picker | `alt-j` |
 | `markdown_link` | `<M-l>` · `ML`, `MM` | `[name](relative/path)` | `alt-l` |
+| `markdown_link_insert` | `<M-n>` · `MI` | **inserts** the links into the window behind the picker (closes it), cursor into the first link, insert mode — see `link_insert` | `alt-n` |
 | `open_system` | `<M-o>` · `<leader>sm` | open with the OS default application | `alt-o` |
 | `reveal_in_manager` | `<M-x>` · `<leader>fm` | reveal in the system file manager | `alt-x` |
 
@@ -202,6 +203,7 @@ require("pickers").setup({
     copy_project_relative = { "<M-e>", "]R" },
     copy_buffer_relative  = { "<M-j>", "]b" },
     markdown_link         = { "<M-l>", "ML", "MM" },
+    markdown_link_insert  = { "<M-n>", "MI" },
     open_system           = { "<M-o>", "<leader>sm" },
     reveal_in_manager     = { "<M-x>", "<leader>fm" },
     -- ...preview_scroll_*/history_* also live here, see docs/keymaps.md

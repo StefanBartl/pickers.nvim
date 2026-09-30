@@ -678,6 +678,12 @@ All keys are optional.  Unset keys retain their default values.
       markdown_link        (string|string[]|false, default { "<M-l>", "ML",
                              "MM" }) — copy as Markdown link(s); fixed to
                              alt-l on fzf-lua
+      markdown_link_insert (string|string[]|false, default { "<M-n>", "MI" })
+                             — INSERT the entries as Markdown links into the
+                             window behind the picker (closes it, cursor into
+                             the first link, insert mode); fixed to alt-n on
+                             fzf-lua. Tuned by `link_insert` (path =
+                             "buffer"|"cwd"|"absolute"|"env", cursor = {...})
       open_system          (string|string[]|false, default { "<M-o>",
                              "<leader>sm" }) — open the current entry with
                              the system default application; fixed to alt-o

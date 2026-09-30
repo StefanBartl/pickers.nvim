@@ -31,6 +31,7 @@
 ---@field copy_project_relative? Pickers.KeyBinding Copy the path relative to the project root. Default: { "<M-e>", "]R" }
 ---@field copy_buffer_relative? Pickers.KeyBinding Copy the path relative to the open buffer. Default: { "<M-j>", "]b" }
 ---@field markdown_link?        Pickers.KeyBinding Copy the entries as Markdown links. Default: { "<M-l>", "ML", "MM" }
+---@field markdown_link_insert? Pickers.KeyBinding INSERT the entries as Markdown links into the window behind the picker (closes it, cursor into the first link). Default: { "<M-n>", "MI" }
 ---@field open_system?          Pickers.KeyBinding Open the current entry with the system default application. Default: { "<M-o>", "<leader>sm" }
 ---@field reveal_in_manager?    Pickers.KeyBinding Reveal the current entry in the system file manager. Default: { "<M-x>", "<leader>fm" }
 ---@field tab_next?             Pickers.KeyBinding Next target of the active tab group. Default: false (opt-in)

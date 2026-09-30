@@ -172,6 +172,11 @@ M.ACTIONS = {
     modes = { "i", "n" },
     chord_modes = { "n" },
   },
+  markdown_link_insert = {
+    default = { "<M-n>", "MI" },
+    modes = { "i", "n" },
+    chord_modes = { "n" },
+  },
   open_system = {
     default = { "<M-o>", "<leader>sm" },
     modes = { "i", "n" },
@@ -216,6 +221,7 @@ M.ORDER = {
   "copy_project_relative",
   "copy_buffer_relative",
   "markdown_link",
+  "markdown_link_insert",
   "open_system",
   "reveal_in_manager",
   "tab_next",

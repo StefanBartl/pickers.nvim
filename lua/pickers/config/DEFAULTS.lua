@@ -10,6 +10,24 @@ local M = {
   -- this plugin specifically, right here in the spec passed to setup() —
   -- no vim.g needed. See README.
   deps_popup = true,
+  -- The "insert Markdown link(s)" entry action (keys.markdown_link_insert,
+  -- pickers.entry_actions.link_insert): writes the selected entries as
+  -- `[name](path)` into the window behind the picker and puts the cursor into
+  -- the first link.
+  link_insert = {
+    -- How the link path is spelled: "buffer" (relative to the target buffer's
+    -- directory, `./x`/`../x`), "cwd", "absolute", or "env" (`$REPOS_DIR/…`,
+    -- `$NVIM_CONFIG_DIR/…`, via gopath.nvim's shorten_path when installed;
+    -- "buffer" for a file under no known root).
+    path = "buffer",
+    -- lib.nvim.markdown.link_cursor: the cursor goes where the link still needs
+    -- typing (empty title, else the path) and into insert mode.
+    cursor = {
+      enable = true, -- false: cursor behind the inserted text
+      startinsert = true, -- enter insert mode afterwards
+      path_cursor = "end", -- in a filled path: "end" or "start"
+    },
+  },
   -- Placeholder; the real value (via lib.nvim's env snapshot, `repo_base` is
   -- `nil` when unset) is resolved once in config/init.lua's M.get(), right
   -- after this table is deep-copied — keeps requiring DEFAULTS.lua alone free
@@ -167,6 +185,9 @@ local M = {
     copy_project_relative = { "<M-e>", "]R" }, -- relative to the project root
     copy_buffer_relative = { "<M-j>", "]b" }, -- relative to the open buffer
     markdown_link = { "<M-l>", "ML", "MM" }, -- [name](path); "MM" = the marked ones
+    -- Same links, but INSERTED into the window behind the picker (closes the
+    -- picker, cursor lands in the first link, insert mode) -- see `link_insert`.
+    markdown_link_insert = { "<M-n>", "MI" },
     -- Hand the current entry to the OS (pickers.entry_actions.system): open
     -- with the default application / reveal in the file manager.
     open_system = { "<M-o>", "<leader>sm" },

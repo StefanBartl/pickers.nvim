@@ -6802,6 +6802,162 @@ do
   config.reset()
 end
 
+-- ── link_insert — entry action that INSERTS links into the window behind ─────
+do
+  local config = require("pickers.config")
+  local li = require("pickers.entry_actions.link_insert")
+  config.reset()
+
+  -- keys / config
+  check(
+    "link_insert: default keys",
+    has(config.get().keys.markdown_link_insert, "<M-n>")
+      and has(config.get().keys.markdown_link_insert, "MI")
+  )
+  check(
+    "link_insert: key resolves, chord is normal-mode only",
+    (function()
+      local r = require("pickers.keys").resolve()
+      local spec = r.markdown_link_insert
+      return has(spec.lhs, "MI") and #require("pickers.keys").modes_for(spec, "MI") == 1
+    end)()
+  )
+  check("link_insert: default path mode is buffer", config.get().link_insert.path == "buffer")
+  config.apply({
+    link_insert = { path = "bogus", cursor = { path_cursor = "sideways", startinsert = false } },
+  })
+  check(
+    "link_insert: an invalid path mode keeps the default",
+    config.get().link_insert.path == "buffer"
+  )
+  check(
+    "link_insert: an invalid path_cursor is ignored, startinsert applies",
+    config.get().link_insert.cursor.path_cursor == "end"
+      and config.get().link_insert.cursor.startinsert == false
+  )
+  config.reset()
+  config.apply({ link_insert = { path = "absolute" } })
+  check("link_insert: a valid path mode is taken", config.get().link_insert.path == "absolute")
+  config.reset()
+
+  -- adapters carry the action
+  check(
+    "link_insert: telescope maps <M-n> in (i) and MI in (n)",
+    (function()
+      local m = require("pickers.entry_actions.adapters.telescope").get_mappings()
+      return m.i["<M-n>"] ~= nil and m.n["MI"] ~= nil and m.i["MI"] == nil
+    end)()
+  )
+  check(
+    "link_insert: fzf alt-n present",
+    type(require("pickers.entry_actions.adapters.fzf").get_actions()["alt-n"]) == "function"
+  )
+  check(
+    "link_insert: snacks has the action and binds MI",
+    (function()
+      local sa = require("pickers.entry_actions.adapters.snacks")
+      return sa.get_actions().markdown_link_insert ~= nil
+        and sa.get_keys()["MI"] == "markdown_link_insert"
+    end)()
+  )
+  check(
+    "link_insert: cheatsheet describes it",
+    require("pickers.cheatsheet").DESCRIPTIONS.markdown_link_insert ~= nil
+  )
+
+  -- target spelling, against a real named buffer
+  local li_root = (vim.fn.tempname():gsub("\\", "/"))
+  vim.fn.mkdir(li_root .. "/docs", "p")
+  vim.fn.mkdir(li_root .. "/src", "p")
+  vim.fn.writefile({ "x" }, li_root .. "/src/a.lua")
+  vim.fn.writefile({ "intro" }, li_root .. "/docs/note.md")
+  vim.cmd("only")
+  vim.cmd("edit " .. vim.fn.fnameescape(li_root .. "/docs/note.md"))
+  local buf = vim.api.nvim_get_current_buf()
+  local abs = li_root .. "/src/a.lua"
+
+  check("link_insert.target: buffer-relative", li.target(abs, buf, "buffer") == "../src/a.lua")
+  check(
+    "link_insert.target: a file below the buffer gets ./",
+    li.target(li_root .. "/docs/img/x.png", buf, "buffer") == "./img/x.png"
+  )
+  check("link_insert.target: absolute", li.target(abs, buf, "absolute") == abs)
+  check(
+    "link_insert.target: env under $REPOS_DIR",
+    (function()
+      config.apply({ repos_dir = li_root })
+      local saved = package.loaded["gopath.env_shorten"]
+      package.loaded["gopath.env_shorten"] = false
+      local got = li.target(abs, buf, "env")
+      package.loaded["gopath.env_shorten"] = saved
+      config.reset()
+      return got == "$REPOS_DIR/src/a.lua"
+    end)(),
+    ""
+  )
+  check(
+    "link_insert.target: env outside every li_root falls back to buffer-relative",
+    (function()
+      local saved = package.loaded["gopath.env_shorten"]
+      package.loaded["gopath.env_shorten"] = false
+      config.apply({ repos_dir = li_root .. "/elsewhere" })
+      local got = li.target(abs, buf, "env")
+      package.loaded["gopath.env_shorten"] = saved
+      config.reset()
+      return got == "../src/a.lua"
+    end)()
+  )
+  check(
+    "link_insert.build: one link per distinct path",
+    (function()
+      local links = li.build({ abs, abs, li_root .. "/src/b.lua" }, buf, "buffer")
+      return #links == 2
+        and links[1] == "[a.lua](../src/a.lua)"
+        and links[2] == "[b.lua](../src/b.lua)"
+    end)()
+  )
+
+  -- run(): inserts into `win` and puts the cursor into the path of the first link
+  config.apply({ link_insert = { cursor = { startinsert = false } } })
+  local edit_win = vim.api.nvim_get_current_win()
+  vim.api.nvim_win_set_cursor(edit_win, { 1, 4 })
+  vim.cmd("vsplit")
+  vim.cmd("enew")
+  local ok = li.run({ abs }, { win = edit_win })
+  local text = table.concat(vim.api.nvim_buf_get_lines(buf, 0, -1, false), "\n")
+  check(
+    "link_insert.run: inserted inline at the cursor of the window behind the picker",
+    ok == true and text == "intr[a.lua](../src/a.lua)o",
+    text
+  )
+  check(
+    "link_insert.run: cursor is in that window, inside the filled link's path",
+    vim.api.nvim_get_current_win() == edit_win and vim.api.nvim_win_get_cursor(edit_win)[2] == 24,
+    vim.inspect(vim.api.nvim_win_get_cursor(edit_win))
+  )
+
+  vim.api.nvim_buf_set_lines(buf, 0, -1, false, { "intro", "tail" })
+  vim.api.nvim_win_set_cursor(edit_win, { 1, 0 })
+  li.run({ abs, li_root .. "/src/b.lua" }, { win = edit_win })
+  check(
+    "link_insert.run: several links go on lines below, prose is not split",
+    table.concat(vim.api.nvim_buf_get_lines(buf, 0, -1, false), "|")
+      == "intro|[a.lua](../src/a.lua)|[b.lua](../src/b.lua)|tail"
+  )
+
+  -- refuses: no paths, a non-editable target
+  check("link_insert.run: no paths -> false", li.run({}, { win = edit_win }) == false)
+  vim.api.nvim_set_option_value("modifiable", false, { buf = buf })
+  check(
+    "link_insert.run: a non-modifiable target -> false, nothing written",
+    li.run({ abs }, { win = edit_win }) == false
+  )
+  vim.api.nvim_set_option_value("modifiable", true, { buf = buf })
+
+  vim.cmd("only")
+  config.reset()
+end
+
 -- ── Summary ─────────────────────────────────────────────────────────────────
 print(string.format("\n%d passed, %d failed", passed, failed))
 os.exit(failed == 0 and 0 or 1)

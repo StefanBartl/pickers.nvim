@@ -18,6 +18,7 @@ local extract = require("pickers.entry_actions.extract.telescope")
 local create_file = require("pickers.entry_actions.create_file")
 local open_background = require("pickers.entry_actions.open_background")
 local path_copy = require("pickers.entry_actions.path_copy")
+local link_insert = require("pickers.entry_actions.link_insert")
 local system = require("pickers.entry_actions.system")
 
 local M = {}
@@ -81,6 +82,19 @@ local function do_copy(fmt)
 end
 
 ---@internal
+---Insert the selected entries as Markdown links into the window behind the
+---picker (see pickers.entry_actions.link_insert). CLOSES the picker first --
+---the text goes into the window behind it and insert mode must end up there.
+---@param prompt_bufnr integer
+local function do_link_insert(prompt_bufnr)
+  local paths, win = selected_paths(prompt_bufnr)
+  require("telescope.actions").close(prompt_bufnr)
+  vim.schedule(function()
+    link_insert.run(paths, { win = win })
+  end)
+end
+
+---@internal
 ---System entry action (see pickers.entry_actions.system) on the CURRENT entry
 ---only; the picker stays open.
 ---@param action "open"|"reveal"
@@ -134,6 +148,7 @@ function M.get_mappings()
   bind("create_file", do_create_file)
   bind("open_background", do_open_background)
   bind("cheatsheet", do_cheatsheet)
+  bind(link_insert.ACTION, do_link_insert)
 
   for _, fmt in ipairs(path_copy.FORMAT_ORDER) do
     bind(path_copy.ACTION_FOR[fmt], do_copy(fmt))
