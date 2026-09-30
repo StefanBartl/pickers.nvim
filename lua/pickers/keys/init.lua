@@ -89,7 +89,7 @@
 --- Like `create_file`/`open_background`/`cheatsheet`, these run pickers.nvim-
 --- specific logic, so they are NOT patched globally by `M.patch()` --
 --- telescope/snacks read `keys.resolve()` directly in their entry_actions
---- adapters, and fzf-lua's bindings are fixed (`ctrl-y`/`alt-y`/`alt-r`/`alt-g`/
+--- adapters, and fzf-lua's bindings are fixed (`ctrl-y`/`alt-y`/`alt-v`/`alt-t`/
 --- `alt-e`/`alt-j`/`alt-l`/`alt-o`/`alt-x`; fzf's own bind syntax has no
 --- multi-keystroke chord, so the fzf-lua adapter uses the same single physical
 --- keys the direct lhs above resolve to -- see
@@ -155,8 +155,8 @@ M.ACTIONS = {
     chord_modes = { "n" },
   },
   copy_dirname = { default = { "<M-y>", "]a" }, modes = { "i", "n" }, chord_modes = { "n" } },
-  copy_env_rooted = { default = { "<M-r>", "[e" }, modes = { "i", "n" }, chord_modes = { "n" } },
-  copy_project_root = { default = { "<M-g>", "[R" }, modes = { "i", "n" }, chord_modes = { "n" } },
+  copy_env_rooted = { default = { "<M-v>", "[e" }, modes = { "i", "n" }, chord_modes = { "n" } },
+  copy_project_root = { default = { "<M-t>", "[R" }, modes = { "i", "n" }, chord_modes = { "n" } },
   copy_project_relative = {
     default = { "<M-e>", "]R" },
     modes = { "i", "n" },
@@ -273,7 +273,10 @@ TEXT_TOKENS.leader, TEXT_TOKENS.localleader = true, true
 ---@return boolean
 function M.is_direct(lhs)
   local inner = lhs:match("^<([^<>]+)>$")
-  return inner ~= nil and not TEXT_TOKENS[inner:lower()]
+  if inner == nil or TEXT_TOKENS[inner:lower()] then return false end
+  -- `<S-a>` is just a capital A: it types a character like a bare one does.
+  if inner:match("^[Ss]%-[%w%p]$") then return false end
+  return true
 end
 
 --- The modes `lhs` may bind in for a resolved action. A chord lhs of an action

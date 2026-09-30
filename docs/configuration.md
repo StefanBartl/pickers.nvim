@@ -143,8 +143,8 @@ require("pickers").setup({
     -- entries, else the current one.
     copy_absolute         = { "<C-y>", "[a", "[f" },
     copy_dirname          = { "<M-y>", "]a" },
-    copy_env_rooted       = { "<M-r>", "[e" },
-    copy_project_root     = { "<M-g>", "[R" },
+    copy_env_rooted       = { "<M-v>", "[e" },
+    copy_project_root     = { "<M-t>", "[R" },
     copy_project_relative = { "<M-e>", "]R" },
     copy_buffer_relative  = { "<M-j>", "]b" },
     markdown_link         = { "<M-l>", "ML", "MM" },

@@ -10,12 +10,24 @@ a changelog.
 
 ---
 
+[x] **Review fixes for the in-picker path/system keys.** Two of the new default keys took an
+  engine's own default away: `<M-r>` is snacks' `toggle_regex` and `alt-g` is fzf-lua's
+  `first`. Env-rooted is now `<M-v>` / `alt-v`, project root `<M-t>` / `alt-t`; a test
+  compares every default direct key (and the fixed fzf keys) with a list read off the
+  installed engines' defaults. `open_system`/`reveal_in_manager` refuse a path that does not
+  exist -- some entries carry a display label, and explorer.exe answers an unresolvable path
+  with some folder window instead of an error. `buffer_relative` no longer takes a terminal,
+  `nofile` or `oil://` buffer's name as its base directory. `<S-a>` counts as a chord (it types
+  a letter). fzf-lua copy actions accept the `{ path = ... }` metadata shape as well as a list
+  of lines. The legend separator is ASCII (`<C-/> cheatsheet, <S-CR> add to buffers`): the fzf-lua
+  `--header` goes through the Windows shell.
+
 [x] **In-picker path/system keys that work in the prompt, plus a grouped cheatsheet
   and legend.** filetree.nvim's `[a`/`]a`/`[e`/`ML` (results, normal mode only) were
   unreachable while typing: every prompt starts in insert mode, where those are just
   query characters. Every path/system action now carries a *direct* Ctrl/Alt key, bound
-  in insert **and** normal mode (`<C-y>` abs, `<M-y>` dirname, `<M-r>` env-rooted,
-  `<M-g>` project root, `<M-e>`/`<M-j>` relative to root/open buffer, `<M-l>` Markdown
+  in insert **and** normal mode (`<C-y>` abs, `<M-y>` dirname, `<M-v>` env-rooted,
+  `<M-t>` project root, `<M-e>`/`<M-j>` relative to root/open buffer, `<M-l>` Markdown
   link, `<M-o>` open with the OS, `<M-x>` reveal in file manager), plus filetree's
   chords (`[a [f ]a [e [R ]R ]b ML MM <leader>sm <leader>fm`), bound in normal mode
   only. `pickers.keys.modes_for` decides per lhs (`chord_modes` on the action spec), so
@@ -25,7 +37,7 @@ a changelog.
   via `lib.nvim.cross.open_default`/`reveal_in_fm`). filetree's "marks if any, else the
   current node" maps onto the picker's `<Tab>` multi-selection: every copy takes all
   selected entries, one line each, which is `[f` and `MM`. fzf-lua gets the same physical
-  keys (`ctrl-y alt-y alt-r alt-g alt-e alt-j alt-l alt-o alt-x`); `markdown_link` moved
+  keys (`ctrl-y alt-y alt-v alt-t alt-e alt-j alt-l alt-o alt-x`); `markdown_link` moved
   from `alt-m` to `alt-l` to stay clear of snacks' `<A-m>` (toggle_maximize). Default
   `keys.copy_*`/`markdown_link`/`cheatsheet` values are now lists (`cheatsheet` also
   binds `<M-?>`). The cheatsheet panel is grouped, "Essentials" (the cheatsheet key and

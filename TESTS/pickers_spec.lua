@@ -1201,6 +1201,10 @@ do
     vim.deep_equal(keys.modes_for(r.create_file, "gx"), r.create_file.modes)
   )
   check(
+    "keys.is_direct: <S-a> types a character, so it is a chord",
+    not keys.is_direct("<S-a>") and keys.is_direct("<S-CR>") and keys.is_direct("<C-a>")
+  )
+  check(
     "keys.is_direct: <M-l> yes, <Space>/<leader>/[a/ML no",
     keys.is_direct("<M-l>")
       and keys.is_direct("<S-CR>")
@@ -1266,8 +1270,8 @@ do
   )
   check("entry_actions.telescope: markdown_link direct <M-l> in (i)", tm.i["<M-l>"] ~= nil)
   check(
-    "entry_actions.telescope: project root [R (n) / <M-g> (i)",
-    tm.n["[R"] ~= nil and tm.i["<M-g>"] ~= nil
+    "entry_actions.telescope: project root [R (n) / <M-t> (i)",
+    tm.n["[R"] ~= nil and tm.i["<M-t>"] ~= nil
   )
   check("entry_actions.telescope: ]R and ]b bound", tm.n["]R"] ~= nil and tm.n["]b"] ~= nil)
   check(
@@ -1299,10 +1303,10 @@ do
   local fa = fzf_adapter.get_actions()
   check("entry_actions.fzf: ctrl-y (copy_absolute) present", type(fa["ctrl-y"]) == "function")
   check("entry_actions.fzf: alt-y (copy_dirname) present", type(fa["alt-y"]) == "function")
-  check("entry_actions.fzf: alt-r (copy_env_rooted) present", type(fa["alt-r"]) == "function")
+  check("entry_actions.fzf: alt-v (copy_env_rooted) present", type(fa["alt-v"]) == "function")
   check("entry_actions.fzf: alt-l (markdown_link) present", type(fa["alt-l"]) == "function")
   check("entry_actions.fzf: alt-m (snacks toggle_maximize key) left alone", fa["alt-m"] == nil)
-  for _, key in ipairs({ "alt-g", "alt-e", "alt-j", "alt-o", "alt-x" }) do
+  for _, key in ipairs({ "alt-t", "alt-e", "alt-j", "alt-o", "alt-x" }) do
     check("entry_actions.fzf: " .. key .. " present", type(fa[key]) == "function")
   end
 
@@ -1379,7 +1383,7 @@ do
       cheatsheet = "<C-/>",
       copy_absolute = { "<C-y>", "[a", "[f" },
       copy_dirname = { "<M-y>", "]a" },
-      copy_env_rooted = { "<M-r>", "[e" },
+      copy_env_rooted = { "<M-v>", "[e" },
       markdown_link = { "<M-l>", "ML", "MM" },
     },
   })
@@ -1445,7 +1449,8 @@ do
   )
 
   -- buffer_relative: relative to the window behind the picker.
-  local win_buf = vim.api.nvim_create_buf(false, true)
+  -- (a normal file buffer: scratch buffers are `nofile`, see the special case below)
+  local win_buf = vim.api.nvim_create_buf(true, false)
   vim.api.nvim_buf_set_name(win_buf, proj .. "/docs/note.md")
   local win = vim.api.nvim_open_win(win_buf, false, {
     relative = "editor",
@@ -1471,6 +1476,27 @@ do
   )
   vim.api.nvim_win_close(win, true)
   vim.api.nvim_buf_delete(win_buf, { force = true })
+
+  -- A special buffer (terminal, nofile scratch, oil://) has a name but no
+  -- directory: it must not become the base of a relative link.
+  local special_buf = vim.api.nvim_create_buf(false, true)
+  vim.api.nvim_buf_set_name(special_buf, proj .. "/docs/scratch.md")
+  vim.api.nvim_set_option_value("buftype", "nofile", { buf = special_buf })
+  local special_win = vim.api.nvim_open_win(special_buf, false, {
+    relative = "editor",
+    width = 10,
+    height = 2,
+    row = 0,
+    col = 0,
+  })
+  check(
+    "path_copy.build: a nofile buffer is not the base (same as no window)",
+    path_copy.build("buffer_relative", a, { win = special_win })
+      == path_copy.build("buffer_relative", a, {}),
+    tostring(path_copy.build("buffer_relative", a, { win = special_win }))
+  )
+  vim.api.nvim_win_close(special_win, true)
+  vim.api.nvim_buf_delete(special_buf, { force = true })
 
   -- run(): a list writes one line per entry, and both registers get it.
   vim.fn.setreg("+", "")
@@ -1508,14 +1534,16 @@ do
     return true
   end
 
-  local target = vim.fn.fnamemodify("sys_test_file.txt", ":p")
-  check("system.run: open returns true", system.run("open", "sys_test_file.txt") == true)
+  local real = vim.fn.tempname() .. "_sys_test_file.txt"
+  vim.fn.writefile({ "x" }, real)
+  local target = vim.fn.fnamemodify(real, ":p")
+  check("system.run: open returns true", system.run("open", real) == true)
   check(
     "system.run: open hands lib.nvim the absolute path",
     calls[1] and calls[1][1] == "open" and calls[1][2] == target,
     calls[1] and tostring(calls[1][2])
   )
-  check("system.run: reveal returns true", system.run("reveal", "sys_test_file.txt") == true)
+  check("system.run: reveal returns true", system.run("reveal", real) == true)
   check(
     "system.run: reveal asks for the file to be selected in its folder",
     calls[2] and calls[2][1] == "reveal" and calls[2][3].reveal == true
@@ -1525,12 +1553,19 @@ do
     system.run("open", "") == false and #calls == 2
   )
   check("system.run: nil path -> false", system.run("reveal", nil) == false and #calls == 2)
+  check(
+    "system.run: a path that does not exist -> false, nothing is launched",
+    system.run("open", real .. ".missing") == false
+      and system.run("reveal", "Some Display Label") == false
+      and #calls == 2
+  )
   check("system.run: unknown action -> false", system.run("bogus", "x") == false)
 
   package.loaded["lib.nvim.cross.open_default"] = function()
     return false, "no handler"
   end
-  check("system.run: a launcher failure -> false", system.run("open", "sys_test_file.txt") == false)
+  check("system.run: a launcher failure -> false", system.run("open", real) == false)
+  vim.fn.delete(real)
 
   package.loaded["lib.nvim.cross.open_default"] = prev_open
   package.loaded["lib.nvim.cross.reveal_in_fm"] = prev_reveal
@@ -1547,6 +1582,71 @@ do
     "keys.resolve: reveal_in_manager carries <M-x> and filetree's <leader>fm",
     has(r.reveal_in_manager.lhs, "<M-x>") and has(r.reveal_in_manager.lhs, "<leader>fm")
   )
+end
+
+-- ── default direct keys must not shadow an engine's own default ─────────────
+-- Read off the installed engines' defaults (snacks picker/config/defaults.lua,
+-- telescope mappings.lua, fzf-lua defaults.lua keymap.fzf/actions.files) plus
+-- fzf's native word-motion keys. A default that takes one of these silently
+-- removes an engine feature (snacks <A-r> is toggle_regex, fzf-lua alt-g is
+-- "first"), so a new default has to be picked from the free letters.
+do
+  local RESERVED = {
+    ["<m-d>"] = "snacks inspect / fzf kill-word",
+    ["<m-f>"] = "snacks toggle_follow / telescope scroll / fzf-lua toggle_follow",
+    ["<m-h>"] = "snacks/fzf-lua toggle_hidden",
+    ["<m-i>"] = "snacks/fzf-lua toggle_ignored",
+    ["<m-r>"] = "snacks toggle_regex",
+    ["<m-m>"] = "snacks toggle_maximize",
+    ["<m-p>"] = "snacks toggle_preview",
+    ["<m-w>"] = "snacks cycle_win",
+    ["<m-b>"] = "snacks gh_browse / fzf backward-word",
+    ["<m-k>"] = "telescope results_scrolling_right",
+    ["<m-q>"] = "telescope/snacks/fzf-lua send to quickfix",
+    ["<m-a>"] = "fzf-lua toggle-all",
+    ["<m-g>"] = "fzf-lua first / snacks toggle_global",
+  }
+  local keys = require("pickers.keys")
+  local offenders = {}
+  for action, spec in pairs(keys.ACTIONS) do
+    local default = spec.default
+    if type(default) == "string" then default = { default } end
+    for _, lhs in ipairs(default or {}) do
+      if RESERVED[lhs:lower()] then
+        offenders[#offenders + 1] = action .. " " .. lhs .. " (" .. RESERVED[lhs:lower()] .. ")"
+      end
+    end
+  end
+  check(
+    "keys: no default direct lhs shadows an engine default",
+    #offenders == 0,
+    table.concat(offenders, "; ")
+  )
+
+  -- The same for fzf-lua, whose bindings are fixed (fzf bind syntax).
+  local fzf_reserved = { ["alt-a"] = true, ["alt-g"] = true, ["alt-b"] = true, ["alt-f"] = true }
+  fzf_reserved["alt-d"], fzf_reserved["alt-h"], fzf_reserved["alt-i"] = true, true, true
+  fzf_reserved["alt-q"] = true
+  local shadowed = {}
+  for key in pairs(require("pickers.entry_actions.adapters.fzf").get_actions()) do
+    if fzf_reserved[key] then shadowed[#shadowed + 1] = key end
+  end
+  table.sort(shadowed)
+  check(
+    "entry_actions.fzf: no fixed key shadows an fzf/fzf-lua default",
+    #shadowed == 0,
+    table.concat(shadowed, ",")
+  )
+
+  -- fzf hands the action a LIST of lines, or (other providers) a metadata table.
+  local fzf_actions = require("pickers.entry_actions.adapters.fzf").get_actions()
+  local prev_fzf = package.loaded["fzf-lua"]
+  package.loaded["fzf-lua"] = { resume = function() end }
+  local target = vim.fn.fnamemodify("fzf_shape.lua", ":p"):gsub("\\", "/")
+  vim.fn.setreg("+", "")
+  fzf_actions["ctrl-y"]({ path = target })
+  check("entry_actions.fzf: a { path = ... } table is one entry", vim.fn.getreg("+") == target)
+  package.loaded["fzf-lua"] = prev_fzf
 end
 
 -- ── entry_actions — copy handlers use the multi-selection, else the entry ───
@@ -3326,16 +3426,16 @@ do
   })
   check(
     "cheatsheet.hint: telescope legend names the cheatsheet key and <S-CR>",
-    cheatsheet.hint("telescope") == "<C-/> cheatsheet · <S-CR> add to buffers",
+    cheatsheet.hint("telescope") == "<C-/> cheatsheet, <S-CR> add to buffers",
     cheatsheet.hint("telescope")
   )
   check(
     "cheatsheet.hint: snacks gets the same legend",
-    cheatsheet.hint("snacks") == "<C-/> cheatsheet · <S-CR> add to buffers"
+    cheatsheet.hint("snacks") == "<C-/> cheatsheet, <S-CR> add to buffers"
   )
   check(
     "cheatsheet.hint: fzf-lua always says f1/shift-enter (fixed, ignores keys.* lhs)",
-    cheatsheet.hint("fzf-lua") == "f1 cheatsheet · shift-enter add to buffers"
+    cheatsheet.hint("fzf-lua") == "f1 cheatsheet, shift-enter add to buffers"
   )
 
   config.apply({ keys = { cheatsheet = false } })
@@ -3350,7 +3450,7 @@ do
   )
   check(
     "cheatsheet.hint: fzf-lua still says f1 when unbound (fixed binding)",
-    cheatsheet.hint("fzf-lua") == "f1 cheatsheet · shift-enter add to buffers"
+    cheatsheet.hint("fzf-lua") == "f1 cheatsheet, shift-enter add to buffers"
   )
 
   config.apply({ keys = { enable = false } })
@@ -4187,7 +4287,7 @@ do
     check("fzf live_grep: no search_dirs, which fzf-lua would ignore", got.search_dirs == nil)
     check(
       "fzf live_grep: --header names the cheatsheet key, visible on open",
-      got.fzf_opts and got.fzf_opts["--header"] == "f1 cheatsheet · shift-enter add to buffers",
+      got.fzf_opts and got.fzf_opts["--header"] == "f1 cheatsheet, shift-enter add to buffers",
       got.fzf_opts and vim.inspect(got.fzf_opts)
     )
 
@@ -4205,7 +4305,7 @@ do
     )
     check(
       "telescope live_grep: results_title names the cheatsheet key, visible on open",
-      got.results_title == "<C-/> cheatsheet · <S-CR> add to buffers",
+      got.results_title == "<C-/> cheatsheet, <S-CR> add to buffers",
       tostring(got.results_title)
     )
 
@@ -4243,7 +4343,7 @@ do
     )
     check(
       "snacks live_grep: title = prompt + the cheatsheet/<S-CR> legend",
-      got.title == "P  (<C-/> cheatsheet · <S-CR> add to buffers)",
+      got.title == "P  (<C-/> cheatsheet, <S-CR> add to buffers)",
       tostring(got.title)
     )
 

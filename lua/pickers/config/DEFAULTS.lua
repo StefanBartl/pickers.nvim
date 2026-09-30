@@ -157,13 +157,13 @@ local M = {
     -- current entry) -- see pickers.entry_actions.path_copy. Every action has
     -- a direct Ctrl/Alt key (works in the prompt, which is always in insert
     -- mode) plus filetree.nvim's own chords, which bind in normal mode only
-    -- (see pickers.keys.modes_for). Fixed on fzf-lua (ctrl-y/alt-y/alt-r/
-    -- alt-g/alt-e/alt-j/alt-l; fzf's bind syntax has no chords, see
+    -- (see pickers.keys.modes_for). Fixed on fzf-lua (ctrl-y/alt-y/alt-v/
+    -- alt-t/alt-e/alt-j/alt-l; fzf's bind syntax has no chords, see
     -- pickers.entry_actions.adapters.fzf).
     copy_absolute = { "<C-y>", "[a", "[f" }, -- absolute path(s); "[f" = the file list
     copy_dirname = { "<M-y>", "]a" }, -- absolute parent directory
-    copy_env_rooted = { "<M-r>", "[e" }, -- $REPOS_DIR/... form
-    copy_project_root = { "<M-g>", "[R" }, -- absolute project root (.git)
+    copy_env_rooted = { "<M-v>", "[e" }, -- $REPOS_DIR/... form
+    copy_project_root = { "<M-t>", "[R" }, -- absolute project root (.git)
     copy_project_relative = { "<M-e>", "]R" }, -- relative to the project root
     copy_buffer_relative = { "<M-j>", "]b" }, -- relative to the open buffer
     markdown_link = { "<M-l>", "ML", "MM" }, -- [name](path); "MM" = the marked ones

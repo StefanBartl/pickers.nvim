@@ -441,7 +441,7 @@ In-picker keys (preview scroll + history + entry actions)~
 <
   Those two keys are also the legend, visible without pressing anything: the
   telescope results_title, the fzf-lua --header and the snacks picker title
-  show "<C-/> cheatsheet · <S-CR> add to buffers" ("f1 cheatsheet ·
+  show "<C-/> cheatsheet, <S-CR> add to buffers" ("f1 cheatsheet,
   shift-enter add to buffers" on fzf-lua) the moment the picker opens; each
   half drops out when its action is unbound.  On snacks the legend is
   appended to the title, which otherwise only composes from a template plus
@@ -475,7 +475,7 @@ In-picker keys (preview scroll + history + entry actions)~
 
   Every prompt is in insert mode, where "[", "a", "M", "L" are just
   characters of the query — filetree.nvim's chords can never fire there.  So
-  each action carries a DIRECT key (Ctrl/Alt: <C-y> <M-y> <M-r> <M-g> <M-e>
+  each action carries a DIRECT key (Ctrl/Alt: <C-y> <M-y> <M-v> <M-t> <M-e>
   <M-j> <M-l> <M-o> <M-x>), bound in insert AND normal mode, plus the
   filetree chords ([a [f ]a [e [R ]R ]b ML MM <leader>sm <leader>fm), bound
   in NORMAL MODE ONLY so they never swallow typed characters
@@ -483,7 +483,7 @@ In-picker keys (preview scroll + history + entry actions)~
   direct, anything else is a chord).  fzf's own --bind syntax has no
   concept of a multi-keystroke chord (a single logical key, not a
   pending-key state machine), so its bindings are fixed to the same single
-  physical keys the direct lhs resolve to: ctrl-y/alt-y/alt-r/alt-g/alt-e/
+  physical keys the direct lhs resolve to: ctrl-y/alt-y/alt-v/alt-t/alt-e/
   alt-j/alt-l/alt-o/alt-x, same class as its ctrl-a/ctrl-o/shift-enter/f1.
   `copy_env_rooted` folds $REPOS_DIR back into the path (reading
   pickers.config's already-resolved repos_dir) and falls back to the plain
@@ -663,12 +663,12 @@ All keys are optional.  Unset keys retain their default values.
       copy_dirname         (string|string[]|false, default { "<M-y>", "]a" })
                              — copy the parent directory (absolute); fixed
                              to alt-y on fzf-lua
-      copy_env_rooted      (string|string[]|false, default { "<M-r>", "[e" })
+      copy_env_rooted      (string|string[]|false, default { "<M-v>", "[e" })
                              — copy the path with $REPOS_DIR folded in;
-                             fixed to alt-r on fzf-lua
-      copy_project_root    (string|string[]|false, default { "<M-g>", "[R" })
+                             fixed to alt-v on fzf-lua
+      copy_project_root    (string|string[]|false, default { "<M-t>", "[R" })
                              — copy the absolute project root (.git); fixed
-                             to alt-g on fzf-lua
+                             to alt-t on fzf-lua
       copy_project_relative (string|string[]|false, default { "<M-e>",
                              "]R" }) — copy the path relative to the
                              project root; fixed to alt-e on fzf-lua
@@ -686,7 +686,7 @@ All keys are optional.  Unset keys retain their default values.
                              "<leader>fm" }) — reveal it in the system file
                              manager; fixed to alt-x on fzf-lua
     fzf-lua only binds the vertical preview scroll and the fixed ctrl-a/
-    ctrl-o/shift-enter/f1 and ctrl-y/alt-y/alt-r/alt-g/alt-e/alt-j/alt-l/
+    ctrl-o/shift-enter/f1 and ctrl-y/alt-y/alt-v/alt-t/alt-e/alt-j/alt-l/
     alt-o/alt-x entry actions —
     horizontal scroll, history, and remapping the entry-action keys are all
     fzf-native/fixed there.

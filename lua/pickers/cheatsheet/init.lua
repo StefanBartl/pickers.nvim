@@ -176,7 +176,7 @@ end
 function M.hint(engine)
   if require("pickers.config").get().keys.enable == false then return "" end
 
-  if engine == "fzf-lua" then return "f1 cheatsheet · shift-enter add to buffers" end
+  if engine == "fzf-lua" then return "f1 cheatsheet, shift-enter add to buffers" end
 
   local resolved = require("pickers.keys").resolve()
   local parts = {}
@@ -185,7 +185,7 @@ function M.hint(engine)
   if background and #background.lhs > 0 then
     parts[#parts + 1] = background.lhs[1] .. " add to buffers"
   end
-  return table.concat(parts, " · ")
+  return table.concat(parts, ", ")
 end
 
 ---Open the cheatsheet panel. Falls back to lib.nvim.output.viewer (lib.nvim

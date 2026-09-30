@@ -131,8 +131,8 @@ panel closes (same shape as `open_background`'s resume, run in reverse).
 
 **Visible without pressing anything (the legend):** telescope's
 `results_title`, fzf-lua's `--header` and the snacks picker `title` show
-"`<C-/> cheatsheet · <S-CR> add to buffers`" (fzf-lua:
-"`f1 cheatsheet · shift-enter add to buffers`") the moment a picker opens — the
+"`<C-/> cheatsheet, <S-CR> add to buffers`" (fzf-lua:
+"`f1 cheatsheet, shift-enter add to buffers`") the moment a picker opens — the
 same two Essentials keys; each half drops out when its action is unbound. On
 telescope/fzf-lua no title real estate is spent (both slots were otherwise
 unused by pickers.nvim's own pickers); snacks has no static-text slot without
@@ -166,8 +166,8 @@ that still makes sense on a picker result row (a plain path string, not a
 |---|---|---|
 | `copy_absolute` | `<C-y>` · `[a`, `[f` | absolute path (several selected → one line each, the file list) |
 | `copy_dirname` | `<M-y>` · `]a` | absolute parent directory |
-| `copy_env_rooted` | `<M-r>` · `[e` | `$REPOS_DIR/…` form |
-| `copy_project_root` | `<M-g>` · `[R` | absolute project root (nearest `.git` ancestor, else cwd) |
+| `copy_env_rooted` | `<M-v>` · `[e` | `$REPOS_DIR/…` form |
+| `copy_project_root` | `<M-t>` · `[R` | absolute project root (nearest `.git` ancestor, else cwd) |
 | `copy_project_relative` | `<M-e>` · `]R` | path relative to that root |
 | `copy_buffer_relative` | `<M-j>` · `]b` | path relative to the buffer behind the picker, `./`-marked |
 | `markdown_link` | `<M-l>` · `ML`, `MM` | `[name](relative/path)` |
@@ -202,10 +202,12 @@ them. telescope needs just one registration (`mappings.n`) since its single
 prompt buffer's normal mode already covers both cases. fzf's own `--bind`
 syntax additionally has no concept of a multi-keystroke chord (a single logical
 key, not a pending-key state machine), so its bindings are fixed to the same
-single physical keys the direct lhs resolve to — `ctrl-y`/`alt-y`/`alt-r`/
-`alt-g`/`alt-e`/`alt-j`/`alt-l`/`alt-o`/`alt-x`, same class as its
+single physical keys the direct lhs resolve to — `ctrl-y`/`alt-y`/`alt-v`/
+`alt-t`/`alt-e`/`alt-j`/`alt-l`/`alt-o`/`alt-x`, same class as its
 `ctrl-a`/`ctrl-o`/`shift-enter`/`f1`. The Alt keys stay clear of the engines'
-own defaults (snacks `<A-m>`/`<A-p>`/`<A-h>`/…, fzf's `alt-b`/`alt-f`/`alt-d`).
+own defaults (snacks `<A-d>`/`<A-f>`/`<A-h>`/`<A-i>`/`<A-m>`/`<A-p>`/`<A-r>`/`<A-w>`,
+fzf-lua `alt-a`/`alt-g`/`alt-q`/`alt-i`/`alt-h`/`alt-f`, fzf's `alt-b`/`alt-f`/`alt-d`);
+a test guards this.
 
 `copy_env_rooted` folds `$REPOS_DIR` back into the path (reading
 `pickers.config`'s already-resolved `repos_dir`) and falls back to the

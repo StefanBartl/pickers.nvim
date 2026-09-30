@@ -10,7 +10,7 @@ normal mode) additionally opens Snacks' own native keymap help — see
 [FEATURES/KEYS.md](FEATURES/KEYS.md#cheatsheet).
 
 The path/system keys work in the prompt: `<C-y>` copies the absolute path,
-`<M-y>` the parent directory, `<M-r>` the `$REPOS_DIR/…` form, `<M-g>` the
+`<M-y>` the parent directory, `<M-v>` the `$REPOS_DIR/…` form, `<M-t>` the
 project root, `<M-e>`/`<M-j>` the path relative to the project root/the open
 buffer, `<M-l>` a Markdown link, `<M-o>` opens with the system default
 application and `<M-x>` reveals in the file manager — on `<Tab>`-selected
