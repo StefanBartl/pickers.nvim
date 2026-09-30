@@ -171,6 +171,7 @@ that still makes sense on a picker result row (a plain path string, not a
 | `copy_project_relative` | `<M-e>` · `]R` | path relative to that root |
 | `copy_buffer_relative` | `<M-j>` · `]b` | path relative to the buffer behind the picker, `./`-marked |
 | `markdown_link` | `<M-l>` · `ML`, `MM` | `[name](relative/path)` |
+| `markdown_link_insert` | `<M-n>` · `MI` | inserts the links into the window behind the picker |
 | `open_system` | `<M-o>` · `<leader>sm` | opens with the OS default application |
 | `reveal_in_manager` | `<M-x>` · `<leader>fm` | shows the entry in the system file manager |
 

@@ -151,6 +151,7 @@ snacks. See `lua/pickers/keys/`.
 | `copy_project_relative` | `<M-e>` · `]R` | ✓ | fixed (`alt-e`) | ✓ |
 | `copy_buffer_relative` | `<M-j>` · `]b` | ✓ | fixed (`alt-j`) | ✓ |
 | `markdown_link` | `<M-l>` · `ML`, `MM` | ✓ | fixed (`alt-l`) | ✓ |
+| `markdown_link_insert` | `<M-n>` · `MI` | ✓ | fixed (`alt-n`) | ✓ |
 | `open_system` | `<M-o>` · `<leader>sm` | ✓ | fixed (`alt-o`) | ✓ |
 | `reveal_in_manager` | `<M-x>` · `<leader>fm` | ✓ | fixed (`alt-x`) | ✓ |
 
@@ -267,6 +268,7 @@ picker result row (a plain path string, not a `FiletreeNode`):
 | `copy_project_relative` | `src/a.lua` | `]R` |
 | `copy_buffer_relative` | `./a.lua` / `../src/a.lua` — relative to the buffer *behind* the picker | `]b` |
 | `markdown_link` | `[a.lua](src/a.lua)` | `ML`, `MM` |
+| `markdown_link_insert` | inserts `[a.lua](../src/a.lua)` (relative to the buffer behind the picker) and closes the picker — cursor into the link, insert mode | `MI` |
 | `open_system` | opens the entry with the OS default application | `<leader>sm` |
 | `reveal_in_manager` | shows the entry in Explorer/Finder/… | `<leader>fm` |
 

@@ -98,6 +98,7 @@
 ---@field mappings?      Pickers.MappingsConfig
 ---@field usercmds?      Pickers.Usercmds
 ---@field keys?          Pickers.KeysConfig
+---@field link_insert?   { path?: "buffer"|"cwd"|"absolute"|"env", cursor?: { enable?: boolean, startinsert?: boolean, path_cursor?: "end"|"start" } }  # the insert-Markdown-link entry action (pickers.entry_actions.link_insert)
 ---@field history?       Pickers.HistoryConfig
 ---@field result_count?  Pickers.ResultCountConfig
 ---@field smart?         Pickers.SmartConfig

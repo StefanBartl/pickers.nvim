@@ -346,6 +346,7 @@ local TOP_LEVEL_OPTS = {
   "engine",
   "repos_dir",
   "deps_popup",
+  "link_insert",
   "collections",
   "depth_aliases",
   "keymaps",
@@ -421,6 +422,7 @@ local NESTED_OPTS = {
     "copy_project_relative",
     "copy_buffer_relative",
     "markdown_link",
+    "markdown_link_insert",
     -- System entry actions (pickers.entry_actions.system).
     "open_system",
     "reveal_in_manager",
@@ -437,6 +439,8 @@ local NESTED_OPTS = {
   display = { "path_shorten", "path_adaptive", "cycle", "prompt_top", "preview_wrap" },
   images = { "enabled", "pdf_text" },
   filetree = { "enabled" },
+  link_insert = { "path", "cursor" },
+  ["link_insert.cursor"] = { "enable", "startinsert", "path_cursor" },
   tabs = { "groups" }, -- "groups"' own keys are user-named group names, not validated
   quickfix = { "enabled", "preview", "keys" },
   ["quickfix.preview"] = { "enabled", "height", "context", "border", "delay_ms" },
@@ -552,6 +556,33 @@ function M.apply(opts)
   end
 
   if type(sanitized.keys) == "table" then cfg.keys = normalise_keys(sanitized.keys, cfg.keys) end
+
+  if type(sanitized.link_insert) == "table" then
+    local li = sanitized.link_insert
+    local modes = { buffer = true, cwd = true, absolute = true, env = true }
+    if li.path ~= nil then
+      if modes[li.path] then
+        cfg.link_insert.path = li.path
+      else
+        notify.warn(
+          ("link_insert.path must be buffer|cwd|absolute|env, got %s -- using %q"):format(
+            vim.inspect(li.path),
+            cfg.link_insert.path
+          )
+        )
+      end
+    end
+    if type(li.cursor) == "table" then
+      local c = li.cursor
+      if type(c.enable) == "boolean" then cfg.link_insert.cursor.enable = c.enable end
+      if type(c.startinsert) == "boolean" then
+        cfg.link_insert.cursor.startinsert = c.startinsert
+      end
+      if c.path_cursor == "end" or c.path_cursor == "start" then
+        cfg.link_insert.cursor.path_cursor = c.path_cursor
+      end
+    end
+  end
 
   if type(sanitized.history) == "table" then
     cfg.history = normalise_history(sanitized.history, cfg.history)

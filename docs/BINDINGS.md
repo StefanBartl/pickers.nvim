@@ -127,6 +127,7 @@ All of these live in the augroup `"pickers.nvim"` when lib.nvim is present; with
 | `copy_project_relative` | `<M-e>` · chord `]R` | patched | fixed (`alt-e`) | export only¹ |
 | `copy_buffer_relative` | `<M-j>` · chord `]b` | patched | fixed (`alt-j`) | export only¹ |
 | `markdown_link` | `<M-l>` · chords `ML`, `MM` | patched | fixed (`alt-l`) | export only¹ |
+| `markdown_link_insert` | `<M-n>` · chord `MI` | patched | fixed (`alt-n`) | export only¹ |
 | `open_system` | `<M-o>` · chord `<leader>sm` | patched | fixed (`alt-o`) | export only¹ |
 | `reveal_in_manager` | `<M-x>` · chord `<leader>fm` | patched | fixed (`alt-x`) | export only¹ |
 | `tab_next` | *(off, opt-in)* | patched (a pickers.tabs function) | — (fzf gap: no Lua in `keymap.builtin`) | export only¹ + `keys.snacks_actions()` |

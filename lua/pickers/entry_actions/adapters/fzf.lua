@@ -48,6 +48,7 @@ local extract = require("pickers.entry_actions.extract.fzf")
 local create_file = require("pickers.entry_actions.create_file")
 local open_background = require("pickers.entry_actions.open_background")
 local path_copy = require("pickers.entry_actions.path_copy")
+local link_insert = require("pickers.entry_actions.link_insert")
 local system = require("pickers.entry_actions.system")
 
 local M = {}
@@ -106,6 +107,19 @@ local function do_copy(fmt)
 end
 
 ---@internal
+---Insert the selected entries as Markdown links into the window behind the
+---picker (see pickers.entry_actions.link_insert). fzf-lua has already closed
+---its process before an action runs, so there is nothing to close and, unlike
+---the copy actions, nothing to resume.
+---@param selected table|string
+local function do_link_insert(selected)
+  local paths, win = extract_all(selected), origin_win()
+  vim.defer_fn(function()
+    link_insert.run(paths, { win = win })
+  end, 50)
+end
+
+---@internal
 ---System entry action (see pickers.entry_actions.system) on the first
 ---selected entry, then resume.
 ---@param action "open"|"reveal"
@@ -160,6 +174,10 @@ local COPY_KEYS = {
 }
 
 ---@internal
+---The fixed fzf key of the insert-link action.
+local LINK_INSERT_KEY = "alt-n"
+
+---@internal
 ---The fixed fzf keys of the system actions, keyed by system action.
 ---@type table<string, string>
 local SYSTEM_KEYS = {
@@ -183,6 +201,7 @@ end
 for action, key in pairs(SYSTEM_KEYS) do
   FZF_OVERRIDES[system.ACTION_FOR[action]] = key
 end
+FZF_OVERRIDES[link_insert.ACTION] = LINK_INSERT_KEY
 
 local function do_cheatsheet()
   -- Let the fzf terminal buffer finish closing before opening the panel
@@ -215,6 +234,7 @@ function M.get_actions()
   for fmt, key in pairs(COPY_KEYS) do
     actions[key] = do_copy(fmt)
   end
+  actions[LINK_INSERT_KEY] = do_link_insert
   for action, key in pairs(SYSTEM_KEYS) do
     actions[key] = do_system(action)
   end

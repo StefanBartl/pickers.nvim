@@ -71,6 +71,7 @@ local SKIP = {
   copy_project_relative = true,
   copy_buffer_relative = true,
   markdown_link = true,
+  markdown_link_insert = true,
   open_system = true,
   reveal_in_manager = true,
 }

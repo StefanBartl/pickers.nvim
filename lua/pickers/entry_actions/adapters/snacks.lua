@@ -27,6 +27,7 @@ local extract = require("pickers.entry_actions.extract.snacks")
 local create_file = require("pickers.entry_actions.create_file")
 local open_background = require("pickers.entry_actions.open_background")
 local path_copy = require("pickers.entry_actions.path_copy")
+local link_insert = require("pickers.entry_actions.link_insert")
 local system = require("pickers.entry_actions.system")
 
 local M = {}
@@ -77,6 +78,36 @@ local function do_copy(fmt)
 end
 
 ---@internal
+---Insert the selected entries as Markdown links into the window behind the
+---picker (see pickers.entry_actions.link_insert). Unlike the copy actions this
+---CLOSES the picker: the text goes into the window behind it, and insert mode
+---must end up there rather than in a prompt that is about to disappear.
+---@param picker any
+---@param item any
+local function do_link_insert(picker, item)
+  ---@diagnostic disable-next-line: undefined-field
+  local items = picker and picker:selected({ fallback = true }) or {}
+  if #items == 0 and item then items = { item } end
+
+  local paths = {}
+  for _, it in ipairs(items) do
+    local path = extract(it)
+    if path then paths[#paths + 1] = path end
+  end
+  ---@diagnostic disable-next-line: undefined-field
+  local win = picker and picker.main or nil
+
+  if picker then
+    ---@diagnostic disable-next-line: undefined-field
+    picker:close()
+  end
+  -- After the close: the picker's windows are gone and focus is back.
+  vim.schedule(function()
+    link_insert.run(paths, { win = win })
+  end)
+end
+
+---@internal
 ---System entry action (see pickers.entry_actions.system) on the current item.
 ---@param action "open"|"reveal"
 ---@return fun(picker: any, item: any)
@@ -120,6 +151,7 @@ function M.get_actions()
     create_file = { action = do_create_file, desc = desc.create_file },
     open_background = { action = do_open_background, desc = desc.open_background },
     cheatsheet = { action = do_cheatsheet, desc = desc.cheatsheet },
+    [link_insert.ACTION] = { action = do_link_insert, desc = desc[link_insert.ACTION] },
   }
   for fmt, action_name in pairs(path_copy.ACTION_FOR) do
     actions[action_name] = { action = do_copy(fmt), desc = desc[action_name] }
@@ -137,6 +169,7 @@ local function action_names()
   for _, fmt in ipairs(path_copy.FORMAT_ORDER) do
     names[#names + 1] = path_copy.ACTION_FOR[fmt]
   end
+  names[#names + 1] = link_insert.ACTION
   for _, action_name in pairs(system.ACTION_FOR) do
     names[#names + 1] = action_name
   end

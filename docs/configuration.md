@@ -19,6 +19,17 @@ require("pickers").setup({
   -- own convention, not a Neovim/OS standard. Set explicitly to override.
   repos_dir = nil,
 
+  -- `keys.markdown_link_insert` (`<M-n>` / `MI`): write the selected entries as
+  -- Markdown links into the window behind the picker.
+  link_insert = {
+    path = "buffer", -- "buffer" (relative to that buffer, ./x ../x) | "cwd" | "absolute" | "env"
+    cursor = {
+      enable = true, -- false: cursor behind the inserted text
+      startinsert = true, -- insert mode, cursor where the link still needs typing
+      path_cursor = "end", -- in a filled path: "end" | "start"
+    },
+  },
+
   -- User-defined named scopes (see docs/collections.md)
   collections = {
     { name = "notes",    dir = vim.env.REPOS_DIR .. "/Notes",
@@ -148,6 +159,7 @@ require("pickers").setup({
     copy_project_relative = { "<M-e>", "]R" },
     copy_buffer_relative  = { "<M-j>", "]b" },
     markdown_link         = { "<M-l>", "ML", "MM" },
+    markdown_link_insert  = { "<M-n>", "MI" }, -- INSERT the links into the window behind the picker
     open_system           = { "<M-o>", "<leader>sm" },
     reveal_in_manager     = { "<M-x>", "<leader>fm" },
     -- fzf-lua only binds the vertical preview scroll and the fixed ctrl-a/
