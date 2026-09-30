@@ -20,9 +20,9 @@
 --- same ones `pickers.keys`' direct (Ctrl/Alt) defaults resolve to on
 --- telescope/snacks:
 ---
----   ctrl-y copy_absolute       alt-g copy_project_root    alt-l markdown_link
+---   ctrl-y copy_absolute       alt-t copy_project_root    alt-l markdown_link
 ---   alt-y  copy_dirname        alt-e copy_project_relative alt-o open_system
----   alt-r  copy_env_rooted     alt-j copy_buffer_relative  alt-x reveal_in_manager
+---   alt-v  copy_env_rooted     alt-j copy_buffer_relative  alt-x reveal_in_manager
 ---
 --- `ctrl-y` shadows fzf-lua's own git-picker-only `git_yank_commit`
 --- (git_commits/git_bcommits/git_stash) exactly the way `ctrl-a`/`create_file`
@@ -79,6 +79,12 @@ end
 ---@param selected table|string|nil
 ---@return string[]
 local function extract_all(selected)
+  -- A metadata table (`{ path = ... }`) is ONE entry, a list is many lines.
+  if type(selected) == "table" and (selected.path or selected.filename) then
+    local path = extract(selected)
+    return path and { path } or {}
+  end
+
   local lines = type(selected) == "table" and selected or { selected }
   local paths = {}
   for _, line in ipairs(lines) do
@@ -146,8 +152,8 @@ end
 local COPY_KEYS = {
   absolute = "ctrl-y",
   dirname = "alt-y",
-  env_rooted = "alt-r",
-  project_root = "alt-g",
+  env_rooted = "alt-v",
+  project_root = "alt-t",
   project_relative = "alt-e",
   buffer_relative = "alt-j",
   markdown_link = "alt-l",

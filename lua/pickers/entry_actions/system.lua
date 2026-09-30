@@ -12,6 +12,12 @@
 ---
 --- Only the first entry is used: launching an application per marked entry is
 --- a surprise nobody asked for. Neither action closes the picker.
+---
+--- The path must exist on disk. A picker entry is not always a file (some carry
+--- a display label, a relative path resolved against the wrong base, ...), and
+--- the OS launchers do not fail on those: explorer.exe opens SOME folder window
+--- for a path it cannot resolve, which reads as "the default app is wrong".
+--- Refusing up front keeps "open this" from opening something else instead.
 
 local notify = require("lib.nvim.notify").create("[pickers.entry_actions.system]")
 
@@ -51,6 +57,11 @@ function M.run(action, path)
   end
 
   local abs = vim.fn.fnamemodify(path, ":p")
+  if not vim.uv.fs_stat(abs) then
+    notify.warn("Not an existing file or directory: " .. abs)
+    return false
+  end
+
   local ok, err = launch(abs)
   if not ok then
     notify.warn(string.format("Could not %s %s: %s", action, abs, tostring(err)))

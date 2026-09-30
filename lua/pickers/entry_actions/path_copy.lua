@@ -115,8 +115,12 @@ end
 ---@return string
 local function editor_dir(win)
   if win and vim.api.nvim_win_is_valid(win) then
-    local name = vim.api.nvim_buf_get_name(vim.api.nvim_win_get_buf(win))
-    if name ~= "" then return fn.fnamemodify(name, ":p:h") end
+    local buf = vim.api.nvim_win_get_buf(win)
+    local name = vim.api.nvim_buf_get_name(buf)
+    -- A terminal/oil://.../help buffer has a name but no directory to resolve
+    -- a link against; `:p:h` on "term://~//123:fzf" would yield garbage.
+    local special = vim.bo[buf].buftype ~= "" or name:match("^%a[%w+.-]*://") ~= nil
+    if name ~= "" and not special then return fn.fnamemodify(name, ":p:h") end
   end
 
   -- pcall'd: `expand("#:p")` THROWS E194 when there is no alternate file.

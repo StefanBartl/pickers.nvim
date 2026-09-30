@@ -122,8 +122,8 @@ All of these live in the augroup `"pickers.nvim"` when lib.nvim is present; with
 | `cheatsheet` | `<C-/>`, `<M-?>` | patched | fixed (`f1`) | export only¹ |
 | `copy_absolute` | `<C-y>` · chords `[a`, `[f` | patched | fixed (`ctrl-y`) | export only¹ |
 | `copy_dirname` | `<M-y>` · chord `]a` | patched | fixed (`alt-y`) | export only¹ |
-| `copy_env_rooted` | `<M-r>` · chord `[e` | patched | fixed (`alt-r`) | export only¹ |
-| `copy_project_root` | `<M-g>` · chord `[R` | patched | fixed (`alt-g`) | export only¹ |
+| `copy_env_rooted` | `<M-v>` · chord `[e` | patched | fixed (`alt-v`) | export only¹ |
+| `copy_project_root` | `<M-t>` · chord `[R` | patched | fixed (`alt-t`) | export only¹ |
 | `copy_project_relative` | `<M-e>` · chord `]R` | patched | fixed (`alt-e`) | export only¹ |
 | `copy_buffer_relative` | `<M-j>` · chord `]b` | patched | fixed (`alt-j`) | export only¹ |
 | `markdown_link` | `<M-l>` · chords `ML`, `MM` | patched | fixed (`alt-l`) | export only¹ |

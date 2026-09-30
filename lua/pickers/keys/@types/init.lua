@@ -26,8 +26,8 @@
 ---@field cheatsheet?           Pickers.KeyBinding Show the in-picker keymap cheatsheet. Default: { "<C-/>", "<M-?>" }
 ---@field copy_absolute?        Pickers.KeyBinding Copy the selected entries' absolute paths. Default: { "<C-y>", "[a", "[f" }
 ---@field copy_dirname?         Pickers.KeyBinding Copy the parent directory (absolute). Default: { "<M-y>", "]a" }
----@field copy_env_rooted?      Pickers.KeyBinding Copy the path with $REPOS_DIR folded in. Default: { "<M-r>", "[e" }
----@field copy_project_root?    Pickers.KeyBinding Copy the absolute project root. Default: { "<M-g>", "[R" }
+---@field copy_env_rooted?      Pickers.KeyBinding Copy the path with $REPOS_DIR folded in. Default: { "<M-v>", "[e" }
+---@field copy_project_root?    Pickers.KeyBinding Copy the absolute project root. Default: { "<M-t>", "[R" }
 ---@field copy_project_relative? Pickers.KeyBinding Copy the path relative to the project root. Default: { "<M-e>", "]R" }
 ---@field copy_buffer_relative? Pickers.KeyBinding Copy the path relative to the open buffer. Default: { "<M-j>", "]b" }
 ---@field markdown_link?        Pickers.KeyBinding Copy the entries as Markdown links. Default: { "<M-l>", "ML", "MM" }

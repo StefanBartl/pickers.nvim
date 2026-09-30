@@ -25,7 +25,7 @@ extract/
 adapters/
   telescope.lua            get_mappings() -> {i={...}, n={...}}   (modes per lhs: keys.modes_for)
   fzf.lua                  get_actions()  -> {["ctrl-a"]=fn, ["ctrl-o"]=fn, ["shift-enter"]=fn, ["f1"]=fn,
-                                               ["ctrl-y"]=fn, ["alt-y"]=fn, ["alt-r"]=fn, ["alt-g"]=fn,
+                                               ["ctrl-y"]=fn, ["alt-y"]=fn, ["alt-v"]=fn, ["alt-t"]=fn,
                                                ["alt-e"]=fn, ["alt-j"]=fn, ["alt-l"]=fn, ["alt-o"]=fn,
                                                ["alt-x"]=fn}
   snacks.lua                get_actions()     -> {create_file={action=fn,desc="Create file/folder"}, ...}
@@ -43,8 +43,8 @@ path string, not a `FiletreeNode`:
 |---|---|---|---|
 | `copy_absolute` | `<C-y>` · `[a`, `[f` | absolute path (several selected → the file list) | `ctrl-y` |
 | `copy_dirname` | `<M-y>` · `]a` | absolute parent directory | `alt-y` |
-| `copy_env_rooted` | `<M-r>` · `[e` | `$REPOS_DIR/…` form | `alt-r` |
-| `copy_project_root` | `<M-g>` · `[R` | absolute project root (nearest `.git`, else cwd) | `alt-g` |
+| `copy_env_rooted` | `<M-v>` · `[e` | `$REPOS_DIR/…` form | `alt-v` |
+| `copy_project_root` | `<M-t>` · `[R` | absolute project root (nearest `.git`, else cwd) | `alt-t` |
 | `copy_project_relative` | `<M-e>` · `]R` | path relative to that root | `alt-e` |
 | `copy_buffer_relative` | `<M-j>` · `]b` | path relative to the buffer behind the picker | `alt-j` |
 | `markdown_link` | `<M-l>` · `ML`, `MM` | `[name](relative/path)` | `alt-l` |
@@ -106,8 +106,9 @@ single logical key, not a pending-key state machine), so its adapter uses fixed
 physical keys — the same ones the direct lhs above resolve to, unrelated to
 `pickers.keys.resolve()`'s Neovim-notation lhs (same class as its
 `ctrl-a`/`ctrl-o`/`shift-enter`/`f1`). The Alt keys are picked to stay clear of
-the engines' own defaults: snacks `<A-d>/<A-f>/<A-h>/<A-i>/<A-m>/<A-p>/<A-w>`,
-fzf's `alt-b/alt-f/alt-d`. `ctrl-y` shadows fzf-lua's git-picker-only
+the engines' own defaults: snacks `<A-d>/<A-f>/<A-h>/<A-i>/<A-m>/<A-p>/<A-r>/<A-w>`,
+telescope `<M-f>/<M-k>/<M-q>`, fzf-lua `alt-a/alt-g/alt-q/alt-i/alt-h/alt-f`, fzf's
+`alt-b/alt-f/alt-d` (a test in `TESTS/` guards this). `ctrl-y` shadows fzf-lua's git-picker-only
 `git_yank_commit` the way `ctrl-a` already shadows those pickers' own overrides.
 
 `copy_env_rooted` folds `$REPOS_DIR` back into the path (e.g.
@@ -134,7 +135,7 @@ action (create_file/open_background included), built from
 just DEFAULTS.lua — grouped, with "Essentials" (the cheatsheet key itself and
 `open_background`) first. The same two keys form the picker **legend**
 (`pickers.cheatsheet.hint`): telescope `results_title`, fzf-lua `--header` and
-the snacks `title` read "`<C-/> cheatsheet · <S-CR> add to buffers`".
+the snacks `title` read "`<C-/> cheatsheet, <S-CR> add to buffers`".
 
 Unlike create_file/open_background it does not touch the
 selected entry and does not close the picker on telescope/snacks (both are
@@ -196,8 +197,8 @@ require("pickers").setup({
     cheatsheet      = { "<C-/>", "<M-?>" },
     copy_absolute         = { "<C-y>", "[a", "[f" },
     copy_dirname          = { "<M-y>", "]a" },
-    copy_env_rooted       = { "<M-r>", "[e" },
-    copy_project_root     = { "<M-g>", "[R" },
+    copy_env_rooted       = { "<M-v>", "[e" },
+    copy_project_root     = { "<M-t>", "[R" },
     copy_project_relative = { "<M-e>", "]R" },
     copy_buffer_relative  = { "<M-j>", "]b" },
     markdown_link         = { "<M-l>", "ML", "MM" },
@@ -212,7 +213,7 @@ The adapters above call `require("pickers.keys").resolve()` to read these —
 they don't read `pickers.config` directly. They use Neovim keymap syntax and
 are honoured by the **telescope and snacks** adapters directly. **fzf-lua's
 bindings are fixed** (`ctrl-a`/`ctrl-o`/`shift-enter`/`f1`/`ctrl-y`/`alt-y`/
-`alt-r`/`alt-g`/`alt-e`/`alt-j`/`alt-l`/`alt-o`/`alt-x`) — fzf-lua's
+`alt-v`/`alt-t`/`alt-e`/`alt-j`/`alt-l`/`alt-o`/`alt-x`) — fzf-lua's
 action-table keys are fzf's own bind syntax ("ctrl-a"), not Neovim keymap
 syntax ("<C-a>"), and there is no general, safe way to translate one to the
 other (the chords like `[a` have no fzf equivalent at all — see the table

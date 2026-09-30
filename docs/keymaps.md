@@ -146,8 +146,8 @@ snacks. See `lua/pickers/keys/`.
 | `cheatsheet` | `<C-/>`, `<M-?>` | ✓ | fixed (`f1`) | ✓ |
 | `copy_absolute` | `<C-y>` · `[a`, `[f` | ✓ | fixed (`ctrl-y`) | ✓ |
 | `copy_dirname` | `<M-y>` · `]a` | ✓ | fixed (`alt-y`) | ✓ |
-| `copy_env_rooted` | `<M-r>` · `[e` | ✓ | fixed (`alt-r`) | ✓ |
-| `copy_project_root` | `<M-g>` · `[R` | ✓ | fixed (`alt-g`) | ✓ |
+| `copy_env_rooted` | `<M-v>` · `[e` | ✓ | fixed (`alt-v`) | ✓ |
+| `copy_project_root` | `<M-t>` · `[R` | ✓ | fixed (`alt-t`) | ✓ |
 | `copy_project_relative` | `<M-e>` · `]R` | ✓ | fixed (`alt-e`) | ✓ |
 | `copy_buffer_relative` | `<M-j>` · `]b` | ✓ | fixed (`alt-j`) | ✓ |
 | `markdown_link` | `<M-l>` · `ML`, `MM` | ✓ | fixed (`alt-l`) | ✓ |
@@ -241,8 +241,8 @@ way as the other entry actions — see `lua/pickers/entry_actions/README.md`. fz
 
 Those two keys are also the **legend**, visible without pressing anything:
 telescope's `results_title`, fzf-lua's `--header` and the snacks picker
-`title` show "`<C-/> cheatsheet · <S-CR> add to buffers`" (fzf-lua:
-"`f1 cheatsheet · shift-enter add to buffers`") as soon as a picker opens. Each
+`title` show "`<C-/> cheatsheet, <S-CR> add to buffers`" (fzf-lua:
+"`f1 cheatsheet, shift-enter add to buffers`") as soon as a picker opens. Each
 half drops out when its action is unbound. On snacks the legend is appended to
 the title, next to the live `{flags}` toggle badges (see
 [FEATURES/KEYS.md#cheatsheet](FEATURES/KEYS.md#cheatsheet) for what those badges
@@ -294,11 +294,12 @@ mode; telescope only needs the latter since it has a single prompt buffer
 whose normal mode already covers both (`mappings.n`). fzf-lua's own `--bind`
 syntax has no concept of a multi-keystroke chord (it binds a single logical
 key, not a pending-key state machine), so its bindings are fixed to the same
-single physical keys the direct lhs resolve to (`ctrl-y`/`alt-y`/`alt-r`/
-`alt-g`/`alt-e`/`alt-j`/`alt-l`/`alt-o`/`alt-x`) — same class as its
+single physical keys the direct lhs resolve to (`ctrl-y`/`alt-y`/`alt-v`/
+`alt-t`/`alt-e`/`alt-j`/`alt-l`/`alt-o`/`alt-x`) — same class as its
 `ctrl-a`/`ctrl-o`/`shift-enter`/`f1`. The Alt keys are chosen to stay clear of
-the engines' own defaults (snacks `<A-m>`/`<A-p>`/`<A-h>`/…, fzf's `alt-b`/
-`alt-f`/`alt-d`). See
+the engines' own defaults (snacks `<A-d>`/`<A-f>`/`<A-h>`/`<A-i>`/`<A-m>`/
+`<A-p>`/`<A-r>`/`<A-w>`, fzf-lua `alt-a`/`alt-g`/`alt-q`/`alt-i`/`alt-h`/`alt-f`,
+fzf's `alt-b`/`alt-f`/`alt-d`; a test in `TESTS/` guards this). See
 [`lua/pickers/entry_actions/README.md`](../lua/pickers/entry_actions/README.md#path-copy-and-system-actions)
 for the `$REPOS_DIR` fallback rules for `copy_env_rooted`.
 
