@@ -29,12 +29,17 @@ for free.
 `tab_next`/`tab_prev` are **opt-in** (`false` by default): `<Tab>` is
 telescope's multi-select toggle, so the key is the host's choice.
 
-Bound to `<Tab>`/`<S-Tab>`, the keys only switch while a tab group is active
-(opened with `:Pickers tabs <group>`). In every other picker they do what the
-engine binds there by default -- toggle the selection and step (telescope
-`toggle_selection` + `move_selection_*`, snacks `select_and_next`/`select_and_prev`)
--- so multi-select keeps working. On any other lhs, pressing the key outside a
-group only reports that no group is active; it never closes the picker.
+Bound to `<Tab>`/`<S-Tab>`, the keys only switch in a picker that **a tab group
+opened** (`:Pickers tabs <group>`; its prompt buffer carries the marker
+`b:pickers_tab_picker`). In every other picker -- including one opened later,
+after a group was left with `<Esc>` -- they do what the engine binds there by
+default: toggle the selection and step (telescope `toggle_selection` +
+`move_selection_*`, snacks `select_and_next`/`select_and_prev`), so multi-select
+keeps working. On any other lhs, pressing the key in such a picker only reports
+that it was not opened by a tab group; it never closes the picker.
+
+A `builtin` target (`builtin buffers`) runs through `pickers.builtins` and, having no
+query slot, starts empty.
 
 The switch actions are telescope and snacks actions; fzf-lua's `keymap.builtin` cannot run Lua, so
 there the switch is not available (reported by `:checkhealth pickers` like

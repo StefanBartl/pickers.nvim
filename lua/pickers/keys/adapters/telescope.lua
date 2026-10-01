@@ -53,11 +53,11 @@ local ACTION_TO_TS_LAYOUT = {
 --- tab-group switch closes the picker and reopens the next target with the
 --- current line as its query (pickers.tabs).
 ---
---- Without an active tab group the key must not close the picker. On `<Tab>` /
+--- In a picker that was not opened by a tab group the key must not close it. On `<Tab>` /
 --- `<S-Tab>` (`native = true`) it then does what telescope binds there by
 --- default -- toggle the selection and step -- so multi-select keeps working in
 --- every picker that was not opened as a tab; on any other lhs it only says
---- there is no group (`tabs.switch` notifies).
+--- so (`tabs.not_a_tab_picker`).
 ---@param delta integer
 ---@param native boolean  # the lhs is telescope's own <Tab>/<S-Tab>
 ---@return fun(prompt_bufnr: integer)
@@ -65,7 +65,7 @@ local function tab_switch(delta, native)
   return function(prompt_bufnr)
     local tabs = require("pickers.tabs")
     local actions = require("telescope.actions")
-    if not tabs.current() then
+    if not tabs.is_tab_buffer(prompt_bufnr) then
       if native then
         actions.toggle_selection(prompt_bufnr)
         if delta > 0 then
@@ -74,7 +74,7 @@ local function tab_switch(delta, native)
           actions.move_selection_better(prompt_bufnr)
         end
       else
-        tabs.switch(delta)
+        tabs.not_a_tab_picker()
       end
       return
     end
@@ -129,7 +129,7 @@ function M.mappings(resolved)
     end
   end
   -- The tab-group switch is chosen per lhs: `<Tab>`/`<S-Tab>` fall back to
-  -- telescope's own select-and-step outside a tab group.
+  -- telescope's own select-and-step in a picker that is not a tab picker.
   for action, delta in pairs(TAB_DELTA) do
     local spec = resolved[action]
     if spec then
