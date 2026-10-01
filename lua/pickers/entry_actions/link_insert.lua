@@ -112,7 +112,11 @@ function M.build(paths, buf, mode)
   local links, seen = {}, {}
   for _, path in ipairs(paths) do
     local abs = fn.fnamemodify(path, ":p")
-    local link = string.format("[%s](%s)", fn.fnamemodify(abs, ":t"), M.target(abs, buf, mode))
+    local link = string.format(
+      "[%s](%s)",
+      require("pickers.entry_actions.path_copy").link_name(abs),
+      M.target(abs, buf, mode)
+    )
     if not seen[link] then
       seen[link] = true
       links[#links + 1] = link
@@ -129,7 +133,9 @@ end
 local function target_window(win)
   local find_usable = require("lib.nvim.window.find_usable")
   if win and find_usable.is_usable_window(win) then return win end
-  return find_usable.previous_window()
+  -- The picker is closed by now, so the current window is normally the one it was
+  -- opened from; failing that, the previous one (older lib.nvim: previous only).
+  return (find_usable.insertion_window or find_usable.previous_window)()
 end
 
 ---Insert `paths` as links. Call AFTER the picker is closed.

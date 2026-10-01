@@ -77,6 +77,40 @@ local function env_rooted(abs)
   return rest == "" and "$REPOS_DIR" or ("$REPOS_DIR/" .. rest)
 end
 
+---The link text for `abs`: its last segment. A trailing separator (`dir/`, which
+---`:p` adds to a directory) must not leave the title empty -- `:t` of `dir/` is "".
+---@param abs string
+---@return string
+function M.link_name(abs)
+  local trimmed = abs:gsub("[/\\]+$", "")
+  local name = fn.fnamemodify(trimmed, ":t")
+  return name ~= "" and name or abs
+end
+
+---Shorten `text` for a one-line status message: past `max` display columns only the
+---tail is kept, behind an ellipsis. A message wider than the command line makes
+---Neovim ask for a hit-enter prompt when no message UI (noice) is attached.
+---@param text string
+---@param max? integer  default: the editor width minus room for the message prefix
+---@return string
+function M.shorten_for_echo(text, max)
+  max = max or math.max(20, vim.o.columns - 30)
+  local width = fn.strdisplaywidth(text)
+  if width <= max then return text end
+  local chars = fn.strchars(text)
+  local lo, hi = 1, chars
+  -- the longest tail that fits in max - 1 columns (the ellipsis takes one)
+  while lo < hi do
+    local mid = math.ceil((lo + hi) / 2)
+    if fn.strdisplaywidth(fn.strcharpart(text, chars - mid)) <= max - 1 then
+      lo = mid
+    else
+      hi = mid - 1
+    end
+  end
+  return "…" .. fn.strcharpart(text, chars - lo)
+end
+
 ---@internal
 ---Markdown link for `abs`, relative to cwd -- same convention as
 ---filetree.nvim's markdown_links feature (`[name](relative/path)`).
@@ -84,7 +118,7 @@ end
 ---@return string
 local function markdown_link(abs)
   local rel = unify_slashes(fn.fnamemodify(abs, ":."))
-  local name = fn.fnamemodify(abs, ":t")
+  local name = M.link_name(abs)
   return string.format("[%s](%s)", name, rel)
 end
 
@@ -248,7 +282,7 @@ function M.run(fmt, paths, opts)
 
   local _, breaks = text:gsub("\n", "")
   if breaks == 0 then
-    feedback.info(string.format("copied [%s] %s", fmt, text))
+    feedback.info(string.format("copied [%s] %s", fmt, M.shorten_for_echo(text)))
   else
     feedback.info(string.format("copied [%s] %d lines", fmt, breaks + 1))
   end

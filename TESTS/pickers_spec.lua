@@ -6995,6 +6995,71 @@ do
   popup.clear()
 end
 
+-- ── review fixes: link titles for directories, bounded feedback text ─────────
+do
+  local pc = require("pickers.entry_actions.path_copy")
+  local li = require("pickers.entry_actions.link_insert")
+  check("link_name: last segment", pc.link_name("/a/b/c.lua") == "c.lua")
+  check(
+    "link_name: a trailing separator does not leave the title empty",
+    pc.link_name("/a/b/dir/") == "dir"
+  )
+  check("link_name: backslash separators too", pc.link_name([[C:\a\b\dir\]]) == "dir")
+  check("link_name: a bare root keeps something", pc.link_name("/") ~= "")
+  check(
+    "markdown_link of a directory has a title",
+    (pc.build("markdown_link", vim.fn.getcwd()) or ""):match("^%[[^%]]+%]%(") ~= nil
+  )
+  check(
+    "link_insert.build of a directory has a title",
+    (function()
+      local buf = vim.api.nvim_create_buf(false, true)
+      local links = li.build({ vim.fn.getcwd() .. "/" }, buf, "absolute")
+      pcall(vim.api.nvim_buf_delete, buf, { force = true })
+      return links[1] and links[1]:match("^%[[^%]]+%]%(") ~= nil
+    end)()
+  )
+
+  check("shorten_for_echo: short text is untouched", pc.shorten_for_echo("abc", 20) == "abc")
+  local long = string.rep("x", 80) .. "/tail.lua"
+  local short = pc.shorten_for_echo(long, 30)
+  check(
+    "shorten_for_echo: long text keeps its tail behind an ellipsis, within the budget",
+    vim.fn.strdisplaywidth(short) <= 30
+      and short:sub(1, 3) == "…"
+      and short:sub(-9) == "/tail.lua",
+    short
+  )
+  check(
+    "shorten_for_echo: multibyte text is cut on character boundaries",
+    vim.fn.strchars(pc.shorten_for_echo(string.rep("ä", 100), 20))
+      == vim.fn.strchars(pc.shorten_for_echo(string.rep("ä", 100), 20), 1)
+  )
+
+  -- the feedback line never exceeds the command line
+  local notify_mod = require("lib.nvim.notify")
+  local popup = notify_mod.popup
+  local saved_toast, saved_ui = package.loaded["ui.kit.toast"], package.loaded["ui.notify"]
+  package.loaded["ui.notify"] = false
+  package.loaded["ui.kit.toast"] = {
+    open = function()
+      return {}
+    end,
+  }
+  notify_mod.setup({ popup = true })
+  popup.clear()
+  pc.run("absolute", { vim.fn.getcwd() .. "/" .. string.rep("long_dir_name/", 20) .. "file.lua" })
+  local entry = popup.history()[#popup.history()]
+  check(
+    "feedback: a very long path is shortened to fit the command line",
+    entry ~= nil and vim.fn.strdisplaywidth(entry.message) <= vim.o.columns - 1,
+    entry and (vim.fn.strdisplaywidth(entry.message) .. " cols") or "no entry"
+  )
+  notify_mod.setup({ popup = false })
+  package.loaded["ui.kit.toast"], package.loaded["ui.notify"] = saved_toast, saved_ui
+  popup.clear()
+end
+
 -- ── Summary ─────────────────────────────────────────────────────────────────
 print(string.format("\n%d passed, %d failed", passed, failed))
 os.exit(failed == 0 and 0 or 1)
