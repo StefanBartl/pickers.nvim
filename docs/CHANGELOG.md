@@ -10,6 +10,14 @@ a changelog.
 
 ---
 
+[x] **Tab keys never break a plain picker.** `tab_next`/`tab_prev` closed the picker and reopened
+  the next target even when no tab group was active, so binding them to `<Tab>`/`<S-Tab>` would have
+  killed multi-select everywhere. Now: without an active group the keys do not close anything; on
+  `<Tab>`/`<S-Tab>` they fall back to the engine's own select-and-step (telescope
+  `toggle_selection` + `move_selection_*`, snacks `select_and_next`/`select_and_prev` via the
+  `tab_next_select`/`tab_prev_select` actions), on any other lhs they only report "no group".
+  Enables replacing search.nvim's tabbed UI with `:Pickers tabs default` on `<Tab>`/`<S-Tab>`.
+
 [x] **Entry actions say what they did.** Copy/open/reveal/insert actions report
   `copied [fmt] …` / `opened x` / `inserted N markdown link(s)` through `lib.nvim.notify` and into `:messages`.
   Root cause of "no feedback at all" under snacks: the toast was drawn at zindex 50, below the
