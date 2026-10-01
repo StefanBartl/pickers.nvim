@@ -2508,7 +2508,7 @@ do
   config.apply({
     tabs = {
       groups = {
-        git = { "builtin git_branches", "builtin git_commits", "builtin git_stash" },
+        git = { "builtin git_branches", "builtin git_log", "builtin git_stash" },
         mine = false,
       },
     },
@@ -2588,9 +2588,9 @@ do
   do
     check(
       "keys/snacks: <Tab> routes to the select-fallback variant",
-      sw.input.keys["<Tab>"][1] == "tab_next_select"
-        and sw.list.keys["<S-Tab>"] == "tab_prev_select"
-        and type(acts.tab_next_select) == "function"
+      sw.input.keys["<Tab>"][1] == "tab_next_select_next"
+        and sw.list.keys["<S-Tab>"] == "tab_prev_select_prev"
+        and type(acts.tab_next_select_next) == "function"
     )
     config.apply({ keys = { tab_next = "<C-l>", tab_prev = "<C-h>" } })
     local sw2 = require("pickers.keys.adapters.snacks").win(keys.resolve(config.get()))
@@ -2630,7 +2630,7 @@ do
     end
 
     -- No group at all: <Tab> keeps multi-select, another key only says so.
-    acts.tab_next_select(fake(plain_buf))
+    acts.tab_next_select_next(fake(plain_buf))
     check(
       "tabs/snacks: no group, <Tab> -> select_and_next, nothing closed",
       ran[1] == "select_and_next" and not closed and not notified
@@ -2660,13 +2660,13 @@ do
       "tabs.open: a `builtin` target runs pickers.builtins, not command.handle",
       builtin_calls[1] == "git_branches"
     )
-    acts.tab_next_select(fake(plain_buf))
+    acts.tab_next_select_next(fake(plain_buf))
     check(
       "tabs/snacks: stale group, untagged picker -> select_and_next, nothing closed",
       ran[1] == "select_and_next" and not closed
     )
     ran = {}
-    acts.tab_prev_select(fake(tab_buf))
+    acts.tab_prev_select_prev(fake(tab_buf))
     check(
       "tabs/snacks: tagged picker of the active group -> closes, switch carries the query",
       closed and ran[1] == "switch:-1:q"
@@ -2677,12 +2677,41 @@ do
     tabs.reset()
     check("tabs.is_tab_buffer: false without a group", tabs.is_tab_buffer(tab_buf) == false)
 
+    -- Regression: the native fallback follows the PHYSICAL lhs, not which of
+    -- tab_next/tab_prev it happens to be bound to -- a swapped config must not
+    -- invert the step direction of the key the user actually pressed.
+    config.apply({ keys = { tab_next = "<S-Tab>", tab_prev = "<Tab>" } })
+    local sw_swapped = require("pickers.keys.adapters.snacks").win(keys.resolve(config.get()))
+    check(
+      "keys/snacks: swapped lhs, action_name still keyed by the physical key",
+      sw_swapped.input.keys["<S-Tab>"][1] == "tab_next_select_prev"
+        and sw_swapped.input.keys["<Tab>"][1] == "tab_prev_select_next"
+    )
+    ran, closed, notified = {}, false, false
+    acts.tab_next_select_prev(fake(plain_buf))
+    check(
+      "tabs/snacks: swapped lhs, <S-Tab> pressed -> select_and_prev (its own default)",
+      ran[1] == "select_and_prev" and not closed and not notified
+    )
+    ran = {}
+    acts.tab_prev_select_next(fake(plain_buf))
+    check(
+      "tabs/snacks: swapped lhs, <Tab> pressed -> select_and_next (its own default)",
+      ran[1] == "select_and_next" and not closed and not notified
+    )
+    config.apply({ keys = { tab_next = "<Tab>", tab_prev = "<S-Tab>" } })
+
     -- telescope adapter: same split (needs telescope; skipped when absent)
     local ok_ts, ts_actions = pcall(require, "telescope.actions")
     if ok_ts then
       local calls = {}
       local saved = {}
-      for _, name in ipairs({ "toggle_selection", "move_selection_worse", "close" }) do
+      for _, name in ipairs({
+        "toggle_selection",
+        "move_selection_worse",
+        "move_selection_better",
+        "close",
+      }) do
         saved[name] = ts_actions[name]
         ts_actions[name] = function()
           calls[#calls + 1] = name
@@ -2694,6 +2723,21 @@ do
         "tabs/telescope: untagged picker, <Tab> toggles selection and steps, nothing closed",
         table.concat(calls, ",") == "toggle_selection,move_selection_worse"
       )
+
+      -- Regression: swapped lhs -- the native step still follows <Tab>'s own meaning
+      -- (toggle + worse) even though <Tab> is now bound to tab_prev (delta -1), not
+      -- the "move_selection_better" the old delta-keyed logic would have run.
+      calls = {}
+      config.apply({ keys = { tab_next = "<S-Tab>", tab_prev = "<Tab>" } })
+      local tsm_swapped =
+        require("pickers.keys.adapters.telescope").mappings(keys.resolve(config.get()))
+      tsm_swapped.i["<Tab>"](plain_buf)
+      check(
+        "tabs/telescope: swapped lhs, <Tab> pressed -> still toggle + worse",
+        table.concat(calls, ",") == "toggle_selection,move_selection_worse"
+      )
+      config.apply({ keys = { tab_next = "<Tab>", tab_prev = "<S-Tab>" } })
+
       for name, fn in pairs(saved) do
         ts_actions[name] = fn
       end
@@ -2702,6 +2746,30 @@ do
     pcall(vim.api.nvim_buf_delete, tab_buf, { force = true })
   end
   config.apply({ keys = { tab_next = false, tab_prev = false } })
+
+  -- Regression: the FileType autocmd used to be `once = true`, so only the FIRST
+  -- matching buffer got tagged -- wrong whenever the target goes through an
+  -- interactive selector (`dir`, `repos`, a collection with `prefix`) before the
+  -- real action picker opens, since the selector's own prompt buffer consumed the
+  -- tag and the real target picker never got it. Now every matching buffer that
+  -- appears while armed gets tagged (each one also refreshes the disarm window).
+  do
+    command.handle = function() end
+    tabs.reset()
+    tabs.open("default")
+    local selector_buf = vim.api.nvim_create_buf(false, true)
+    local real_buf = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_set_option_value("filetype", "snacks_picker_input", { buf = selector_buf })
+    vim.api.nvim_set_option_value("filetype", "TelescopePrompt", { buf = real_buf })
+    check(
+      "tabs: arm_tag tags every matching buffer while armed, not only the first",
+      tabs.is_tab_buffer(selector_buf) and tabs.is_tab_buffer(real_buf)
+    )
+    pcall(vim.api.nvim_buf_delete, selector_buf, { force = true })
+    pcall(vim.api.nvim_buf_delete, real_buf, { force = true })
+    tabs.reset()
+    command.handle = orig_handle
+  end
 end
 
 -- ── :Pickers completion (composer) — needs lib.nvim; skip cleanly if absent ─
@@ -4844,6 +4912,12 @@ do
   )
   check("actions.smart: roots forwarded", captured.roots[1] == "/tmp")
   check("actions.smart: additional_args passthrough", has(captured.additional_args, "-tlua"))
+
+  -- Regression: source.query must reach the engine (pickers.tabs carries the typed
+  -- query into the next target through it -- a "smart" tab target silently dropped
+  -- it before query was added to the opts this call builds).
+  smart_action.run({ roots = { "/tmp" }, prompt = "n> ", query = "needle" }, fake_engine)
+  check("actions.smart: query forwarded to the engine", captured.query == "needle")
 
   smart_action.run({ roots = { "/tmp" }, prompt = "n> ", find = { hidden = false } }, fake_engine)
   check("actions.smart: source find override applied", captured.find.hidden == false)

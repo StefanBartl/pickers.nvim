@@ -480,7 +480,7 @@ wholesale; `false` drops one.
 tabs = {
   groups = {
     default = { "cwd files", "cwd grep", "builtin buffers" },
-    git = { "builtin git_branches", "builtin git_commits", "builtin git_stash" },
+    git = { "builtin git_branches", "builtin git_log", "builtin git_stash" },
   },
 },
 keys = {

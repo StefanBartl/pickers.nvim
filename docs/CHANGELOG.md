@@ -13,11 +13,11 @@ a changelog.
 [x] **Tab keys never break a plain picker; `builtin` tab targets work.** `tab_next`/`tab_prev`
   closed the picker and reopened the next target even outside a tab group, so binding them to
   `<Tab>`/`<S-Tab>` would have killed multi-select everywhere. Now only a picker the tab group
-  opened (prompt buffer marked `b:pickers_tab_picker`, set by a one-shot `FileType` autocmd armed
-  right before the launch) switches; a group left active by `<Esc>` cannot hijack a later picker.
+  opened (prompt buffer marked `b:pickers_tab_picker`, set by a `FileType` autocmd armed right
+  before the launch) switches; a group left active by `<Esc>` cannot hijack a later picker.
   Elsewhere `<Tab>`/`<S-Tab>` fall back to the engine's own select-and-step (telescope
   `toggle_selection` + `move_selection_*`, snacks `select_and_next`/`select_and_prev` via the
-  `tab_next_select`/`tab_prev_select` actions), any other lhs only reports it.
+  `tab_next_select_*`/`tab_prev_select_*` actions), any other lhs only reports it.
   Found by a live run in a real TUI: a `builtin <name>` target (the default group has one, the
   `git` group is all of them) went through `command.handle`, which does not know `builtin` -- the
   unit tests stubbed `handle` and never saw it. It now calls `pickers.builtins.run`.
@@ -29,6 +29,32 @@ a changelog.
   non-live and in `search` for live pickers); the switch action reads the prompt with `input:get()`
   instead of `filter.pattern`, which is empty in a live picker. Found by a live run, not by the
   stubbed unit tests. fzf-lua has no tab switch at all.
+
+[x] **Tab-group fixes found by an `ultracode` review of the three entries above, all through-the-code
+  rather than live-observed this time.** Four issues, each pinned by a new regression test:
+  - The `FileType` autocmd that tags a tab-opened picker's prompt buffer was `once = true` -- tagging
+    only the FIRST matching buffer. Wrong for any target that opens an interactive selector first
+    (`dir`, `repos`, a collection with `prefix`): the selector's own prompt buffer consumed the tag
+    and the real target picker never got it, so `tab_next`/`tab_prev` silently broke for those
+    targets. The autocmd now tags every matching buffer while armed (each tag also refreshes the
+    disarm window, so the ~3s safety net survives the gap between the selector and the real picker).
+  - `pickers.actions.smart.run()` never forwarded `source.query` to the engine, unlike `actions.files`
+    and `actions.grep` -- so the snacks query-carry-over fix above never actually reached a `smart`
+    tab target; it always opened with an empty prompt.
+  - The `tab_next_select`/`tab_prev_select` native-fallback variants (both adapters) chose their
+    step direction from WHICH ACTION owned the lhs (`tab_next`→forward, `tab_prev`→backward),
+    not from the PHYSICAL key pressed. Invisible with the documented default pairing
+    (`tab_next="<Tab>"`/`tab_prev="<S-Tab>"`), but a user who swaps the two lhs got the native
+    multi-select step running backwards on `<Tab>` and forwards on `<S-Tab>`. Split into
+    `tab_next_select_next`/`tab_next_select_prev`/`tab_prev_select_next`/`tab_prev_select_prev`
+    (snacks) and keyed telescope's fallback off the lhs string directly, so the fallback always
+    matches what that physical key does everywhere else, independent of which action it is bound to.
+  - `tabs.groups.git`'s own shipped default (`M.DEFAULTS` here and in `pickers.config.DEFAULTS`)
+    used `"builtin git_commits"` -- not a registered `pickers.builtins` name (the registry key is
+    `git_log`; `git_commits` is only that entry's telescope/fzf function name). Predates this
+    feature's own first commit; any install that never overrides `tabs.groups.git` got an
+    "Unknown builtin" error on the group's second target instead of a git-log picker. Fixed to
+    `"builtin git_log"`, matching `git_branches`/`git_stash` in the same list.
 
 [x] **Entry actions say what they did.** Copy/open/reveal/insert actions report
   `copied [fmt] …` / `opened x` / `inserted N markdown link(s)` through `lib.nvim.notify` and into `:messages`.
