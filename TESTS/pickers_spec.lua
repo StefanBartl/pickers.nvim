@@ -2605,7 +2605,13 @@ do
     ---@param buf integer
     local function fake(buf)
       return {
-        input = { filter = { pattern = "q" }, win = { buf = buf } },
+        input = {
+          filter = { pattern = "q" },
+          win = { buf = buf },
+          get = function()
+            return "q"
+          end,
+        },
         action = function(_, name)
           ran[#ran + 1] = name
         end,
@@ -3830,6 +3836,36 @@ do
   )
   captured.on_choice(items[1])
   check("pick_item/snacks: on_select receives the exact original table", got_item == items[1])
+
+  -- pickers.tabs carries the typed query into the next picker: files keep it in
+  -- `pattern`, live pickers (grep, smart) in `search`; empty/nil leaves both unset.
+  local seen = {}
+  package.loaded["snacks.picker"] = {
+    files = function(o)
+      seen.files = o
+    end,
+    grep = function(o)
+      seen.grep = o
+    end,
+    pick = function(o)
+      seen.pick = o
+    end,
+  }
+  package.loaded["pickers.engines.snacks"] = nil
+  local engine2 = require("pickers.engines.snacks")
+  local base = { roots = { "/tmp" }, prompt = "P> ", find = {} }
+  engine2.pick_files(vim.tbl_extend("force", base, { query = "foo" }))
+  engine2.live_grep(vim.tbl_extend("force", base, { query = "bar" }))
+  engine2.smart(vim.tbl_extend("force", base, { query = "baz" }))
+  check("snacks.pick_files: query -> pattern", seen.files.pattern == "foo")
+  check("snacks.live_grep: query -> search", seen.grep.search == "bar")
+  check("snacks.smart: query -> search", seen.pick.search == "baz")
+  engine2.pick_files(vim.tbl_extend("force", base, { query = "" }))
+  engine2.live_grep(base)
+  check(
+    "snacks: empty/nil query leaves the prompt alone",
+    seen.files.pattern == nil and seen.grep.search == nil
+  )
 
   package.loaded["pickers.engines.snacks"] = nil
   package.loaded["snacks.picker"] = prev_snacks

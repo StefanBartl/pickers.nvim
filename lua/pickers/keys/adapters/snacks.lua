@@ -101,9 +101,11 @@ function M.actions()
         end
         return
       end
+      -- The prompt text, whatever the picker keeps it in (`pattern` or, for live
+      -- pickers like grep, `search`).
       local query = ""
       pcall(function()
-        query = picker.input and picker.input.filter and picker.input.filter.pattern or ""
+        query = picker.input:get()
       end)
       pcall(function()
         picker:close()
