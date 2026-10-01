@@ -2465,6 +2465,13 @@ do
   command.handle = function(opts)
     runs[#runs + 1] = { fargs = opts.fargs, query = opts.query }
   end
+  -- A `builtin` target goes to pickers.builtins directly (command.handle does not
+  -- know it); it has no query slot, so the query is dropped.
+  local builtins_mod = require("pickers.builtins")
+  local orig_builtins_run = builtins_mod.run
+  builtins_mod.run = function(name)
+    runs[#runs + 1] = { fargs = { "builtin", name } }
+  end
   check("tabs: no state before open", tabs.current() == nil and tabs.title_suffix() == "")
   tabs.open("mine")
   check(
@@ -2478,7 +2485,7 @@ do
   end)
   check(
     "tabs.next: next target with the query",
-    #runs == 2 and table.concat(runs[2].fargs, " ") == "builtin buffers" and runs[2].query == "foo",
+    #runs == 2 and table.concat(runs[2].fargs, " ") == "builtin buffers" and runs[2].query == nil,
     vim.inspect(runs[2])
   )
   tabs.next("bar")
@@ -2496,6 +2503,7 @@ do
   )
   tabs.reset()
   check("tabs.switch: nothing active -> false", tabs.switch(1) == false)
+  builtins_mod.run = orig_builtins_run
   command.handle = orig_handle
   config.apply({
     tabs = {
@@ -2591,47 +2599,77 @@ do
 
     tabs.reset()
     local ran, closed, notified = {}, false, false
-    local fake_picker = {
-      input = { filter = { pattern = "q" } },
-      action = function(_, name)
-        ran[#ran + 1] = name
-      end,
-      close = function()
-        closed = true
-      end,
-    }
-    local orig_switch = tabs.switch
+    local plain_buf = vim.api.nvim_create_buf(false, true)
+    local tab_buf = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_var(tab_buf, "pickers_tab_picker", true)
+    ---@param buf integer
+    local function fake(buf)
+      return {
+        input = { filter = { pattern = "q" }, win = { buf = buf } },
+        action = function(_, name)
+          ran[#ran + 1] = name
+        end,
+        close = function()
+          closed = true
+        end,
+      }
+    end
+    local orig_switch, orig_not_tab = tabs.switch, tabs.not_a_tab_picker
     tabs.switch = function(delta, query)
-      if not tabs.current() then
-        notified = true
-        return false
-      end
       ran[#ran + 1] = ("switch:%d:%s"):format(delta, tostring(query))
       return true
     end
+    tabs.not_a_tab_picker = function()
+      notified = true
+    end
 
-    acts.tab_next_select(fake_picker)
+    -- No group at all: <Tab> keeps multi-select, another key only says so.
+    acts.tab_next_select(fake(plain_buf))
     check(
       "tabs/snacks: no group, <Tab> -> select_and_next, nothing closed",
       ran[1] == "select_and_next" and not closed and not notified
     )
-    acts.tab_next(fake_picker)
+    acts.tab_next(fake(plain_buf))
     check(
       "tabs/snacks: no group, other key -> only notifies, nothing closed",
       notified and not closed
     )
 
+    -- A group left active by Esc must not hijack <Tab> in an unrelated picker.
     ran = {}
+    local builtin_calls = {}
+    local builtins = require("pickers.builtins")
+    local orig_builtin_run = builtins.run
+    builtins.run = function(name)
+      builtin_calls[#builtin_calls + 1] = name
+    end
     command.handle = function() end
-    tabs.open("git")
-    command.handle = orig_handle
-    acts.tab_prev_select(fake_picker)
+    tabs.switch = orig_switch
+    tabs.open("git") -- all builtin targets
+    tabs.switch = function(delta, query)
+      ran[#ran + 1] = ("switch:%d:%s"):format(delta, tostring(query))
+      return true
+    end
     check(
-      "tabs/snacks: active group -> picker closes and the switch carries the query",
+      "tabs.open: a `builtin` target runs pickers.builtins, not command.handle",
+      builtin_calls[1] == "git_branches"
+    )
+    acts.tab_next_select(fake(plain_buf))
+    check(
+      "tabs/snacks: stale group, untagged picker -> select_and_next, nothing closed",
+      ran[1] == "select_and_next" and not closed
+    )
+    ran = {}
+    acts.tab_prev_select(fake(tab_buf))
+    check(
+      "tabs/snacks: tagged picker of the active group -> closes, switch carries the query",
       closed and ran[1] == "switch:-1:q"
     )
-    tabs.switch = orig_switch
+    builtins.run = orig_builtin_run
+    command.handle = orig_handle
+    tabs.switch, tabs.not_a_tab_picker = orig_switch, orig_not_tab
     tabs.reset()
+    check("tabs.is_tab_buffer: false without a group", tabs.is_tab_buffer(tab_buf) == false)
 
     -- telescope adapter: same split (needs telescope; skipped when absent)
     local ok_ts, ts_actions = pcall(require, "telescope.actions")
@@ -2645,15 +2683,17 @@ do
         end
       end
       local tsm = require("pickers.keys.adapters.telescope").mappings(keys.resolve(config.get()))
-      tsm.i["<Tab>"](0)
+      tsm.i["<Tab>"](plain_buf)
       check(
-        "tabs/telescope: no group, <Tab> toggles selection and steps, nothing closed",
+        "tabs/telescope: untagged picker, <Tab> toggles selection and steps, nothing closed",
         table.concat(calls, ",") == "toggle_selection,move_selection_worse"
       )
       for name, fn in pairs(saved) do
         ts_actions[name] = fn
       end
     end
+    pcall(vim.api.nvim_buf_delete, plain_buf, { force = true })
+    pcall(vim.api.nvim_buf_delete, tab_buf, { force = true })
   end
   config.apply({ keys = { tab_next = false, tab_prev = false } })
 end

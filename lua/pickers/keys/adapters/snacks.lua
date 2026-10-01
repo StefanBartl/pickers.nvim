@@ -80,23 +80,24 @@ local SKIP = {
 --- keys: `tab_next`/`tab_prev` close the picker and reopen the next target
 --- of the active pickers.tabs group with the typed pattern as its query.
 ---
---- Without an active tab group they do not close anything (`tabs.switch`
---- just says there is no group). `tab_next_select`/`tab_prev_select` are the
---- variants `win()` uses for snacks' own `<Tab>`/`<S-Tab>`: outside a tab group
+--- In a picker that was not opened by a tab group they do not close anything
+--- (they only say so). `tab_next_select`/`tab_prev_select` are the
+--- variants `win()` uses for snacks' own `<Tab>`/`<S-Tab>`: in such a picker
 --- they fall back to snacks' `select_and_next`/`select_and_prev`, so
 --- multi-select keeps working in every picker that was not opened as a tab.
 ---@return table<string, fun(picker: table)>
 function M.actions()
   ---@param delta integer
-  ---@param native string|nil  # snacks action to run when no tab group is active
+  ---@param native string|nil  # snacks action to run in a picker that is not a tab picker
   local function switch(delta, native)
     return function(picker)
       local tabs = require("pickers.tabs")
-      if not tabs.current() then
+      local buf = picker.input and picker.input.win and picker.input.win.buf
+      if not tabs.is_tab_buffer(buf) then
         if native then
           picker:action(native)
         else
-          tabs.switch(delta)
+          tabs.not_a_tab_picker()
         end
         return
       end

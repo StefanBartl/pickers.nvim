@@ -99,6 +99,53 @@ function M.reset()
   state = nil
 end
 
+-- A picker opened by a tab group is marked with a buffer variable on its prompt
+-- buffer. The group state itself outlives a picker closed by Esc, so "a group is
+-- active" alone cannot tell the tab picker from an unrelated one opened later
+-- (a native `:Telescope`, a builtin on its own key): <Tab> in those must keep
+-- meaning multi-select.
+local TAG_VAR = "pickers_tab_picker"
+local TAG_GROUP = "PickersTabsTag"
+local tag_generation = 0
+
+---@internal
+---Mark the prompt buffer of the next picker that opens as a tab-group picker.
+---Cleared again after a few seconds so an engine that fails to open one cannot
+---tag a later, unrelated picker.
+local function arm_tag()
+  tag_generation = tag_generation + 1
+  local generation = tag_generation
+  local group = vim.api.nvim_create_augroup(TAG_GROUP, { clear = true })
+  vim.api.nvim_create_autocmd("FileType", {
+    group = group,
+    pattern = { "snacks_picker_input", "TelescopePrompt" },
+    once = true,
+    callback = function(ev)
+      vim.api.nvim_buf_set_var(ev.buf, TAG_VAR, true)
+    end,
+  })
+  vim.defer_fn(function()
+    if generation == tag_generation then
+      pcall(vim.api.nvim_clear_autocmds, { group = TAG_GROUP })
+    end
+  end, 3000)
+end
+
+---Is `buf` the prompt buffer of a picker opened by the active tab group?
+---@param buf integer|nil
+---@return boolean
+function M.is_tab_buffer(buf)
+  if not state or not buf or not vim.api.nvim_buf_is_valid(buf) then return false end
+  return vim.b[buf][TAG_VAR] == true
+end
+
+---Tell the user a tab key was pressed in a picker the tab group did not open.
+function M.not_a_tab_picker()
+  notify.info(
+    "tabs: this picker was not opened by a tab group -- open one with :Pickers tabs <group>"
+  )
+end
+
 ---@internal
 ---Run target `index` of the active group with `query`.
 ---@param query string|nil
@@ -106,6 +153,13 @@ local function run_current(query)
   if not state then return end
   local target = state.targets[state.index]
   local fargs = vim.split(target, "%s+", { trimempty = true })
+  arm_tag()
+  if fargs[1] == "builtin" then
+    -- `command.handle` does not know `builtin` (that is its own route in the
+    -- composer); a builtin has no query slot, so `query` is dropped.
+    require("pickers.builtins").run(fargs[2])
+    return
+  end
   require("pickers.command").handle({ fargs = fargs, query = query, from_tabs = true })
 end
 
