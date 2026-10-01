@@ -36,6 +36,8 @@
 --- matching filetree.nvim's and this plugin's own clipboard convention.
 
 local notify = require("lib.nvim.notify").create("[pickers.entry_actions.path_copy]")
+-- Success feedback: also in `:messages` (see entry_actions.system for the why).
+local feedback = require("lib.nvim.notify").create("[pickers]", { messages = true })
 local unify_slashes = require("lib.nvim.cross.fs.separators.unify_slashes")
 local is_windows = require("lib.nvim.cross.platform.is_windows")
 
@@ -246,9 +248,9 @@ function M.run(fmt, paths, opts)
 
   local _, breaks = text:gsub("\n", "")
   if breaks == 0 then
-    notify.info(string.format("[%s] %s", fmt, text))
+    feedback.info(string.format("copied [%s] %s", fmt, text))
   else
-    notify.info(string.format("[%s] Copied %d lines", fmt, breaks + 1))
+    feedback.info(string.format("copied [%s] %d lines", fmt, breaks + 1))
   end
   return true
 end

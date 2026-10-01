@@ -13,6 +13,7 @@
 --- only, nothing visible changes.
 
 local notify = require("lib.nvim.notify").create("[pickers.entry_actions.open_background]")
+local feedback = require("lib.nvim.notify").create("[pickers]", { messages = true })
 local open_background_core = require("lib.nvim.buffer.open_background")
 
 local fn = vim.fn
@@ -53,7 +54,7 @@ function M.run(path, opts)
     shown = true
   end
 
-  notify.info((shown and "Shown in background: " or "Buffered: ") .. fn.fnamemodify(path, ":t"))
+  feedback.info((shown and "Shown in background: " or "Buffered: ") .. fn.fnamemodify(path, ":t"))
   return true
 end
 

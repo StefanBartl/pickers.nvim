@@ -144,6 +144,20 @@ plain Neovim floats — the panel just opens on top). fzf-lua is the exception:
 its action table always closes the running fzf process first, so its
 `do_cheatsheet` reopens fzf (`fzf.resume()`) once the panel closes.
 
+## Feedback: did it work?
+
+Every copy / open / reveal / insert action reports what it did — `copied
+[env_rooted] $REPOS_DIR/x/y.lua`, `copied [absolute] 3 lines`, `opened a.lua`,
+`inserted 2 markdown link(s)` — as a `lib.nvim.notify` message **and** into
+`:messages` (like filetree.nvim's own notifications), so there is an answer
+afterwards too. Warnings and errors (nothing selected, not an editable buffer, …)
+go through the plain notifier.
+
+The toast itself used to be invisible while a snacks picker was open: it was
+drawn at the popup level (zindex 50), the picker layout sits at 52 and its windows
+at 54. `ui.kit.toast` now uses the theme's `zindex.toast` (70), so it shows above
+every picker engine.
+
 ## Usage
 
 `pickers.entry_actions.patch` installs all of this automatically (once each

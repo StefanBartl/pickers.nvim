@@ -22,6 +22,7 @@
 --- about to disappear); `run` then inserts on the next loop iteration.
 
 local notify = require("lib.nvim.notify").create("[pickers.entry_actions.link_insert]")
+local feedback = require("lib.nvim.notify").create("[pickers]", { messages = true })
 local unify_slashes = require("lib.nvim.cross.fs.separators.unify_slashes")
 
 local fn = vim.fn
@@ -166,6 +167,7 @@ function M.run(paths, opts)
     notify.warn("Could not insert the link(s)")
     return false, "insert failed"
   end
+  feedback.info(string.format("inserted %d markdown link(s)", #links))
   return true
 end
 
