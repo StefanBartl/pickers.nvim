@@ -27,8 +27,16 @@ because every engine already draws a title and none offers a second line
 for free.
 
 `tab_next`/`tab_prev` are **opt-in** (`false` by default): `<Tab>` is
-telescope's multi-select toggle, so the key is the host's choice. They are
-telescope and snacks actions; fzf-lua's `keymap.builtin` cannot run Lua, so
+telescope's multi-select toggle, so the key is the host's choice.
+
+Bound to `<Tab>`/`<S-Tab>`, the keys only switch while a tab group is active
+(opened with `:Pickers tabs <group>`). In every other picker they do what the
+engine binds there by default -- toggle the selection and step (telescope
+`toggle_selection` + `move_selection_*`, snacks `select_and_next`/`select_and_prev`)
+-- so multi-select keeps working. On any other lhs, pressing the key outside a
+group only reports that no group is active; it never closes the picker.
+
+The switch actions are telescope and snacks actions; fzf-lua's `keymap.builtin` cannot run Lua, so
 there the switch is not available (reported by `:checkhealth pickers` like
 the other fzf gaps). For snacks, both the win keys and
 `keys.snacks_actions()` are patched into `Snacks.config.picker` for you —

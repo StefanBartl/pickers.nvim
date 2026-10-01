@@ -2575,6 +2575,86 @@ do
     "keys/telescope: tab_next maps to a function (or telescope absent)",
     ts.i["<Tab>"] == nil or type(ts.i["<Tab>"]) == "function"
   )
+  -- Outside a tab group the key must not close the picker; on <Tab>/<S-Tab> it
+  -- falls back to the engine's own select-and-step so multi-select keeps working.
+  do
+    check(
+      "keys/snacks: <Tab> routes to the select-fallback variant",
+      sw.input.keys["<Tab>"][1] == "tab_next_select"
+        and sw.list.keys["<S-Tab>"] == "tab_prev_select"
+        and type(acts.tab_next_select) == "function"
+    )
+    config.apply({ keys = { tab_next = "<C-l>", tab_prev = "<C-h>" } })
+    local sw2 = require("pickers.keys.adapters.snacks").win(keys.resolve(config.get()))
+    check("keys/snacks: other lhs keeps the plain action", sw2.input.keys["<C-l>"][1] == "tab_next")
+    config.apply({ keys = { tab_next = "<Tab>", tab_prev = "<S-Tab>" } })
+
+    tabs.reset()
+    local ran, closed, notified = {}, false, false
+    local fake_picker = {
+      input = { filter = { pattern = "q" } },
+      action = function(_, name)
+        ran[#ran + 1] = name
+      end,
+      close = function()
+        closed = true
+      end,
+    }
+    local orig_switch = tabs.switch
+    tabs.switch = function(delta, query)
+      if not tabs.current() then
+        notified = true
+        return false
+      end
+      ran[#ran + 1] = ("switch:%d:%s"):format(delta, tostring(query))
+      return true
+    end
+
+    acts.tab_next_select(fake_picker)
+    check(
+      "tabs/snacks: no group, <Tab> -> select_and_next, nothing closed",
+      ran[1] == "select_and_next" and not closed and not notified
+    )
+    acts.tab_next(fake_picker)
+    check(
+      "tabs/snacks: no group, other key -> only notifies, nothing closed",
+      notified and not closed
+    )
+
+    ran = {}
+    command.handle = function() end
+    tabs.open("git")
+    command.handle = orig_handle
+    acts.tab_prev_select(fake_picker)
+    check(
+      "tabs/snacks: active group -> picker closes and the switch carries the query",
+      closed and ran[1] == "switch:-1:q"
+    )
+    tabs.switch = orig_switch
+    tabs.reset()
+
+    -- telescope adapter: same split (needs telescope; skipped when absent)
+    local ok_ts, ts_actions = pcall(require, "telescope.actions")
+    if ok_ts then
+      local calls = {}
+      local saved = {}
+      for _, name in ipairs({ "toggle_selection", "move_selection_worse", "close" }) do
+        saved[name] = ts_actions[name]
+        ts_actions[name] = function()
+          calls[#calls + 1] = name
+        end
+      end
+      local tsm = require("pickers.keys.adapters.telescope").mappings(keys.resolve(config.get()))
+      tsm.i["<Tab>"](0)
+      check(
+        "tabs/telescope: no group, <Tab> toggles selection and steps, nothing closed",
+        table.concat(calls, ",") == "toggle_selection,move_selection_worse"
+      )
+      for name, fn in pairs(saved) do
+        ts_actions[name] = fn
+      end
+    end
+  end
   config.apply({ keys = { tab_next = false, tab_prev = false } })
 end
 

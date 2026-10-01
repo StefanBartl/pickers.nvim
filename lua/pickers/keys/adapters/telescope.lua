@@ -52,20 +52,48 @@ local ACTION_TO_TS_LAYOUT = {
 --- action name → a pickers.nvim function taking the prompt buffer: the
 --- tab-group switch closes the picker and reopens the next target with the
 --- current line as its query (pickers.tabs).
-local ACTION_TO_FN = {
-  tab_next = function(prompt_bufnr)
-    local state = require("telescope.actions.state")
-    local query = state.get_current_line()
-    require("telescope.actions").close(prompt_bufnr)
-    require("pickers.tabs").next(query)
-  end,
-  tab_prev = function(prompt_bufnr)
-    local state = require("telescope.actions.state")
-    local query = state.get_current_line()
-    require("telescope.actions").close(prompt_bufnr)
-    require("pickers.tabs").prev(query)
-  end,
-}
+---
+--- Without an active tab group the key must not close the picker. On `<Tab>` /
+--- `<S-Tab>` (`native = true`) it then does what telescope binds there by
+--- default -- toggle the selection and step -- so multi-select keeps working in
+--- every picker that was not opened as a tab; on any other lhs it only says
+--- there is no group (`tabs.switch` notifies).
+---@param delta integer
+---@param native boolean  # the lhs is telescope's own <Tab>/<S-Tab>
+---@return fun(prompt_bufnr: integer)
+local function tab_switch(delta, native)
+  return function(prompt_bufnr)
+    local tabs = require("pickers.tabs")
+    local actions = require("telescope.actions")
+    if not tabs.current() then
+      if native then
+        actions.toggle_selection(prompt_bufnr)
+        if delta > 0 then
+          actions.move_selection_worse(prompt_bufnr)
+        else
+          actions.move_selection_better(prompt_bufnr)
+        end
+      else
+        tabs.switch(delta)
+      end
+      return
+    end
+    local query = require("telescope.actions.state").get_current_line()
+    actions.close(prompt_bufnr)
+    tabs.switch(delta, query)
+  end
+end
+
+--- action name → delta of the tab-group switch.
+local TAB_DELTA = { tab_next = 1, tab_prev = -1 }
+
+--- Is `lhs` one of the keys telescope itself binds to select-and-step?
+---@param lhs string
+---@return boolean
+local function is_native_tab_key(lhs)
+  local l = lhs:lower()
+  return l == "<tab>" or l == "<s-tab>"
+end
 
 --- Build telescope `defaults.mappings` (`{ i = {...}, n = {...} }`).
 --- Values are the resolved `telescope.actions`/`telescope.actions.layout`
@@ -100,8 +128,18 @@ function M.mappings(resolved)
       bind(action, layout[ts_name])
     end
   end
-  for action, fn in pairs(ACTION_TO_FN) do
-    bind(action, fn)
+  -- The tab-group switch is chosen per lhs: `<Tab>`/`<S-Tab>` fall back to
+  -- telescope's own select-and-step outside a tab group.
+  for action, delta in pairs(TAB_DELTA) do
+    local spec = resolved[action]
+    if spec then
+      for _, lhs in ipairs(spec.lhs) do
+        local fn = tab_switch(delta, is_native_tab_key(lhs))
+        for _, mode in ipairs(spec.modes) do
+          if out[mode] then out[mode][lhs] = fn end
+        end
+      end
+    end
   end
 
   return out

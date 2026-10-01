@@ -79,10 +79,27 @@ local SKIP = {
 --- The pickers.nvim-side actions snacks resolves by name from the `win`
 --- keys: `tab_next`/`tab_prev` close the picker and reopen the next target
 --- of the active pickers.tabs group with the typed pattern as its query.
+---
+--- Without an active tab group they do not close anything (`tabs.switch`
+--- just says there is no group). `tab_next_select`/`tab_prev_select` are the
+--- variants `win()` uses for snacks' own `<Tab>`/`<S-Tab>`: outside a tab group
+--- they fall back to snacks' `select_and_next`/`select_and_prev`, so
+--- multi-select keeps working in every picker that was not opened as a tab.
 ---@return table<string, fun(picker: table)>
 function M.actions()
-  local function switch(delta)
+  ---@param delta integer
+  ---@param native string|nil  # snacks action to run when no tab group is active
+  local function switch(delta, native)
     return function(picker)
+      local tabs = require("pickers.tabs")
+      if not tabs.current() then
+        if native then
+          picker:action(native)
+        else
+          tabs.switch(delta)
+        end
+        return
+      end
       local query = ""
       pcall(function()
         query = picker.input and picker.input.filter and picker.input.filter.pattern or ""
@@ -90,10 +107,28 @@ function M.actions()
       pcall(function()
         picker:close()
       end)
-      require("pickers.tabs").switch(delta, query)
+      tabs.switch(delta, query)
     end
   end
-  return { tab_next = switch(1), tab_prev = switch(-1) }
+  return {
+    tab_next = switch(1),
+    tab_prev = switch(-1),
+    tab_next_select = switch(1, "select_and_next"),
+    tab_prev_select = switch(-1, "select_and_prev"),
+  }
+end
+
+--- The snacks action name for `action` bound on `lhs`: the tab switches use
+--- their select-and-step fallback variant on snacks' own `<Tab>`/`<S-Tab>`.
+---@param action string
+---@param lhs string
+---@return string
+local function action_name(action, lhs)
+  if action == "tab_next" or action == "tab_prev" then
+    local l = lhs:lower()
+    if l == "<tab>" or l == "<s-tab>" then return action .. "_select" end
+  end
+  return action
 end
 
 ---@param resolved table<string, { lhs: string[], modes: string[] }>
@@ -110,9 +145,10 @@ function M.win(resolved)
           list[lhs] = CONFIRM[action]
         else
           -- Preview scroll: reachable from every window.
-          input[lhs] = { action, mode = { "i", "n" } }
-          list[lhs] = action
-          preview[lhs] = action
+          local name = action_name(action, lhs)
+          input[lhs] = { name, mode = { "i", "n" } }
+          list[lhs] = name
+          preview[lhs] = name
         end
       end
     end
