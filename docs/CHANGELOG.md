@@ -10,6 +10,17 @@ a changelog.
 
 ---
 
+[x] **Entry actions say what they did.** Copy/open/reveal/insert actions report
+  `copied [fmt] …` / `opened x` / `inserted N markdown link(s)` through `lib.nvim.notify` and into `:messages`.
+  Root cause of "no feedback at all" under snacks: the toast was drawn at zindex 50, below the
+  picker layout (52) and its windows (54) -- fixed in `ui.kit.toast` (theme `zindex.toast`, 70),
+  verified against a real snacks picker.
+
+[x] **`markdown_link_insert` (`<M-n>` / `MI`, fzf `alt-n`).** Inserts the selected entries as
+  Markdown links into the window behind the picker (closes it), cursor into the first link,
+  insert mode; `link_insert.path` = buffer | cwd | absolute | env, `link_insert.cursor`.
+  `<M-i>`/`alt-i` were rejected by the engine-default shadow test (snacks/fzf-lua `toggle_ignored`).
+
 [x] **Review fixes for the in-picker path/system keys.** Two of the new default keys took an
   engine's own default away: `<M-r>` is snacks' `toggle_regex` and `alt-g` is fzf-lua's
   `first`. Env-rooted is now `<M-v>` / `alt-v`, project root `<M-t>` / `alt-t`; a test

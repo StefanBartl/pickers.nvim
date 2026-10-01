@@ -20,6 +20,10 @@
 --- Refusing up front keeps "open this" from opening something else instead.
 
 local notify = require("lib.nvim.notify").create("[pickers.entry_actions.system]")
+-- Success feedback: also written to `:messages` (`messages = true`), like
+-- filetree.nvim's own notifications, so "did that work?" still has an answer
+-- after the toast is gone. Warnings/errors keep the plain notifier above.
+local feedback = require("lib.nvim.notify").create("[pickers]", { messages = true })
 
 local M = {}
 
@@ -67,6 +71,13 @@ function M.run(action, path)
     notify.warn(string.format("Could not %s %s: %s", action, abs, tostring(err)))
     return false
   end
+  feedback.info(
+    string.format(
+      "%s %s",
+      action == "reveal" and "revealed" or "opened",
+      vim.fn.fnamemodify(abs, ":t")
+    )
+  )
   return true
 end
 

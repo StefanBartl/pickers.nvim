@@ -6958,6 +6958,43 @@ do
   config.reset()
 end
 
+-- ── feedback — a copy/insert action says what it did, also in :messages ─────
+do
+  local notify_mod = require("lib.nvim.notify")
+  local popup = notify_mod.popup
+  local saved_toast, saved_notify_ui = package.loaded["ui.kit.toast"], package.loaded["ui.notify"]
+  local toasts = {}
+  package.loaded["ui.notify"] = false
+  package.loaded["ui.kit.toast"] = {
+    open = function(o)
+      toasts[#toasts + 1] = o
+      return {}
+    end,
+  }
+  notify_mod.setup({ popup = true })
+  popup.clear()
+  vim.cmd("messages clear")
+
+  local file = vim.fn.fnamemodify("fb_test.lua", ":p")
+  require("pickers.entry_actions.path_copy").run("absolute", { file })
+
+  local entry = popup.history()[#popup.history()]
+  check(
+    "feedback: path_copy says WHAT it copied",
+    entry ~= nil and entry.message:find("copied [absolute]", 1, true) ~= nil,
+    entry and entry.message or "no history entry"
+  )
+  check("feedback: …and shows it as a toast", #toasts == 1)
+  check(
+    "feedback: …and leaves a trace in :messages (like filetree.nvim)",
+    vim.fn.execute("messages"):find("copied [absolute]", 1, true) ~= nil
+  )
+
+  notify_mod.setup({ popup = false })
+  package.loaded["ui.kit.toast"], package.loaded["ui.notify"] = saved_toast, saved_notify_ui
+  popup.clear()
+end
+
 -- ── Summary ─────────────────────────────────────────────────────────────────
 print(string.format("\n%d passed, %d failed", passed, failed))
 os.exit(failed == 0 and 0 or 1)
