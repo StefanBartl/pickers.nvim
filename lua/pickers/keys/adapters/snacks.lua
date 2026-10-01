@@ -81,10 +81,16 @@ local SKIP = {
 --- of the active pickers.tabs group with the typed pattern as its query.
 ---
 --- In a picker that was not opened by a tab group they do not close anything
---- (they only say so). `tab_next_select`/`tab_prev_select` are the
---- variants `win()` uses for snacks' own `<Tab>`/`<S-Tab>`: in such a picker
---- they fall back to snacks' `select_and_next`/`select_and_prev`, so
---- multi-select keeps working in every picker that was not opened as a tab.
+--- (they only say so). The four `_select_*` variants are what `win()` uses on
+--- snacks' own `<Tab>`/`<S-Tab>`: in such a picker they fall back to snacks'
+--- `select_and_next`/`select_and_prev` instead, so multi-select keeps working
+--- in every picker that was not opened as a tab. The fallback is chosen by
+--- `action_name()` from the PHYSICAL lhs (`<Tab>` always falls back to
+--- `select_and_next`, `<S-Tab>` to `select_and_prev` -- whatever that key
+--- does everywhere else), independently of which of `tab_next`/`tab_prev` it
+--- is bound to: a user who swaps the two lhs still gets the fallback that
+--- matches the key they actually pressed, not the one that matches the
+--- action's own default lhs.
 ---@return table<string, fun(picker: table)>
 function M.actions()
   ---@param delta integer
@@ -116,20 +122,28 @@ function M.actions()
   return {
     tab_next = switch(1),
     tab_prev = switch(-1),
-    tab_next_select = switch(1, "select_and_next"),
-    tab_prev_select = switch(-1, "select_and_prev"),
+    tab_next_select_next = switch(1, "select_and_next"),
+    tab_next_select_prev = switch(1, "select_and_prev"),
+    tab_prev_select_next = switch(-1, "select_and_next"),
+    tab_prev_select_prev = switch(-1, "select_and_prev"),
   }
 end
 
---- The snacks action name for `action` bound on `lhs`: the tab switches use
---- their select-and-step fallback variant on snacks' own `<Tab>`/`<S-Tab>`.
+--- The snacks action name for `action` bound on `lhs`: on snacks' own
+--- `<Tab>`/`<S-Tab>` the tab switches use their select-and-step fallback
+--- variant, picked by the PHYSICAL lhs (`<Tab>` -> `*_select_next`,
+--- `<S-Tab>` -> `*_select_prev`) rather than by `action` -- so a user who
+--- binds `tab_next`/`tab_prev` to the swapped lhs still gets the native
+--- fallback that key actually performs elsewhere, while `delta` (which
+--- `action` picks) still switches the tab group in `action`'s own direction.
 ---@param action string
 ---@param lhs string
 ---@return string
 local function action_name(action, lhs)
   if action == "tab_next" or action == "tab_prev" then
     local l = lhs:lower()
-    if l == "<tab>" or l == "<s-tab>" then return action .. "_select" end
+    if l == "<tab>" then return action .. "_select_next" end
+    if l == "<s-tab>" then return action .. "_select_prev" end
   end
   return action
 end

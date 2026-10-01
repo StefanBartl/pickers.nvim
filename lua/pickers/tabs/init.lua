@@ -8,7 +8,7 @@
 ---   tabs = {
 ---     groups = {
 ---       default = { "cwd files", "cwd grep", "builtin buffers" },
----       git = { "builtin git_branches", "builtin git_commits", "builtin git_stash" },
+---       git = { "builtin git_branches", "builtin git_log", "builtin git_stash" },
 ---     },
 ---   }
 ---
@@ -34,7 +34,7 @@ local M = {}
 M.DEFAULTS = {
   groups = {
     default = { "cwd files", "cwd grep", "builtin buffers" },
-    git = { "builtin git_branches", "builtin git_commits", "builtin git_stash" },
+    git = { "builtin git_branches", "builtin git_log", "builtin git_stash" },
   },
 }
 
@@ -109,26 +109,37 @@ local TAG_GROUP = "PickersTabsTag"
 local tag_generation = 0
 
 ---@internal
----Mark the prompt buffer of the next picker that opens as a tab-group picker.
----Cleared again after a few seconds so an engine that fails to open one cannot
----tag a later, unrelated picker.
+---Mark the prompt buffer of every picker that opens while armed as a
+---tab-group picker. NOT `once`: a target that goes through an interactive
+---selector first (`dir`/`repos`/a collection with `prefix`) opens that
+---selector's prompt buffer before the picker it actually resolves to, so the
+---first matching buffer is not always the real target -- tag every one that
+---shows up while armed instead of only the first. Each tag refreshes the
+---disarm timer so the window survives the dispatch chain; it is still bounded
+---(3s with nothing new) so an engine that fails to open anything cannot tag a
+---later, unrelated picker forever.
 local function arm_tag()
   tag_generation = tag_generation + 1
   local generation = tag_generation
   local group = vim.api.nvim_create_augroup(TAG_GROUP, { clear = true })
+
+  local function disarm_after(ms)
+    vim.defer_fn(function()
+      if generation == tag_generation then
+        pcall(vim.api.nvim_clear_autocmds, { group = TAG_GROUP })
+      end
+    end, ms)
+  end
+
   vim.api.nvim_create_autocmd("FileType", {
     group = group,
     pattern = { "snacks_picker_input", "TelescopePrompt" },
-    once = true,
     callback = function(ev)
       vim.api.nvim_buf_set_var(ev.buf, TAG_VAR, true)
+      disarm_after(3000)
     end,
   })
-  vim.defer_fn(function()
-    if generation == tag_generation then
-      pcall(vim.api.nvim_clear_autocmds, { group = TAG_GROUP })
-    end
-  end, 3000)
+  disarm_after(3000)
 end
 
 ---Is `buf` the prompt buffer of a picker opened by the active tab group?

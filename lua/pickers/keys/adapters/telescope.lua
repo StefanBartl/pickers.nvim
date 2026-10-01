@@ -53,26 +53,31 @@ local ACTION_TO_TS_LAYOUT = {
 --- tab-group switch closes the picker and reopens the next target with the
 --- current line as its query (pickers.tabs).
 ---
---- In a picker that was not opened by a tab group the key must not close it. On `<Tab>` /
---- `<S-Tab>` (`native = true`) it then does what telescope binds there by
---- default -- toggle the selection and step -- so multi-select keeps working in
---- every picker that was not opened as a tab; on any other lhs it only says
---- so (`tabs.not_a_tab_picker`).
----@param delta integer
----@param native boolean  # the lhs is telescope's own <Tab>/<S-Tab>
+--- In a picker that was not opened by a tab group the key must not close it.
+--- On `<Tab>`/`<S-Tab>` it then does what telescope binds there by default --
+--- toggle the selection and step -- so multi-select keeps working in every
+--- picker that was not opened as a tab; on any other lhs it only says so
+--- (`tabs.not_a_tab_picker`). The step direction is chosen from the PHYSICAL
+--- `lhs` (`<Tab>` always steps "worse"/forward, `<S-Tab>` always "better"/
+--- backward -- whatever that key does everywhere else), independently of
+--- `delta` (which direction `action` switches the tab group): a user who
+--- binds `tab_next` to `<S-Tab>` and `tab_prev` to `<Tab>` still gets the
+--- native step that matches the key they actually pressed.
+---@param delta integer  # direction `action` switches the tab group
+---@param lhs string     # the physical lhs this closure was bound to
 ---@return fun(prompt_bufnr: integer)
-local function tab_switch(delta, native)
+local function tab_switch(delta, lhs)
+  local l = lhs:lower()
   return function(prompt_bufnr)
     local tabs = require("pickers.tabs")
     local actions = require("telescope.actions")
     if not tabs.is_tab_buffer(prompt_bufnr) then
-      if native then
+      if l == "<tab>" then
         actions.toggle_selection(prompt_bufnr)
-        if delta > 0 then
-          actions.move_selection_worse(prompt_bufnr)
-        else
-          actions.move_selection_better(prompt_bufnr)
-        end
+        actions.move_selection_worse(prompt_bufnr)
+      elseif l == "<s-tab>" then
+        actions.toggle_selection(prompt_bufnr)
+        actions.move_selection_better(prompt_bufnr)
       else
         tabs.not_a_tab_picker()
       end
@@ -86,14 +91,6 @@ end
 
 --- action name → delta of the tab-group switch.
 local TAB_DELTA = { tab_next = 1, tab_prev = -1 }
-
---- Is `lhs` one of the keys telescope itself binds to select-and-step?
----@param lhs string
----@return boolean
-local function is_native_tab_key(lhs)
-  local l = lhs:lower()
-  return l == "<tab>" or l == "<s-tab>"
-end
 
 --- Build telescope `defaults.mappings` (`{ i = {...}, n = {...} }`).
 --- Values are the resolved `telescope.actions`/`telescope.actions.layout`
@@ -134,7 +131,7 @@ function M.mappings(resolved)
     local spec = resolved[action]
     if spec then
       for _, lhs in ipairs(spec.lhs) do
-        local fn = tab_switch(delta, is_native_tab_key(lhs))
+        local fn = tab_switch(delta, lhs)
         for _, mode in ipairs(spec.modes) do
           if out[mode] then out[mode][lhs] = fn end
         end

@@ -26,6 +26,7 @@ function M.run(source, engine_mod)
   engine_mod.smart({
     roots = source.roots,
     prompt = source.prompt,
+    query = source.query,
     find = find,
     additional_args = source.additional_args,
   })
