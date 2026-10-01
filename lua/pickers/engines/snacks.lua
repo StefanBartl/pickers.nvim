@@ -108,6 +108,17 @@ function M.available()
   return ok and type(picker) == "table"
 end
 
+--- Initial prompt text for a picker, or nil: pickers.tabs carries the typed query
+--- from one tab to the next through `opts.query`. Non-live pickers (files) keep it
+--- in `pattern`, live ones (grep, smart) in `search` -- snacks shows whichever one
+--- matches `live` in the input.
+---@param query string|nil
+---@return string|nil
+local function initial_text(query)
+  if type(query) == "string" and query ~= "" then return query end
+  return nil
+end
+
 ---@param opts Pickers.EngineOpts
 function M.pick_files(opts)
   local ok, Picker = pcall(require, "snacks.picker")
@@ -123,6 +134,7 @@ function M.pick_files(opts)
     safe_call(Picker.pick, {
       source = "files",
       title = titled(opts.prompt),
+      pattern = initial_text(opts.query),
       preview = preview_fn(),
       confirm = confirm_with(opts.on_select),
       finder = function(_, ctx)
@@ -146,6 +158,7 @@ function M.pick_files(opts)
   local f = opts.find or {}
   local call_opts = {
     title = titled(opts.prompt),
+    pattern = initial_text(opts.query),
     hidden = f.hidden,
     ignored = f.no_ignore,
     follow = f.follow,
@@ -181,7 +194,7 @@ function M.live_grep(opts)
   end
   vim.list_extend(args, extra)
 
-  local call_opts = { title = titled(opts.prompt), args = args }
+  local call_opts = { title = titled(opts.prompt), args = args, search = initial_text(opts.query) }
   if #opts.roots > 1 then
     call_opts.dirs = opts.roots
   else
@@ -214,6 +227,7 @@ function M.smart(opts)
     source = "smart",
     title = titled(opts.prompt or "Smart> "),
     live = true,
+    search = initial_text(opts.query),
     format = "file",
     preview = preview_fn(),
     matcher = { sort_empty = false },

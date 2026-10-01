@@ -22,6 +22,14 @@ a changelog.
   `git` group is all of them) went through `command.handle`, which does not know `builtin` -- the
   unit tests stubbed `handle` and never saw it. It now calls `pickers.builtins.run`.
 
+[x] **snacks: the query now travels with a tab switch.** `pickers.tabs` hands the typed text to the next
+  target as `opts.query`, but the snacks engine never read it -- only telescope's `default_text` did,
+  so on snacks (the engine in use) every switch opened an empty prompt. `pick_files` now sets
+  `pattern`, `live_grep` and `smart` set `search` (snacks keeps the input text in `pattern` for
+  non-live and in `search` for live pickers); the switch action reads the prompt with `input:get()`
+  instead of `filter.pattern`, which is empty in a live picker. Found by a live run, not by the
+  stubbed unit tests. fzf-lua has no tab switch at all.
+
 [x] **Entry actions say what they did.** Copy/open/reveal/insert actions report
   `copied [fmt] …` / `opened x` / `inserted N markdown link(s)` through `lib.nvim.notify` and into `:messages`.
   Root cause of "no feedback at all" under snacks: the toast was drawn at zindex 50, below the
