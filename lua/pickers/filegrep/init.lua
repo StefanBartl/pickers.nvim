@@ -19,8 +19,9 @@
 --- Strategy: the FIRST grep pattern runs as `rg --vimgrep --max-count 1` (one
 --- row per file, positioned on the first hit); every further pattern runs as
 --- `rg --files-with-matches` restricted to the files that survived so far
---- (chunked to stay under the Windows command-line limit; a full-tree scan
---- when too many survived). The path part is scored in Lua
+--- (passed as `./<path>` arguments, split over a few command lines to stay under
+--- the OS limit; a single full-tree scan when they would need too many, or when
+--- `rg` is a .cmd/.bat shim). The path part is scored in Lua
 --- (`pickers.smart.score`: substring first, weak subsequence fallback).
 ---
 --- The rg half honours `find.hidden` / `find.no_ignore` / `find.follow` exactly
@@ -38,6 +39,7 @@ local search = require("pickers.smart.search")
 local score = require("pickers.smart.score")
 local spawn_env = require("lib.nvim.cross.run.env")
 local executable = require("lib.nvim.cross.executable")
+local is_windows = require("lib.nvim.cross.platform.is_windows")
 
 ---A `grep=` value shorter than this (in characters) is ignored: a 1-char pattern
 ---matches nearly every file and would only make rg thrash while the user is
@@ -51,22 +53,30 @@ M.MAX_GREP_TOKENS = 4
 ---How long a process result stays reusable, in seconds.
 local CACHE_TTL_S = 5
 ---Memoised results kept at most (least recently used dropped first). One slot
----per root and per pattern step, so this has to cover a multi-root scope.
-local CACHE_MAX = 32
----Command-line budget (chars) for narrowing a later pattern to the survivors;
----Windows caps a command line at 32767 chars. When the survivors do not fit in
----ONE command line the whole tree is scanned instead (one spawn, not a chunk each).
-local ARGV_BUDGET = 24000
----Seconds before the same problem message is shown again (and before a missing
----tool is looked up again: lib.nvim memoises "not on PATH" for the session).
+---per root and per pattern step; entries also expire by TTL and are swept, so
+---this only bounds a pathological many-root scope.
+local CACHE_MAX = 128
+---Command-line budget (chars) for ONE rg spawn that narrows a later pattern to
+---the survivors. Windows caps a command line at 32767 chars; POSIX allows far
+---more (ARG_MAX of 256 KiB and up), so a big first result stays narrowable there.
+local ARGV_BUDGET = is_windows() and 24000 or 100000
+---Survivors that need more command lines than this are not narrowed with
+---explicit paths: one whole-tree scan is cheaper than that many spawns.
+local MAX_CHUNKS = 8
+---Seconds before the same problem message is shown again.
 local REPORT_EVERY_S = 10
+---Characters of rg's stderr kept in a problem message.
+local STDERR_MAX_CHARS = 160
+---Characters that cmd.exe interprets inside an argument: a pattern containing one
+---cannot be passed safely to an rg that is a .cmd/.bat shim.
+local CMD_META = '[&|<>%^%%!"]'
 
 local notify = require("lib.nvim.notify").create("[pickers.filegrep]")
 local ns =
   require("lib.nvim.cache.memory").namespace("pickers.nvim.filegrep", { ttl = CACHE_TTL_S })
 ---@type string[]
 local cache_keys = {}
-local last_msg, last_at, last_tool_retry = nil, 0, 0
+local last_msg, last_at = nil, 0
 local sweep_armed = false
 
 ---@class Pickers.FileGrep.Entry
@@ -74,7 +84,7 @@ local sweep_armed = false
 ---@field hits?    { lnum: integer, col: integer, text: string }[]  Parallel to `paths` (grep runs only)
 ---@field lcs?     string[]                 Lowercased `paths`, built on the first path-word query
 ---@field problems string[]
----@field failed?  boolean                  The run itself broke (spawn error, killed/timed out): never memoised
+---@field failed?  boolean                  The process could not be spawned: never memoised (a timeout IS: retrying would block again)
 
 ---Move `key` to the most-recently-used end of `cache_keys`.
 ---@internal
@@ -107,10 +117,12 @@ local function arm_sweep()
   end, (CACHE_TTL_S + 1) * 1000)
 end
 
----Memoise one process run. Only a run that itself broke (`entry.failed`: spawn
----error, killed at the timeout) is NOT stored, so the next keystroke retries it;
----everything else is, including a clean "nothing matched" and a regex error, so
----typing in the path part never respawns a process.
+---Memoise one process run. Only a run that could not be spawned at all
+---(`entry.failed`) is NOT stored, so the next keystroke retries it; everything
+---else is, including a clean "nothing matched", a regex error and a run killed at
+---the timeout (its partial result plus the problem): re-running a scan that was
+---too slow would block the main thread for the whole timeout again on every
+---keystroke of the path part.
 ---@internal
 ---@param key string
 ---@param fn fun(): Pickers.FileGrep.Entry
@@ -130,19 +142,22 @@ local function cached(key, fn)
   return entry
 end
 
----Drop every memoised process result and the notification throttle (tests, and
----a manual "refresh").
+---Drop every memoised process result, the notification throttle and the tool
+---re-lookup stamps (tests, and a manual "refresh").
 function M.clear_cache()
   ns.clear()
   cache_keys = {}
-  last_msg, last_at, last_tool_retry = nil, 0, 0
+  last_msg, last_at = nil, 0
+  sweep_armed = false -- a timer still pending only finds an empty cache and stops
+  search.reset_tool_retry()
 end
 
 ---Split a prompt into whitespace-separated words. Double quotes group words and
 ---are dropped, so `grep="a b"` yields the single word `grep=a b`; `\"` and `\ `
----are a literal quote / space (any other backslash is kept as typed, so regex
----escapes like `\b` or `\(` pass through). An unclosed quote (user still typing)
----runs to the end of the prompt.
+---are a literal quote / space; `\\` (a regex-escaped backslash) stays two
+---backslashes and cannot escape what follows it; any other backslash is kept as
+---typed, so regex escapes like `\b` or `\(` pass through. An unclosed quote (user
+---still typing) runs to the end of the prompt.
 ---@internal
 ---@param s string
 ---@return string[]
@@ -214,15 +229,34 @@ function M.parse(query)
   return parsed
 end
 
+---The reason out of rg's stderr, for a problem message: its first line, plus the
+---`error:` line that carries the actual cause of a regex error (rg prints
+---"regex parse error:" first and the reason last). ASCII and C1 control
+---characters are replaced and the cut is made on a character boundary.
+---@internal
+---@param stderr string
+---@return string|nil
+local function stderr_reason(stderr)
+  local first, err
+  for line in stderr:gmatch("[^\r\n]+") do
+    first = first or line
+    if not err and line:match("^error:") then err = line end
+  end
+  if not first then return nil end
+  local text = (err and err ~= first) and (first .. " " .. err) or first
+  text = text:gsub("%c", " "):gsub("\194[\128-\159]", " ")
+  return vim.fn.strcharpart(text, 0, STDERR_MAX_CHARS)
+end
+
 ---Run one process and return its stdout lines, a problem string (or nil) and
----whether the run itself broke.
+---whether it could not be spawned at all.
 ---
---- * `hard` -- the process could not be spawned or was killed (timeout): its
----   output is not trustworthy and must not be memoised.
+--- * `spawn_failed` -- nothing ran: not memoised, retried on the next keystroke.
 --- * rg exit 2 WITH hits is a partial success (an unreadable file, a dangling
 ---   symlink): the hits stand and there is no problem to report.
---- * any other non-zero exit keeps its problem, extended by the first line of
----   stderr (control characters stripped) so a regex error says so.
+--- * a run killed at the timeout keeps its partial hits AND its problem.
+--- * any other non-zero exit keeps its problem, extended by rg's stderr reason
+---   so a regex error says why.
 ---@internal
 ---@param cmd string[]
 ---@param root string
@@ -231,28 +265,29 @@ end
 ---@param benign_code integer|nil
 ---@return string[] lines
 ---@return string|nil problem
----@return boolean hard
+---@return boolean spawn_failed
 local function run(cmd, root, timeout, tool, benign_code)
   local ok, res = pcall(function()
     return vim.system(cmd, spawn_env.apply({ cwd = root, text = true })):wait(timeout)
   end)
   local problem = search.classify_run(tool, root, ok, res, benign_code)
-  local hard = not ok or not res or (res.signal ~= nil and res.signal ~= 0)
+  local spawn_failed = not ok or not res
+  local killed = res and res.signal ~= nil and res.signal ~= 0
   local lines = {}
   if ok and res and res.stdout then
     for line in res.stdout:gmatch("[^\r\n]+") do
       lines[#lines + 1] = line
     end
   end
-  if problem and not hard then
-    if #lines > 0 then
+  if problem and res and not killed then
+    if res.code == 2 and #lines > 0 then
       problem = nil
-    elseif res and type(res.stderr) == "string" then
-      local first = res.stderr:match("[^\r\n]+")
-      if first then problem = problem .. ": " .. first:gsub("%c", " "):sub(1, 120) end
+    elseif type(res.stderr) == "string" then
+      local reason = stderr_reason(res.stderr)
+      if reason then problem = problem .. ": " .. reason end
     end
   end
-  return lines, problem, hard
+  return lines, problem, spawn_failed
 end
 
 ---All files below `root` (fd), memoised.
@@ -295,43 +330,58 @@ local function rg_extra(find, extra)
   return out
 end
 
----Files among `paths` that also contain `pattern`, as a set. When the survivors
----fit on ONE command line (and `rg` is a real executable, see `explicit_ok`) rg is
----pointed at exactly those files, so it opens only them; otherwise it scans the
----whole tree once. Never more than one spawn.
+---Files among `paths` that also contain `pattern`, as a set. rg is pointed at
+---exactly those files (so it opens only them), over as many command lines as
+---ARGV_BUDGET requires; when that would be more than MAX_CHUNKS spawns, or when
+---`rg` is a .cmd/.bat shim, it scans the whole tree once instead.
 ---
 ---Each survivor is passed as `./<path>`: a bare `-` would be read as stdin even
 ---after `--`. rg echoes `./<path>` back and `search.unify_path` strips it.
 ---@internal
 ---@param explicit_ok boolean  false when `rg` is a .cmd/.bat shim (cmd.exe would interpret file names)
 ---@return table<string, boolean> set
----@return string|nil problem
----@return boolean hard
+---@return string|nil problem  first problem of any spawn
+---@return boolean spawn_failed  any spawn could not run
 local function narrow(rg, root, find, extra, pattern, paths, timeout, explicit_ok)
-  local cmd = { rg }
-  vim.list_extend(cmd, search.rg_files_args(find or {}, rg_extra(find, extra), pattern))
+  local base = { rg }
+  vim.list_extend(base, search.rg_files_args(find or {}, rg_extra(find, extra), pattern))
 
+  local cmds ---@type string[][]|nil
   if explicit_ok then
-    local size = 0
-    for _, a in ipairs(cmd) do
-      size = size + #a + 1
+    local base_len = 0
+    for _, a in ipairs(base) do
+      base_len = base_len + #a + 1
     end
+    local chunks, chunk, size = {}, {}, base_len
     for _, p in ipairs(paths) do
-      size = size + #p + 3
+      local len = #p + 3 -- "./" and the separator
+      if #chunk > 0 and size + len > ARGV_BUDGET then
+        chunks[#chunks + 1] = chunk
+        chunk, size = {}, base_len
+      end
+      chunk[#chunk + 1] = "./" .. p
+      size = size + len
     end
-    if size <= ARGV_BUDGET then
-      for _, p in ipairs(paths) do
-        cmd[#cmd + 1] = "./" .. p
+    if #chunk > 0 then chunks[#chunks + 1] = chunk end
+    if #chunks <= MAX_CHUNKS then
+      cmds = {}
+      for i, c in ipairs(chunks) do
+        cmds[i] = vim.list_extend(vim.list_slice(base), c)
       end
     end
   end
+  cmds = cmds or { base }
 
-  local lines, problem, hard = run(cmd, root, timeout, "rg", 1)
-  local set = {}
-  for _, line in ipairs(lines) do
-    set[search.unify_path(line)] = true
+  local set, first_problem, any_failed = {}, nil, false
+  for _, cmd in ipairs(cmds) do
+    local lines, problem, spawn_failed = run(cmd, root, timeout, "rg", 1)
+    first_problem = first_problem or problem
+    any_failed = any_failed or spawn_failed
+    for _, line in ipairs(lines) do
+      set[search.unify_path(line)] = true
+    end
   end
-  return set, problem, hard
+  return set, first_problem, any_failed
 end
 
 ---The first pattern's run for `root`, memoised under its own key so editing a
@@ -457,25 +507,6 @@ local function report(problems)
   end)
 end
 
----Look a tool up on PATH. lib.nvim memoises the answer for the whole session,
----including "not installed", so a miss is re-checked from scratch at most once
----per REPORT_EVERY_S: a tool installed while nvim runs is picked up without a
----restart, and a really missing one does not cost a PATH walk per keystroke.
----@internal
----@param names string|string[]
----@return string|nil
-local function find_tool(names)
-  local found = executable.find(names)
-  if found then return found end
-  local now = uv.hrtime() / 1e9
-  if now - last_tool_retry < REPORT_EVERY_S then return nil end
-  last_tool_retry = now
-  for _, name in ipairs(type(names) == "table" and names or { names }) do
-    executable.clear(name)
-  end
-  return executable.find(names)
-end
-
 ---Run the file+content search for one prompt and return ranked items.
 ---@param query string
 ---@param opts  { roots: string[], find: Pickers.FindOpts, additional_args?: string[] }
@@ -495,14 +526,28 @@ function M.query(query, opts)
     needles[i] = w:lower()
   end
 
-  -- Resolve the tool once per query (lib.nvim memoises the PATH lookup).
-  local fd = (not has_grep) and find_tool({ "fd", "fdfind" }) or nil
-  local rg = has_grep and find_tool("rg") or nil
-  -- A .cmd/.bat shim goes through cmd.exe, which would interpret `&`, `^`, `%`
-  -- in the file names narrow() puts on the command line: scan the tree instead.
+  -- Resolve the tool once per query (memoised by lib.nvim, with a throttled
+  -- re-check of a miss -- see search.find_tool).
+  local fd = (not has_grep) and search.find_tool({ "fd", "fdfind" }) or nil
+  local rg = has_grep and search.find_tool("rg") or nil
+  -- A .cmd/.bat shim goes through cmd.exe, which interprets `& | < > ^ % !` and
+  -- quotes in ANY argument: file names are never put on its command line
+  -- (narrow() scans the tree instead) and a pattern containing one is refused.
   local rg_path = has_grep and rg and executable.path("rg") or nil
   local rg_lower = rg_path and rg_path:lower() or ""
   local explicit_ok = not (rg_lower:match("%.cmd$") or rg_lower:match("%.bat$"))
+  if has_grep and rg and not explicit_ok then
+    for _, pattern in ipairs(parsed.grep) do
+      if pattern:find(CMD_META) then
+        local problems = {
+          'rg is a .cmd/.bat shim: a pattern containing & | < > ^ % ! or " cannot be '
+            .. "passed to it safely (install rg.exe)",
+        }
+        report(problems)
+        return {}, problems
+      end
+    end
+  end
   local multi = #roots > 1
 
   -- Parallel arrays instead of a table per candidate: ents[k] = cache entry,

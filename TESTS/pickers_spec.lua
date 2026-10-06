@@ -3113,6 +3113,14 @@ do
   check("search.collect: a killed run is reported as a problem", #problems2 == 1)
   check("search.collect: files stays empty either way", #files2 == 0)
 
+  -- a drive root ("C:/") must not turn into "C://x.lua"
+  next_result = { code = 0, signal = 0, stdout = "x.lua\n" }
+  local drive_files = search.collect({ roots = { "C:/" }, query = "x" })
+  check(
+    "search.collect: abspath under a drive root has a single slash",
+    drive_files[1] ~= nil and drive_files[1].abspath == "C:/x.lua"
+  )
+
   vim.system = orig_system
   vim.fn.executable = orig_executable
   require("lib.nvim.cross.executable").clear()
@@ -3250,24 +3258,24 @@ do
   local dup = filegrep.query("grep=foo", opts)
   check("filegrep.query: one row per file even with repeated hits", #dup == 2)
 
-  -- A killed run must be retried, not replayed from the cache.
+  -- A run that could not be spawned must be retried, not replayed from the cache.
   local fail = true
   local fail_spawns = 0
   vim.system = function()
     fail_spawns = fail_spawns + 1
+    if fail then error("spawn failed") end
     return {
       wait = function()
-        if fail then return { code = 1, signal = 9, stdout = "" } end
         return { code = 0, signal = 0, stdout = rg_rows }
       end,
     }
   end
   filegrep.clear_cache()
   local _, probs = filegrep.query("grep=foo", opts)
-  check("filegrep.query: a killed rg is reported", #probs == 1)
+  check("filegrep.query: a failed spawn is reported", #probs == 1)
   fail = false
   local retry = filegrep.query("grep=foo", opts)
-  check("filegrep.query: a failed run is not cached", #retry == 2 and fail_spawns == 2)
+  check("filegrep.query: a failed spawn is not cached", #retry == 2 and fail_spawns == 2)
 
   vim.system = orig_system
   vim.fn.executable = orig_executable
@@ -3381,7 +3389,9 @@ do
   )
   check("filegrep.argv: only the surviving file is listed", #its == 1 and its[1].path == "b.txt")
 
-  -- more survivors than fit a command line -> whole-tree scan, no path arguments
+  -- many survivors: split over several command lines, each within the budget,
+  -- together covering every survivor
+  local budget = require("lib.nvim.cross.platform.is_windows")() and 24000 or 100000
   local many = {}
   for i = 1, 3001 do
     many[i] = string.format("f%04d.txt:1:1:x", i)
@@ -3390,11 +3400,47 @@ do
   calls = {}
   filegrep.clear_cache()
   filegrep.query("grep=aa grep=bb", opts)
+  local listed, within = 0, true
+  for i = 2, #calls do
+    if #table.concat(calls[i], " ") > budget then within = false end
+    for _, a in ipairs(calls[i]) do
+      if a:sub(1, 3) == "./f" then listed = listed + 1 end
+    end
+  end
   check(
-    "filegrep.argv: survivors that do not fit one command line -> one whole-tree scan",
-    calls[2] and calls[2][#calls[2]] == "bb"
+    "filegrep.argv: every survivor is passed on exactly one narrowing command line",
+    listed == 3001
+  )
+  check(
+    "filegrep.argv: each narrowing command line stays within the budget",
+    within and #calls >= 2
+  )
+
+  -- so many that they would need more than MAX_CHUNKS spawns -> one whole-tree scan
+  local huge = {}
+  for i = 1, 120 do
+    huge[i] = string.rep("d", 9000) .. string.format("%04d.txt:1:1:x", i)
+  end
+  rg_rows = table.concat(huge, "\n") .. "\n"
+  calls = {}
+  filegrep.clear_cache()
+  filegrep.query("grep=aa grep=bb", opts)
+  check(
+    "filegrep.argv: more chunks than MAX_CHUNKS -> a single whole-tree scan, no path arguments",
+    #calls == 2 and calls[2][#calls[2]] == "bb"
   )
   rg_rows = "a.txt:1:1:x\nb.txt:2:1:y\n"
+
+  -- editing a LATER grep= token reuses the first pattern's run: only the narrowing respawns
+  calls = {}
+  filegrep.clear_cache()
+  filegrep.query("grep=aa grep=bb", opts)
+  local after_first = #calls
+  filegrep.query("grep=aa grep=cc", opts)
+  check(
+    "filegrep.cache: a changed later token respawns only the narrowing, not the first scan",
+    #calls == after_first + 1 and index_of(calls[#calls], "--files-with-matches") ~= nil
+  )
 
   -- find.no_ignore / hidden flip the other way
   calls = {}
@@ -3427,14 +3473,30 @@ do
   -- the memo is bounded: pushing more than CACHE_MAX keys evicts the oldest
   filegrep.clear_cache()
   calls = {}
-  for i = 1, 40 do
+  for i = 1, 140 do
     filegrep.query("grep=pat" .. i, opts)
   end
   local before = #calls
   filegrep.query("grep=pat1", opts)
   check("filegrep.cache: an evicted key is recomputed", #calls == before + 1)
-  filegrep.query("grep=pat40", opts)
+  filegrep.query("grep=pat140", opts)
   check("filegrep.cache: a recent key is served from the memo", #calls == before + 1)
+
+  -- LRU, not FIFO: a key that is read again outlives older untouched ones
+  filegrep.clear_cache()
+  calls = {}
+  for i = 1, 128 do
+    filegrep.query("grep=lru" .. i, opts)
+  end
+  filegrep.query("grep=lru1", opts) -- a hit: now the most recently used
+  for i = 129, 133 do
+    filegrep.query("grep=lru" .. i, opts)
+  end
+  local mark = #calls
+  filegrep.query("grep=lru1", opts)
+  check("filegrep.cache: a recently read key survives eviction (LRU)", #calls == mark)
+  filegrep.query("grep=lru2", opts)
+  check("filegrep.cache: an untouched older key was evicted", #calls == mark + 1)
 
   vim.system = orig_system
   vim.fn.executable = orig_executable
@@ -3706,13 +3768,17 @@ do
   local orig_exepath, orig_notify = vim.fn.exepath, vim.notify
 
   local have = { fd = true, rg = true }
+  local execs = {} -- how often each name was looked up natively
   vim.fn.executable = function(name)
+    execs[name] = (execs[name] or 0) + 1
     return have[name] and 1 or 0
   end
   vim.fn.exepath = function(name)
     return have[name] and ("/bin/" .. name) or ""
   end
   exe.clear()
+  local search = require("pickers.smart.search")
+  search.reset_tool_retry()
 
   local calls, reply = {}, { code = 0, signal = 0, stdout = "" }
   vim.system = function(cmd)
@@ -3766,29 +3832,83 @@ do
   )
   check("filegrep.fail: ...and not respawned while typing the path part", #calls == 1)
 
-  -- killed (timeout): reported once per throttle window, never memoised
+  -- killed at the timeout: the partial hits and the problem are kept AND memoised
+  -- (a retry would block the main thread for the whole timeout on every keystroke);
+  -- the problem is shown once per throttle window
   reset()
-  reply = { code = 1, signal = 9, stdout = "" }
-  filegrep.query("grep=aa", opts)
+  reply = { code = 1, signal = 9, stdout = "a.txt:1:1:x\n" }
+  local k1, kp = filegrep.query("grep=aa", opts)
   filegrep.query("grep=aa x", opts)
   filegrep.query("grep=aa xy", opts)
   vim.wait(200, function()
     return #notes >= 1
   end)
-  check("filegrep.fail: a killed run is retried every time", #calls == 3)
+  check("filegrep.fail: a killed run keeps its partial hits and its problem", #k1 == 1 and #kp == 1)
+  check("filegrep.fail: ...and is not respawned per keystroke", #calls == 1)
   check(
     "filegrep.fail: the same problem is shown once, not per keystroke",
     #notes == 1 and notes[1]:find("killed", 1, true) ~= nil
   )
 
-  -- control characters from stderr never reach the message
+  -- a spawn that fails outright IS retried: the fd listing, and the narrowing
+  -- step (whose first-pattern result stays memoised)
   reset()
-  reply = { code = 2, signal = 0, stdout = "", stderr = "bad\27[31mred\27[0m thing" }
+  local boom = true
+  reply = function()
+    if boom then error("spawn failed") end
+    return { code = 0, signal = 0, stdout = "x.lua\n" }
+  end
+  filegrep.query("", opts)
+  filegrep.query("", opts)
+  check("filegrep.fail: a failed fd spawn is retried", #calls == 2)
+  boom = false
+  filegrep.query("", opts)
+  filegrep.query("", opts)
+  check("filegrep.fail: ...and memoised once it worked", #calls == 3)
+
+  reset()
+  reply = function(cmd)
+    if vim.tbl_contains(cmd, "--files-with-matches") then error("spawn failed") end
+    return { code = 0, signal = 0, stdout = "a.txt:1:1:x\nb.txt:2:1:y\n" }
+  end
+  filegrep.query("grep=aa grep=bb", opts)
+  filegrep.query("grep=aa grep=bb", opts)
+  check(
+    "filegrep.fail: a failed narrowing spawn is retried, the first run is not repeated",
+    #calls == 3
+  )
+
+  -- rg's stderr: the `error:` line carries the cause; control characters (ASCII
+  -- and C1) never reach the message; the cut is on a character boundary
+  reset()
+  reply = {
+    code = 2,
+    signal = 0,
+    stdout = "",
+    stderr = "rg: regex parse error:\n    (a\n    ^\nerror: unclosed group\n",
+  }
+  local _, pr = filegrep.query("grep=(a", opts)
+  check(
+    "filegrep.fail: a regex error names its cause",
+    pr[1] and pr[1]:find("unclosed group", 1, true) ~= nil
+  )
+  reset()
+  reply = { code = 2, signal = 0, stdout = "", stderr = "bad\27[31mred\27[0m\194\133 thing" }
   local _, p3 = filegrep.query("grep=zz", opts)
-  check("filegrep.fail: stderr is stripped of control characters", not p3[1]:find("\27", 1, true))
+  check(
+    "filegrep.fail: stderr is stripped of control characters",
+    p3[1] and not p3[1]:find("\27", 1, true) and not p3[1]:find("\194\133", 1, true)
+  )
+  reset()
+  reply = { code = 2, signal = 0, stdout = "", stderr = "x" .. string.rep("ü", 400) }
+  local _, pm = filegrep.query("grep=yy", opts)
+  check(
+    "filegrep.fail: a long stderr line is cut on a character boundary",
+    pm[1] and not pm[1]:match("[\192-\255]$") and #pm[1] < 700
+  )
 
   -- explicit survivor paths: never when rg is a .cmd/.bat shim (cmd.exe would
-  -- interpret file names), always after "--" otherwise
+  -- interpret file names and patterns), after "--" otherwise
   local function two_pattern_calls()
     reset()
     reply = function(cmd)
@@ -3802,13 +3922,34 @@ do
   end
   exe.clear()
   local plain = two_pattern_calls()
-  check("filegrep.shim: a real executable gets explicit paths", plain[#plain] == "./b.txt")
+  check(
+    "filegrep.shim: a real executable gets explicit paths",
+    plain and plain[#plain] == "./b.txt"
+  )
+  for _, shim_path in ipairs({ "C:\\tools\\rg.cmd", "C:\\tools\\RG.CMD", "C:\\tools\\rg.bat" }) do
+    vim.fn.exepath = function()
+      return shim_path
+    end
+    exe.clear()
+    local shim = two_pattern_calls()
+    check(
+      "filegrep.shim: " .. shim_path .. " gets a whole-tree scan, no file names",
+      shim and shim[#shim] == "bb"
+    )
+  end
+  -- ...and a pattern cmd.exe would interpret is refused instead of passed on
   vim.fn.exepath = function()
     return "C:\\tools\\rg.cmd"
   end
   exe.clear()
-  local shim = two_pattern_calls()
-  check("filegrep.shim: a .cmd shim gets a whole-tree scan, no file names", shim[#shim] == "bb")
+  for _, bad in ipairs({ "a&b", "ab|cd", "a^b", "a%PATH%", [[a\"b]] }) do
+    reset()
+    local rr, rp = filegrep.query("grep=" .. bad, opts)
+    check(
+      "filegrep.shim: pattern " .. bad .. " is refused for a .cmd shim",
+      #rr == 0 and #calls == 0 and rp[1] and rp[1]:find(".cmd/.bat shim", 1, true) ~= nil
+    )
+  end
   vim.fn.exepath = function(name)
     return have[name] and ("/bin/" .. name) or ""
   end
@@ -3864,10 +4005,56 @@ do
   local _, miss = filegrep.query("grep=aa", opts)
   check("filegrep.tool: a missing rg is reported", miss[1] == "rg not found on PATH")
   have.rg = true
-  filegrep.clear_cache() -- also resets the re-lookup throttle
+  -- right after the miss the answer is throttled (a PATH walk per keystroke would cost more)
   reply = { code = 0, signal = 0, stdout = "a.txt:1:1:x\n" }
+  local _, still = filegrep.query("grep=aa x", opts)
+  check(
+    "filegrep.tool: a miss is not re-checked on every keystroke",
+    still[1] == "rg not found on PATH"
+  )
+  filegrep.clear_cache() -- also resets the re-lookup throttle
   local found = filegrep.query("grep=aa", opts)
   check("filegrep.tool: ...and found again once it is installed", #found == 1)
+
+  -- the throttle stamp is per tool: one tool's re-check does not spend another's
+  have.toolA, have.toolB = false, false
+  exe.clear()
+  search.reset_tool_retry()
+  check("search.find_tool: a missing tool is nil", search.find_tool("toolA") == nil)
+  check("search.find_tool: ...after one lookup and one from-scratch re-check", execs.toolA == 2)
+  search.find_tool("toolA")
+  check("search.find_tool: ...then throttled (no further lookups)", execs.toolA == 2)
+  search.find_tool("toolB")
+  check("search.find_tool: another tool has its own budget", execs.toolB == 2)
+  have.toolB = true
+  search.reset_tool_retry()
+  check(
+    "search.find_tool: a tool installed meanwhile is found after a reset",
+    search.find_tool("toolB") == "toolB"
+  )
+  have.toolA, have.toolB = nil, nil
+  exe.clear()
+
+  -- the deferred sweep drops expired entries and re-arms only while some are live
+  local real_defer, real_hrtime = vim.defer_fn, vim.uv.hrtime
+  local deferred, skew = {}, 0
+  vim.defer_fn = function(fn)
+    deferred[#deferred + 1] = fn
+  end
+  vim.uv.hrtime = function()
+    return real_hrtime() + skew
+  end
+  reset()
+  reply = { code = 0, signal = 0, stdout = "a.txt:1:1:x\n" }
+  filegrep.query("grep=sweep", opts)
+  check("filegrep.sweep: a memoised result arms one deferred sweep", #deferred == 1)
+  deferred[1]()
+  check("filegrep.sweep: a live entry keeps the sweep armed", #deferred == 2)
+  skew = 60 * 1e9
+  deferred[2]()
+  check("filegrep.sweep: once everything expired the sweep stops", #deferred == 2)
+  vim.defer_fn, vim.uv.hrtime = real_defer, real_hrtime
+  reset()
 
   -- parser: an escaped backslash does not escape the following space/quote
   local pe = filegrep.parse([[grep=foo\\ bar]])
@@ -3881,11 +4068,16 @@ do
     pq.grep[1] == [[C:\\temp\\]] and pq.path[1] == "src"
   )
 
+  -- a message scheduled by the last case must not land in a later suite
+  vim.wait(30, function()
+    return false
+  end)
   vim.system = orig_system
   vim.fn.executable = orig_executable
   vim.fn.exepath = orig_exepath
   vim.notify = orig_notify
   exe.clear()
+  search.reset_tool_retry()
   filegrep.clear_cache()
 end
 

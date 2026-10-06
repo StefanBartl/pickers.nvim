@@ -27,14 +27,46 @@ local M = {}
 local uv = vim.uv or vim.loop
 local spawn_env = require("lib.nvim.cross.run.env")
 
----First executable found among `names`, or nil. Through lib.nvim's memoised
----lookup: a PATH walk costs milliseconds on Windows and this runs on every
----keystroke of the smart action.
+---Seconds before a tool that was not found is looked up on PATH again.
+local TOOL_RETRY_S = 30
+---@type table<string, number>  lookup key -> hrtime (s) of its last from-scratch retry
+local tool_retry_at = {}
+
+---First executable found among `names` (a name or a list), or nil. Through
+---lib.nvim's memoised lookup: a PATH walk costs milliseconds on Windows and this
+---runs on every keystroke. That memo also remembers "not installed" for the
+---whole session, so a miss is re-checked from scratch at most once per
+---TOOL_RETRY_S (per lookup key, not shared between tools): a tool installed
+---while nvim runs is picked up without a restart, and a really missing one
+---costs one PATH walk per window, not one per keystroke.
+---@param names string|string[]
+---@return string|nil
+function M.find_tool(names)
+  local exe = require("lib.nvim.cross.executable")
+  local found = exe.find(names)
+  if found then return found end
+  local key = type(names) == "table" and table.concat(names, "|") or names
+  local now = uv.hrtime() / 1e9
+  local last = tool_retry_at[key]
+  if last and now - last < TOOL_RETRY_S then return nil end
+  tool_retry_at[key] = now
+  for _, name in ipairs(type(names) == "table" and names or { names }) do
+    exe.clear(name)
+  end
+  return exe.find(names)
+end
+
+---Forget the retry stamps, so the next miss looks the tool up again at once
+---(tests, and a manual refresh).
+function M.reset_tool_retry()
+  tool_retry_at = {}
+end
+
 ---@internal
 ---@param names string[]
 ---@return string|nil
 local function first_exe(names)
-  return require("lib.nvim.cross.executable").find(names)
+  return M.find_tool(names)
 end
 
 ---Forward-slash form of a path printed by fd/rg, without the `./` prefix some

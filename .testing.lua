@@ -33,5 +33,5 @@ return {
   -- No allowlist: nothing legitimate was observed (script files are not measured).
   guard_allow = { fs = {}, spawn = {}, network = {} },
   -- Environment variables the specs read; a child editor inherits an allowlist only (never secrets).
-  env_allow = { "LIB_NVIM_PATH", "REPOS_DIR" },
+  env_allow = { "LIB_NVIM_PATH", "REPOS_DIR", "PICKERS_REQUIRE_TOOLS" },
 }
