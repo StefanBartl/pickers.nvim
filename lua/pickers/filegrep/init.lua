@@ -62,17 +62,13 @@ local ARGV_BUDGET = is_windows() and 24000 or 100000
 ---Survivors that need more command lines than this are not narrowed with
 ---explicit paths: one whole-tree scan is cheaper than that many spawns.
 local MAX_CHUNKS = 8
----Seconds before the same problem message is shown again.
-local REPORT_EVERY_S = 10
 ---Characters of rg's stderr kept in a problem message.
 local STDERR_MAX_CHARS = 160
 
-local notify = require("lib.nvim.notify").create("[pickers.filegrep]")
 local ns =
   require("lib.nvim.cache.memory").namespace("pickers.nvim.filegrep", { ttl = CACHE_TTL_S })
 ---@type string[]
 local cache_keys = {}
-local last_msg, last_at = nil, 0
 local sweep_armed = false
 ---Bumped by clear_cache(): a timer armed before it belongs to a previous cache
 ---generation and ends instead of re-arming (no second sweep chain).
@@ -148,7 +144,7 @@ end
 function M.clear_cache()
   ns.clear()
   cache_keys = {}
-  last_msg, last_at = nil, 0
+  search.reset_report()
   generation = generation + 1
   sweep_armed = false
   search.reset_tool_retry()
@@ -264,8 +260,9 @@ end
 --- * a run killed at the timeout keeps its partial hits AND its problem.
 --- * any other non-zero exit keeps its problem, extended by rg's stderr reason
 ---   so a regex error says why.
---- * `abort` -- killed, or exit 2 with no hits (a regex error reads the same for
----   every file list): the caller should not spawn the remaining chunks.
+--- * `abort` -- killed, or exit 2 with no hits AND a pattern error in stderr (it
+---   reads the same for every file list): the caller should not spawn more of
+---   them. A missing/unreadable file in one chunk is not an abort.
 ---@internal
 ---@param cmd string[]
 ---@param root string
@@ -297,7 +294,15 @@ local function run(cmd, root, timeout, tool, benign_code)
       if reason then problem = problem .. ": " .. reason end
     end
   end
-  local abort = killed or (res ~= nil and res.code == 2 and #lines == 0)
+  -- A pattern error reads the same for every file list; a missing or unreadable
+  -- file ("(os error N)") is specific to its chunk and must not stop the others.
+  local pattern_error = false
+  if res ~= nil and res.code == 2 and #lines == 0 and type(res.stderr) == "string" then
+    pattern_error = res.stderr:find("regex", 1, true) ~= nil
+      or res.stderr:match("^error:") ~= nil
+      or res.stderr:find("\nerror:", 1, true) ~= nil
+  end
+  local abort = killed or pattern_error
   return lines, problem, spawn_failed, abort
 end
 
@@ -353,6 +358,7 @@ end
 ---@return table<string, boolean> set
 ---@return string|nil problem  first problem of any spawn
 ---@return boolean spawn_failed  any spawn could not run
+---@return boolean aborted  stopped early (killed, pattern error, spawn failure)
 local function narrow(rg, root, find, extra, pattern, paths, timeout, explicit_ok)
   local base = { rg }
   vim.list_extend(base, search.rg_files_args(find or {}, rg_extra(find, extra), pattern))
@@ -383,7 +389,7 @@ local function narrow(rg, root, find, extra, pattern, paths, timeout, explicit_o
   end
   cmds = cmds or { base }
 
-  local set, first_problem, any_failed = {}, nil, false
+  local set, first_problem, any_failed, aborted = {}, nil, false, false
   for i, cmd in ipairs(cmds) do
     local lines, problem, spawn_failed, abort = run(cmd, root, timeout, "rg", 1)
     for _, line in ipairs(lines) do
@@ -391,15 +397,18 @@ local function narrow(rg, root, find, extra, pattern, paths, timeout, explicit_o
     end
     if spawn_failed or abort then
       -- Do not multiply a failure (every chunk would time out, or hit the same
-      -- regex error) by the number of chunks. What is left unsearched is said so.
-      local incomplete = i < #cmds and " -- results incomplete" or ""
-      first_problem = (problem or first_problem or "rg did not finish") .. incomplete
+      -- regex error) by the number of chunks. A killed run already says its result
+      -- may be truncated and a pattern error is a definitive (empty) answer; only a
+      -- chunk that could not be spawned leaves files unsearched without saying so.
+      local incomplete = (spawn_failed and i < #cmds) and " -- results incomplete" or ""
+      first_problem = (problem or "rg did not finish") .. incomplete
       any_failed = spawn_failed
+      aborted = true
       break
     end
     first_problem = first_problem or problem
   end
-  return set, first_problem, any_failed
+  return set, first_problem, any_failed, aborted
 end
 
 ---The first pattern's run for `root`, memoised under its own key so editing a
@@ -470,7 +479,7 @@ local function grep_files(root, find, extra, patterns, timeout, rg, explicit_ok)
     local paths, hits, failed = base.paths, base.hits, false
     for i = 2, #patterns do
       if #paths == 0 then break end
-      local set, problem, hard =
+      local set, problem, hard, aborted =
         narrow(rg, root, find, extra, patterns[i], paths, timeout, explicit_ok)
       if problem then problems[#problems + 1] = problem end
       if hard then failed = true end
@@ -482,6 +491,9 @@ local function grep_files(root, find, extra, patterns, timeout, rg, explicit_ok)
         end
       end
       paths, hits = kept_paths, kept_hits
+      -- A killed run or a pattern error would only repeat for the next token:
+      -- stop here instead of multiplying it by the number of tokens.
+      if aborted then break end
     end
     return { paths = paths, hits = hits, problems = problems, failed = failed }
   end)
@@ -511,22 +523,6 @@ local function display(path, hit)
   if not hit then return path end
   local text = (hit.text or ""):gsub("^%s+", "")
   return string.format("%s:%d: %s", path, hit.lnum, text)
-end
-
----Show the first problem of a run (ERR-11: a broken run must not look like zero
----matches), at most once per REPORT_EVERY_S for the same message so typing does
----not flood the screen.
----@internal
----@param problems string[]
-local function report(problems)
-  local msg = problems[1]
-  if not msg then return end
-  local now = uv.hrtime() / 1e9
-  if msg == last_msg and now - last_at < REPORT_EVERY_S then return end
-  last_msg, last_at = msg, now
-  vim.schedule(function()
-    notify.warn(msg)
-  end)
 end
 
 ---Run the file+content search for one prompt and return ranked items.
@@ -563,7 +559,7 @@ function M.query(query, opts)
         local refusal = search.shim_refusal(rg, pattern)
         if refusal then
           local problems = { refusal }
-          report(problems)
+          search.report(problems)
           return {}, problems
         end
       end
@@ -681,7 +677,7 @@ function M.query(query, opts)
     }
   end
 
-  report(problems)
+  search.report(problems)
   return items, problems
 end
 

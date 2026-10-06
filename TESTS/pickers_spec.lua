@@ -4181,9 +4181,47 @@ do
     local _, kp = two_patterns()
     check("filegrep.chunk: a killed chunk stops the remaining ones", #narrowing_calls() == 1)
     check(
-      "filegrep.chunk: ...and the result is flagged incomplete",
-      kp[1] and kp[1]:find("results incomplete", 1, true) ~= nil
+      "filegrep.chunk: ...and the kill says the result may be truncated (no stacked suffix)",
+      kp[1]
+        and kp[1]:find("may be truncated", 1, true) ~= nil
+        and kp[1]:find("results incomplete", 1, true) == nil
     )
+
+    -- a survivor that vanished since the first scan is chunk-specific: the other
+    -- chunks are still searched (only a pattern error / kill / spawn failure stops)
+    reset()
+    local narrow_runs = 0
+    reply = function(cmd)
+      if vim.tbl_contains(cmd, "--files-with-matches") then
+        narrow_runs = narrow_runs + 1
+        if narrow_runs == 1 then
+          return {
+            code = 2,
+            signal = 0,
+            stdout = "",
+            stderr = "rg: ./gone.txt: No such file or directory (os error 2)\n",
+          }
+        end
+        return { code = 0, signal = 0, stdout = first_path_arg(cmd) .. "\n" }
+      end
+      return { code = 0, signal = 0, stdout = first_rows }
+    end
+    local vr = two_patterns()
+    check(
+      "filegrep.chunk: a missing file in one chunk does not stop the later chunks",
+      narrow_runs >= 2 and #vr == narrow_runs - 1
+    )
+
+    -- a killed pattern stops the remaining TOKENS too, not just the remaining chunks
+    reset()
+    reply = function(cmd)
+      if vim.tbl_contains(cmd, "--files-with-matches") then
+        return { code = 1, signal = 9, stdout = "" }
+      end
+      return { code = 0, signal = 0, stdout = "a.txt:1:1:x\nb.txt:2:1:y\n" }
+    end
+    filegrep.query("grep=aa grep=bb grep=cc grep=dd", opts)
+    check("filegrep.chunk: a killed token stops the later tokens", #narrowing_calls() == 1)
 
     -- a regex error in a later token reads the same for every chunk: one spawn
     reset()
@@ -4213,7 +4251,9 @@ do
     local _, sp = two_patterns()
     check(
       "filegrep.chunk: a failed chunk spawn is reported as incomplete",
-      sp[1] and sp[1]:find("failed to run", 1, true) ~= nil
+      sp[1]
+        and sp[1]:find("failed to run", 1, true) ~= nil
+        and sp[1]:find("results incomplete", 1, true) ~= nil
     )
     local before = #narrowing_calls()
     two_patterns()
@@ -4254,13 +4294,35 @@ do
     -- stderr: a blank first line is skipped
     reset()
     reply = function()
-      return { code = 2, signal = 0, stdout = "", stderr = "\n   \nerror: boom here\n" }
+      return { code = 2, signal = 0, stdout = "", stderr = "   \nrg: IO error for operation on x\n" }
     end
     local _, bp = filegrep.query("grep=blank", opts)
     check(
-      "filegrep.fail: blank stderr lines are skipped",
-      bp[1] and bp[1]:find("boom here", 1, true)
+      "filegrep.fail: a blank stderr line does not hide rg's reason",
+      bp[1] and bp[1]:match(": rg: IO error for operation on x$") ~= nil
     )
+
+    -- the FIRST run of a multi-token query failing to spawn is retried, then memoised
+    reset()
+    local first_boom = true
+    reply = function(cmd)
+      if not vim.tbl_contains(cmd, "--files-with-matches") and first_boom then
+        error("spawn failed")
+      end
+      if vim.tbl_contains(cmd, "--files-with-matches") then
+        return { code = 0, signal = 0, stdout = "a.txt\n" }
+      end
+      return { code = 0, signal = 0, stdout = "a.txt:1:1:x\n" }
+    end
+    two_patterns()
+    local c_first = #calls
+    two_patterns()
+    check("filegrep.fail: a failed first-run spawn is retried", #calls > c_first)
+    first_boom = false
+    two_patterns()
+    local c_ok = #calls
+    two_patterns()
+    check("filegrep.fail: ...and memoised once it worked", #calls == c_ok)
 
     -- the narrowed memo is consulted BEFORE the first run: rg1 expired, rgN live
     reset()
@@ -4310,6 +4372,11 @@ do
     check("filegrep.sweep: a new generation arms its own timer", #deferred == 2)
     deferred[1]() -- the stale timer ends without re-arming
     check("filegrep.sweep: a stale timer does not start a second chain", #deferred == 2)
+    filegrep.query("grep=t3", opts)
+    check(
+      "filegrep.sweep: ...and leaves the current generation's armed state alone",
+      #deferred == 2
+    )
     deferred[2]()
     check("filegrep.sweep: the current timer re-arms while entries are live", #deferred == 3)
 
@@ -6875,10 +6942,14 @@ do
   local prev_frecency = package.loaded["pickers.smart.frecency"]
 
   local collect_args, rank_args, lookup_args
+  local reported
   package.loaded["pickers.smart.search"] = {
     collect = function(opts)
       collect_args = opts
-      return { { abspath = "/a" } }, { { abspath = "/b" } }
+      return { { abspath = "/a" } }, { { abspath = "/b" } }, { "a problem" }
+    end,
+    report = function(problems)
+      reported = problems
     end,
   }
   package.loaded["pickers.smart.score"] = {
@@ -6896,6 +6967,10 @@ do
 
   config.apply({ smart = { frecency = { enabled = false } } })
   local result = smart.query("needle", { roots = { "/r" }, find = {} })
+  check(
+    "smart.query: shows the problems of a broken run (the adapters only read items)",
+    reported and reported[1] == "a problem"
+  )
   check("smart.query: forwards query to search.collect", collect_args.query == "needle")
   check("smart.query: forwards roots to search.collect", collect_args.roots[1] == "/r")
   check("smart.query: frecency disabled -> no lookup call", lookup_args == nil)

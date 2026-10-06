@@ -69,6 +69,31 @@ local function first_exe(names)
   return M.find_tool(names)
 end
 
+---Seconds before the same problem message is shown again.
+local REPORT_EVERY_S = 10
+local last_msg, last_at = nil, 0
+
+---Show the first problem of a run (ERR-11: a broken fd/rg run, or a prompt that
+---was refused, must not look like zero matches), at most once per
+---REPORT_EVERY_S for the same message so typing does not flood the screen. The
+---engine adapters only read a core's items, so the cores call this themselves.
+---@param problems string[]|nil
+function M.report(problems)
+  local msg = problems and problems[1]
+  if not msg then return end
+  local now = uv.hrtime() / 1e9
+  if msg == last_msg and now - last_at < REPORT_EVERY_S then return end
+  last_msg, last_at = msg, now
+  vim.schedule(function()
+    require("lib.nvim.notify").create("[pickers.search]").warn(msg)
+  end)
+end
+
+---Forget the notification throttle (tests, and a manual refresh).
+function M.reset_report()
+  last_msg, last_at = nil, 0
+end
+
 ---Characters cmd.exe interprets inside an argument.
 M.CMD_META = '[&|<>%^%%!"]'
 
@@ -90,10 +115,11 @@ end
 ---@return string|nil
 function M.shim_refusal(tool, text)
   if text:find(M.CMD_META) and M.is_cmd_shim(tool) then
+    local binary = tool == "fdfind" and "fd" or tool -- the Debian alias has no .exe
     return tool
       .. ' is a .cmd/.bat shim: a pattern containing & | < > ^ % ! or " cannot be '
       .. "passed to it safely (install "
-      .. tool
+      .. binary
       .. ".exe)"
   end
   return nil
