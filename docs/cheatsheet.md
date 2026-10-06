@@ -87,6 +87,8 @@ config key per entry, is in [BINDINGS.md](BINDINGS.md#1-keymaps-keymaps).
 | `:FindOnSystem` | `:Pickers system files` |
 | `:RepoFiles [repo]` | `:Pickers repos files` (`[repo]` tab-completes from `REPOS_DIR` and skips the repo picker) |
 | `:RepoGrep [repo]` | `:Pickers repos grep` (`[repo]` tab-completes from `REPOS_DIR` and skips the repo picker) |
+| `:FileGrep [query]` | `:Pickers cwd filegrep` — files picker, add `grep=<pattern>` to also filter by content |
+| `:FileGrepConfig [query]` | `:Pickers config filegrep` |
 | `:PickersRepeat` | Replay the last dispatched scope/action, empty prompt |
 | `:PickersScopes` | List every resolvable scope as text, without a picker |
 | `:PickersResume` | `:Pickers builtin resume` — the engine's own last session, prompt and all |
@@ -103,6 +105,16 @@ file matched by name that also has content hits floats to the top. Empty prompt
 keymaps: `cwd_smart` / `config_smart` / `folder_smart`; per-collection
 `keys.smart`. fzf-lua engine needs fzf ≥ 0.45.
 
+## Filegrep action (files + content filter)
+
+```
+:Pickers <scope> filegrep         akronyms grep=NWBC   → path has "akronyms" AND content has NWBC
+```
+
+Several `grep=` AND together, `grep="a b"` for spaces; without `grep=` it is a
+plain files picker. Opt-in keymap `cwd_filegrep`, mapping `<scope>_filegrep`,
+per-collection `keys.filegrep`.
+
 ## Collections
 
 Each collection in `setup({ collections = { ... } })` gets:
@@ -118,6 +130,7 @@ Each collection in `setup({ collections = { ... } })` gets:
 | `keys.files` keymap | if configured |
 | `keys.grep` keymap | if configured |
 | `keys.smart` keymap | if configured |
+| `:NotesLuaFileGrep [query]` / `keys.filegrep` keymap | compat command / if configured |
 
 ### prefix field
 

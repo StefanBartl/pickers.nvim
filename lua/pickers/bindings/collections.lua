@@ -4,7 +4,8 @@
 ---   :{PascalName}Files  →  :Pickers {name} files
 ---   :{PascalName}Grep   →  :Pickers {name} grep
 ---   :{PascalName}Smart  →  :Pickers {name} smart
---- Plus optional keymaps from coll.keys.files / coll.keys.grep / coll.keys.smart.
+---   :{PascalName}FileGrep [query]  →  :Pickers {name} filegrep
+--- Plus optional keymaps from coll.keys.files / .grep / .smart / .filegrep.
 
 local util = require("pickers.bindings.util")
 
@@ -38,6 +39,16 @@ function M.register(coll)
     end, "[pickers coll] :" .. smart_cmd .. " → :Pickers " .. name .. " smart", "?")
   end
 
+  local filegrep_cmd = pascal .. "FileGrep"
+  if vim.fn.exists(":" .. filegrep_cmd) ~= 2 then
+    util.usercmd(filegrep_cmd, function(opts)
+      require("pickers.command").handle({
+        fargs = { name, "filegrep" },
+        query = table.concat(opts.fargs, " "),
+      })
+    end, "[pickers coll] :" .. filegrep_cmd .. " [query] → :Pickers " .. name .. " filegrep", "*")
+  end
+
   -- Optional keymaps from coll.keys
   if type(coll.keys) == "table" then
     if coll.keys.files then
@@ -54,6 +65,11 @@ function M.register(coll)
       util.map(coll.keys.smart, function()
         require("pickers.command").handle({ fargs = { name, "smart" } })
       end, "[pickers] " .. name .. ": smart (grep + find)")
+    end
+    if coll.keys.filegrep then
+      util.map(coll.keys.filegrep, function()
+        require("pickers.command").handle({ fargs = { name, "filegrep" } })
+      end, "[pickers] " .. name .. ": files + grep= content filter")
     end
     -- No which-key registration here: these mappings carry their own `desc`,
     -- which which-key reads by itself. The call that used to sit here
