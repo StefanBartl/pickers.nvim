@@ -6,12 +6,17 @@ beyond `lib.nvim` (auto-detected as a sibling repo or via `$REPOS_DIR`).
 ## Run
 
 ```sh
-nvim -l TESTS/pickers_spec.lua
+bash scripts/test.sh                      # all specs
+bash scripts/test.sh --json ir.json       # plus the machine-readable result
 ```
 
-The script bootstraps its own `runtimepath` from its file location, so it works
-from any working directory. It exits non-zero on the first failing suite, making
-it CI-friendly.
+The runner is [testing.nvim](https://github.com/StefanBartl/testing.nvim); it
+and `lib.nvim` are looked up in `$TESTING_NVIM_DIR` / `$LIB_NVIM_DIR`,
+`.deps/<name>`, `../<name>` and `stdpath('data')/lazy/<name>` (a missing one is
+an error). The spec itself is still a self-running script and can be run
+directly with `nvim -l TESTS/pickers_spec.lua` (it bootstraps its own
+`runtimepath`); it exits non-zero on a failing check. Configuration:
+`.testing.lua`.
 
 ## Coverage
 

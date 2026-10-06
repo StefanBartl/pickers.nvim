@@ -114,10 +114,12 @@ all — that is what collections are for, see [`collections.md`](collections.md)
 `TESTS/` is a headless spec suite.
 
 ```
-nvim -l TESTS/pickers_spec.lua
+bash scripts/test.sh
 ```
 
-Exit 0 is a pass. [GitHub Actions](../.github/workflows/ci.yml) runs it plus
+Run with [testing.nvim](https://github.com/StefanBartl/testing.nvim) (found via
+`$TESTING_NVIM_DIR`, `.deps/`, a sibling checkout or the plugin manager's
+directory; `lib.nvim` the same way). Exit 0 is a pass. [GitHub Actions](../.github/workflows/ci.yml) runs it plus
 stylua and luacheck on every push and pull request to `main`.
 
 Specs assert on resolution and composition — which scope resolved to which
