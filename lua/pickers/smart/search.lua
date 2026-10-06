@@ -69,6 +69,36 @@ local function first_exe(names)
   return M.find_tool(names)
 end
 
+---Characters cmd.exe interprets inside an argument.
+M.CMD_META = '[&|<>%^%%!"]'
+
+---True when `name` resolves to a `.cmd`/`.bat` shim: its command line then goes
+---through cmd.exe, which interprets `& | < > ^ % !` and quotes in ANY argument.
+---@param name string
+---@return boolean
+function M.is_cmd_shim(name)
+  local path = require("lib.nvim.cross.executable").path(name)
+  if not path then return false end
+  local lower = path:lower()
+  return lower:match("%.cmd$") ~= nil or lower:match("%.bat$") ~= nil
+end
+
+---A problem message when `text` would be interpreted by cmd.exe on its way to
+---`tool` (a .cmd/.bat shim), else nil. Such a prompt is refused, not passed on.
+---@param tool string
+---@param text string
+---@return string|nil
+function M.shim_refusal(tool, text)
+  if text:find(M.CMD_META) and M.is_cmd_shim(tool) then
+    return tool
+      .. ' is a .cmd/.bat shim: a pattern containing & | < > ^ % ! or " cannot be '
+      .. "passed to it safely (install "
+      .. tool
+      .. ".exe)"
+  end
+  return nil
+end
+
 ---Forward-slash form of a path printed by fd/rg, without the `./` prefix some
 ---versions emit. A pure string transform on purpose: `vim.fs.normalize` also
 ---expands a leading `~` and `$VAR`, which would rewrite real file names such as
@@ -221,6 +251,11 @@ function M.collect(opts)
     root = vim.fs.normalize(root)
 
     -- ── files (fd) ──────────────────────────────────────────────────────────
+    local fd_refusal = fd and M.shim_refusal(fd, query)
+    if fd_refusal then
+      problems[#problems + 1] = fd_refusal
+      fd = nil -- not for the remaining roots either: same prompt, same shim
+    end
     if fd then
       local cmd = { fd }
       vim.list_extend(cmd, M.fd_args(find, query))
@@ -244,6 +279,11 @@ function M.collect(opts)
     -- ── grep (rg) ───────────────────────────────────────────────────────────
     -- Skip on an empty query: rg needs a pattern, and an empty prompt should
     -- behave like a file picker (files only), filling in once the user types.
+    local rg_refusal = rg and query ~= "" and M.shim_refusal(rg, query)
+    if rg_refusal then
+      problems[#problems + 1] = rg_refusal
+      rg = nil
+    end
     if rg and query ~= "" then
       local cmd = { rg }
       vim.list_extend(cmd, M.rg_args(find, opts.additional_args, query))

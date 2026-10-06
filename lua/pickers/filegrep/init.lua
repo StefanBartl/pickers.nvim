@@ -38,7 +38,6 @@ local uv = vim.uv or vim.loop
 local search = require("pickers.smart.search")
 local score = require("pickers.smart.score")
 local spawn_env = require("lib.nvim.cross.run.env")
-local executable = require("lib.nvim.cross.executable")
 local is_windows = require("lib.nvim.cross.platform.is_windows")
 
 ---A `grep=` value shorter than this (in characters) is ignored: a 1-char pattern
@@ -67,9 +66,6 @@ local MAX_CHUNKS = 8
 local REPORT_EVERY_S = 10
 ---Characters of rg's stderr kept in a problem message.
 local STDERR_MAX_CHARS = 160
----Characters that cmd.exe interprets inside an argument: a pattern containing one
----cannot be passed safely to an rg that is a .cmd/.bat shim.
-local CMD_META = '[&|<>%^%%!"]'
 
 local notify = require("lib.nvim.notify").create("[pickers.filegrep]")
 local ns =
@@ -78,6 +74,9 @@ local ns =
 local cache_keys = {}
 local last_msg, last_at = nil, 0
 local sweep_armed = false
+---Bumped by clear_cache(): a timer armed before it belongs to a previous cache
+---generation and ends instead of re-arming (no second sweep chain).
+local generation = 0
 
 ---@class Pickers.FileGrep.Entry
 ---@field paths    string[]                 Paths relative to the root, sorted
@@ -106,7 +105,9 @@ end
 local function arm_sweep()
   if sweep_armed then return end
   sweep_armed = true
+  local armed_in = generation
   vim.defer_fn(function()
+    if armed_in ~= generation then return end -- stale: clear_cache() re-arms its own
     sweep_armed = false
     local live = {}
     for _, k in ipairs(cache_keys) do
@@ -148,7 +149,8 @@ function M.clear_cache()
   ns.clear()
   cache_keys = {}
   last_msg, last_at = nil, 0
-  sweep_armed = false -- a timer still pending only finds an empty cache and stops
+  generation = generation + 1
+  sweep_armed = false
   search.reset_tool_retry()
 end
 
@@ -239,8 +241,10 @@ end
 local function stderr_reason(stderr)
   local first, err
   for line in stderr:gmatch("[^\r\n]+") do
-    first = first or line
-    if not err and line:match("^error:") then err = line end
+    if line:match("%S") then
+      first = first or line
+      if not err and line:match("^error:") then err = line end
+    end
   end
   if not first then return nil end
   local text = (err and err ~= first) and (first .. " " .. err) or first
@@ -248,15 +252,20 @@ local function stderr_reason(stderr)
   return vim.fn.strcharpart(text, 0, STDERR_MAX_CHARS)
 end
 
----Run one process and return its stdout lines, a problem string (or nil) and
----whether it could not be spawned at all.
+---Run one process and return its stdout lines, a problem string (or nil),
+---whether it could not be spawned at all, and whether to stop issuing more
+---processes of the same kind.
 ---
 --- * `spawn_failed` -- nothing ran: not memoised, retried on the next keystroke.
+---   A `:wait()` that came back empty after the kill is NOT a spawn failure (the
+---   process did run): it counts as killed.
 --- * rg exit 2 WITH hits is a partial success (an unreadable file, a dangling
 ---   symlink): the hits stand and there is no problem to report.
 --- * a run killed at the timeout keeps its partial hits AND its problem.
 --- * any other non-zero exit keeps its problem, extended by rg's stderr reason
 ---   so a regex error says why.
+--- * `abort` -- killed, or exit 2 with no hits (a regex error reads the same for
+---   every file list): the caller should not spawn the remaining chunks.
 ---@internal
 ---@param cmd string[]
 ---@param root string
@@ -266,13 +275,14 @@ end
 ---@return string[] lines
 ---@return string|nil problem
 ---@return boolean spawn_failed
+---@return boolean abort
 local function run(cmd, root, timeout, tool, benign_code)
   local ok, res = pcall(function()
     return vim.system(cmd, spawn_env.apply({ cwd = root, text = true })):wait(timeout)
   end)
   local problem = search.classify_run(tool, root, ok, res, benign_code)
-  local spawn_failed = not ok or not res
-  local killed = res and res.signal ~= nil and res.signal ~= 0
+  local spawn_failed = not ok
+  local killed = (ok and not res) or (res ~= nil and res.signal ~= nil and res.signal ~= 0)
   local lines = {}
   if ok and res and res.stdout then
     for line in res.stdout:gmatch("[^\r\n]+") do
@@ -287,7 +297,8 @@ local function run(cmd, root, timeout, tool, benign_code)
       if reason then problem = problem .. ": " .. reason end
     end
   end
-  return lines, problem, spawn_failed
+  local abort = killed or (res ~= nil and res.code == 2 and #lines == 0)
+  return lines, problem, spawn_failed, abort
 end
 
 ---All files below `root` (fd), memoised.
@@ -373,13 +384,20 @@ local function narrow(rg, root, find, extra, pattern, paths, timeout, explicit_o
   cmds = cmds or { base }
 
   local set, first_problem, any_failed = {}, nil, false
-  for _, cmd in ipairs(cmds) do
-    local lines, problem, spawn_failed = run(cmd, root, timeout, "rg", 1)
-    first_problem = first_problem or problem
-    any_failed = any_failed or spawn_failed
+  for i, cmd in ipairs(cmds) do
+    local lines, problem, spawn_failed, abort = run(cmd, root, timeout, "rg", 1)
     for _, line in ipairs(lines) do
       set[search.unify_path(line)] = true
     end
+    if spawn_failed or abort then
+      -- Do not multiply a failure (every chunk would time out, or hit the same
+      -- regex error) by the number of chunks. What is left unsearched is said so.
+      local incomplete = i < #cmds and " -- results incomplete" or ""
+      first_problem = (problem or first_problem or "rg did not finish") .. incomplete
+      any_failed = spawn_failed
+      break
+    end
+    first_problem = first_problem or problem
   end
   return set, first_problem, any_failed
 end
@@ -433,9 +451,11 @@ end
 ---@return Pickers.FileGrep.Entry
 local function grep_files(root, find, extra, patterns, timeout, rg, explicit_ok)
   if not rg then return { paths = {}, problems = { "rg not found on PATH" } } end
-  local base = first_run(rg, root, find, extra, patterns[1], timeout)
-  if #patterns == 1 or #base.paths == 0 or base.failed then return base end
+  if #patterns == 1 then return first_run(rg, root, find, extra, patterns[1], timeout) end
 
+  -- The narrowed result is looked up FIRST: first_run()'s own memo may have
+  -- expired while this one is still live, and re-running the full-tree scan
+  -- only to throw its result away would be the most expensive step.
   local key = table.concat({
     "rgN",
     root,
@@ -444,6 +464,8 @@ local function grep_files(root, find, extra, patterns, timeout, rg, explicit_ok)
     table.concat(patterns, "\0"),
   }, "\1")
   return cached(key, function()
+    local base = first_run(rg, root, find, extra, patterns[1], timeout)
+    if #base.paths == 0 or base.failed then return base end
     local problems = vim.list_extend({}, base.problems)
     local paths, hits, failed = base.paths, base.hits, false
     for i = 2, #patterns do
@@ -533,18 +555,17 @@ function M.query(query, opts)
   -- A .cmd/.bat shim goes through cmd.exe, which interprets `& | < > ^ % !` and
   -- quotes in ANY argument: file names are never put on its command line
   -- (narrow() scans the tree instead) and a pattern containing one is refused.
-  local rg_path = has_grep and rg and executable.path("rg") or nil
-  local rg_lower = rg_path and rg_path:lower() or ""
-  local explicit_ok = not (rg_lower:match("%.cmd$") or rg_lower:match("%.bat$"))
-  if has_grep and rg and not explicit_ok then
-    for _, pattern in ipairs(parsed.grep) do
-      if pattern:find(CMD_META) then
-        local problems = {
-          'rg is a .cmd/.bat shim: a pattern containing & | < > ^ % ! or " cannot be '
-            .. "passed to it safely (install rg.exe)",
-        }
-        report(problems)
-        return {}, problems
+  local explicit_ok = true
+  if has_grep and rg then
+    explicit_ok = not search.is_cmd_shim(rg)
+    if not explicit_ok then
+      for _, pattern in ipairs(parsed.grep) do
+        local refusal = search.shim_refusal(rg, pattern)
+        if refusal then
+          local problems = { refusal }
+          report(problems)
+          return {}, problems
+        end
       end
     end
   end
