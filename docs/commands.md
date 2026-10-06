@@ -134,6 +134,10 @@ grep="foo bar" cfg       quote a value to put spaces in it
 - Without a usable `grep=` it behaves like the files picker, so it can serve as
   an everyday main picker. A `grep=` value shorter than two characters is
   ignored until it grows (no rg run per half-typed token).
+- Without `grep=` it lists fd's files, ranked by the same simple scorer as
+  `smart` (not the engine's native fuzzy matcher) and cut to `smart.limit`
+  (default 2000) rows. The file list is scored on every keystroke, so on very
+  large trees prefer a narrower scope.
 - Path words must all match (substring first, weak subsequence fallback); the
   `grep=` value is a ripgrep regex, smart-case.
 - A content match shows as `path:line: text` and opens at the first hit; one row

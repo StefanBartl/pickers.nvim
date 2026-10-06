@@ -55,6 +55,9 @@ local function cached(key, fn)
   local hit = cache[key]
   if hit and now - hit.at < CACHE_TTL_MS then return hit.value end
   local value = fn()
+  -- value = { cands, problems }: a failed or timed-out run must be retried,
+  -- not replayed from cache for the whole TTL.
+  if value[2] and #value[2] > 0 then return value end
   if not cache[key] then
     cache_keys[#cache_keys + 1] = key
     if #cache_keys > CACHE_MAX then cache[table.remove(cache_keys, 1)] = nil end
@@ -212,10 +215,14 @@ local function grep_files(root, find, extra, patterns, timeout)
     if problem then problems[#problems + 1] = problem end
 
     local cands = {} ---@type Pickers.FileGrep.Candidate[]
+    -- --max-count caps matching LINES, but --vimgrep still prints one row per
+    -- match on that line: keep only the first row of each file.
+    local seen = {} ---@type table<string, boolean>
     for _, line in ipairs(lines) do
       local file, l, c, text = line:match("^(.-):(%d+):(%d+):(.*)$")
-      if file then
-        local rel = vim.fs.normalize(file)
+      local rel = file and vim.fs.normalize(file)
+      if rel and not seen[rel] then
+        seen[rel] = true
         cands[#cands + 1] = {
           path = rel,
           root = root,
@@ -285,9 +292,12 @@ function M.query(query, opts)
   local timeout = sm.timeout or 3000
   local weights = sm.weights or {}
 
-  local items = {} ---@type Pickers.Smart.Item[]
+  -- Light {cand, score} rows first: the full item tables are only built for the
+  -- rows that survive the limit (a 100k-file tree would otherwise allocate 100k).
+  local scored = {} ---@type { cand: Pickers.FileGrep.Candidate, score: number }[]
   local problems = {} ---@type string[]
   local has_grep = #parsed.grep > 0
+  local no_words = #parsed.path == 0
 
   for _, root in ipairs(roots) do
     root = vim.fs.normalize(root)
@@ -300,34 +310,32 @@ function M.query(query, opts)
     vim.list_extend(problems, probs)
 
     for _, cand in ipairs(cands) do
-      local s = M.score_path(parsed.path, cand.path, weights)
-      if s then
-        local item = {
-          kind = cand.lnum and "grep" or "file",
-          path = cand.path,
-          root = cand.root,
-          abspath = cand.abspath,
-          lnum = cand.lnum,
-          col = cand.col,
-          text = cand.text,
-          score = s,
-          display = display(cand),
-        }
-        items[#items + 1] = item
-      end
+      local s = no_words and 0 or M.score_path(parsed.path, cand.path, weights)
+      if s then scored[#scored + 1] = { cand = cand, score = s } end
     end
   end
 
-  table.sort(items, function(a, b)
-    if a.score == b.score then return a.path < b.path end
+  table.sort(scored, function(a, b)
+    if a.score == b.score then return a.cand.path < b.cand.path end
     return a.score > b.score
   end)
 
-  local limit = sm.limit
-  if limit and #items > limit then
-    for i = #items, limit + 1, -1 do
-      items[i] = nil
-    end
+  local n = #scored
+  if sm.limit and n > sm.limit then n = sm.limit end
+  local items = {} ---@type Pickers.Smart.Item[]
+  for i = 1, n do
+    local cand = scored[i].cand
+    items[i] = {
+      kind = cand.lnum and "grep" or "file",
+      path = cand.path,
+      root = cand.root,
+      abspath = cand.abspath,
+      lnum = cand.lnum,
+      col = cand.col,
+      text = cand.text,
+      score = scored[i].score,
+      display = display(cand),
+    }
   end
   for i, it in ipairs(items) do
     it._rank = i
