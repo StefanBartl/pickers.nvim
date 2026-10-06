@@ -197,6 +197,8 @@ All commands from the original modules are preserved as aliases:
 | `:FindOnSystem` | `:Pickers system files` |
 | `:RepoFiles [repo]` | `:Pickers repos files` (or jump straight to `[repo]`, tab-completed) |
 | `:RepoGrep [repo]` | `:Pickers repos grep` (or jump straight to `[repo]`, tab-completed) |
+| `:FileGrep [query]` | `:Pickers cwd filegrep` (the optional query seeds the prompt, e.g. `:FileGrep akronyms grep=NWBC`) |
+| `:FileGrepConfig [query]` | `:Pickers config filegrep` |
 
 Each user-defined collection also gets a `:{PascalName}Smart` command
 (alongside `:{PascalName}Files` / `:{PascalName}Grep`) → `:Pickers {name} smart`.

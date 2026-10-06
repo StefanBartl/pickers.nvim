@@ -79,7 +79,7 @@ If startup time matters and you only want the plugin loaded on first use:
     "Pickers",
     "DirPicker", "FindConfig", "GrepConfig", "FindInFolder",
     "LiveGrep", "AllDrives", "AllDrivesGrep", "FindOnSystem",
-    "RepoFiles", "RepoGrep",
+    "RepoFiles", "RepoGrep", "FileGrep", "FileGrepConfig",
     "PickersRepeat", "PickersScopes", "PickersResume",
   },
   keys = {

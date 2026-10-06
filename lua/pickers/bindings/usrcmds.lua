@@ -4,6 +4,7 @@
 ---   :DirPicker [nav]  :FindInFolder  :FindConfig  :GrepConfig
 ---   :LiveGrep  :AllDrives  :AllDrivesGrep  :FindOnSystem
 ---   :RepoFiles [repo]  :RepoGrep [repo]
+---   :FileGrep [query]  :FileGrepConfig [query]
 ---   :PickersRepeat  :PickersScopes  :PickersResume
 ---
 --- :RepoFiles/:RepoGrep accept an optional repo-name argument (tab-completed
@@ -160,6 +161,22 @@ function M.register()
     "?",
     complete_repo
   )
+
+  -- Files picker with a `grep=<pattern>` content filter; the optional argument
+  -- seeds the prompt, e.g. `:FileGrep akronyms grep=NWBC`.
+  usercmd("FileGrep", function(opts)
+    require("pickers.command").handle({
+      fargs = { "cwd", "filegrep" },
+      query = table.concat(opts.fargs, " "),
+    })
+  end, "[pickers] :FileGrep [query] → :Pickers cwd filegrep (query seeds the prompt)", "*")
+
+  usercmd("FileGrepConfig", function(opts)
+    require("pickers.command").handle({
+      fargs = { "config", "filegrep" },
+      query = table.concat(opts.fargs, " "),
+    })
+  end, "[pickers] :FileGrepConfig [query] → :Pickers config filegrep", "*")
 
   usercmd("PickersRepeat", function(_)
     require("pickers.last").run()

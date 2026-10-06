@@ -43,7 +43,7 @@ Every keymap, user command, and autocommand `pickers.nvim` registers. Kept in sy
 
 | Command Name (`name`) | Equivalent Invocation (`maps_to`) | Arguments (`nargs`) | Description |
 | --- | --- | --- | --- |
-| `:Pickers` | `:Pickers [scope] [nav\|action] [action]` | `*` | Unified entry point *(always registered; `action` ∈ `files`/`grep`/`smart`)* |
+| `:Pickers` | `:Pickers [scope] [nav\|action] [action]` | `*` | Unified entry point *(always registered; `action` ∈ `files`/`grep`/`smart`/`filegrep`)* |
 | `:DirPicker` | `:Pickers dir [nav]` | `*` | Dir navigation picker |
 | `:FindConfig` | `:Pickers config files` | `?` | Find files in nvim config |
 | `:GrepConfig` | `:Pickers config grep` | `?` | Live grep in nvim config |
@@ -54,6 +54,8 @@ Every keymap, user command, and autocommand `pickers.nvim` registers. Kept in sy
 | `:FindOnSystem` | `:Pickers system files` | `?` | Systemwide fd search (prompts) |
 | `:RepoFiles [repo]` | `:Pickers repos files` | `?` | Pick a repo, then find files. With `[repo]` (tab-completed from `REPOS_DIR`), jumps straight into files for that repo |
 | `:RepoGrep [repo]` | `:Pickers repos grep` | `?` | Pick a repo, then live grep. With `[repo]` (tab-completed from `REPOS_DIR`), jumps straight into grep for that repo |
+| `:FileGrep [query]` | `:Pickers cwd filegrep` | `*` | Files picker with a `grep=<pattern>` content filter; the optional query seeds the prompt |
+| `:FileGrepConfig [query]` | `:Pickers config filegrep` | `*` | Same, in the nvim config |
 | `:PickersRepeat` | `pickers.last.run()` | `?` | Reopen the most recently dispatched `:Pickers` action (same resolved scope/root/action), without re-resolving any interactive sub-picker |
 | `:PickersScopes` | `pickers.ui.scope_picker.list()` | `?` | List every scope `:Pickers` can resolve — built-in scopes plus every user-defined collection — via `notify.info`, without opening the interactive scope picker |
 | `:PickersResume` | `:Pickers builtin resume` | `?` | Reopen the last picker with its last query (the engine's own native resume/history-of-open-pickers feature); fzf-lua has no resume concept |
