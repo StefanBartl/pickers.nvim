@@ -5804,6 +5804,8 @@ do
     "FindOnSystem",
     "RepoFiles",
     "RepoGrep",
+    "FileGrep",
+    "FileGrepConfig",
     "PickersRepeat",
     "PickersScopes",
     "PickersResume",
@@ -5838,6 +5840,22 @@ do
   check(
     "usrcmds: :LiveGrep -> handle({cwd, grep})",
     captured and vim.deep_equal(captured.fargs, { "cwd", "grep" })
+  )
+
+  captured = nil
+  vim.cmd("FileGrep akronyms grep=NWBC")
+  check(
+    "usrcmds: :FileGrep -> handle({cwd, filegrep}, query seeded)",
+    captured
+      and vim.deep_equal(captured.fargs, { "cwd", "filegrep" })
+      and captured.query == "akronyms grep=NWBC"
+  )
+
+  captured = nil
+  vim.cmd("FileGrepConfig")
+  check(
+    "usrcmds: :FileGrepConfig -> handle({config, filegrep})",
+    captured and vim.deep_equal(captured.fargs, { "config", "filegrep" })
   )
 
   captured = nil
