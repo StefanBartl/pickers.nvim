@@ -318,6 +318,19 @@ function M.collect(opts)
       end)
       -- rg's own exit code 1 means "ran fine, matched nothing" -- benign.
       local problem = M.classify_run("rg", root, ok, res, 1)
+      -- Exit 2 WITH hits is a partial success (one unreadable file or dangling
+      -- symlink in the tree): the hits stand, there is nothing to warn about.
+      if
+        problem
+        and ok
+        and res
+        and res.code == 2
+        and (res.signal == nil or res.signal == 0)
+        and type(res.stdout) == "string"
+        and res.stdout ~= ""
+      then
+        problem = nil
+      end
       if problem then problems[#problems + 1] = problem end
       if ok and res and res.stdout then
         for line in res.stdout:gmatch("[^\r\n]+") do

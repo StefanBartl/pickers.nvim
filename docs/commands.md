@@ -116,8 +116,9 @@ telescope/fzf-lua/snacks because all three drive the same core
 > fzf-lua note: the smart action uses fzf-lua's Lua-function live mode, which
 > needs fzf ≥ 0.45. On older fzf, use the telescope or snacks engine for it.
 
-A broken fd/rg run (missing tool, killed at `smart.timeout`, invalid regex) is
-reported as a warning (at most once per 10 s), and if `fd`/`rg` is a `.cmd`/`.bat`
+A broken fd/rg run (killed at `smart.timeout`, invalid regex, no result) is
+reported as a warning (at most once per 10 s; rg exit 2 with hits, e.g. one
+unreadable file, is not a problem), and if `fd`/`rg` is a `.cmd`/`.bat`
 shim a query containing `& | < > ^ % !` or a quote is refused with a message
 instead of being passed to cmd.exe.
 
