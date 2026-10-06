@@ -3205,6 +3205,38 @@ do
   filegrep.query("grep=NWBC src", opts)
   check("filegrep.query: typing in the path part does not respawn rg", spawned == first_spawns)
 
+  -- rg --vimgrep prints one row per match on the first matching line.
+  local rg_rows = "a.txt:1:1:foo and foo\na.txt:1:9:foo and foo\nb.txt:2:1:foo\n"
+  vim.system = function()
+    return {
+      wait = function()
+        return { code = 0, signal = 0, stdout = rg_rows }
+      end,
+    }
+  end
+  filegrep.clear_cache()
+  local dup = filegrep.query("grep=foo", opts)
+  check("filegrep.query: one row per file even with repeated hits", #dup == 2)
+
+  -- A killed run must be retried, not replayed from the cache.
+  local fail = true
+  local fail_spawns = 0
+  vim.system = function()
+    fail_spawns = fail_spawns + 1
+    return {
+      wait = function()
+        if fail then return { code = 1, signal = 9, stdout = "" } end
+        return { code = 0, signal = 0, stdout = rg_rows }
+      end,
+    }
+  end
+  filegrep.clear_cache()
+  local _, probs = filegrep.query("grep=foo", opts)
+  check("filegrep.query: a killed rg is reported", #probs == 1)
+  fail = false
+  local retry = filegrep.query("grep=foo", opts)
+  check("filegrep.query: a failed run is not cached", #retry == 2 and fail_spawns == 2)
+
   vim.system = orig_system
   vim.fn.executable = orig_executable
   filegrep.clear_cache()
