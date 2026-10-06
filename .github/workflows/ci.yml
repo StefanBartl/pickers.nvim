@@ -69,10 +69,27 @@ jobs:
           repository: "StefanBartl/testing.nvim"
           path: testing.nvim
           ref: ci-verified
+      # The filegrep specs run the REAL fd and rg against a temp tree (literal
+      # file names, find.* parity, regex errors): without them that block is
+      # skipped. Best effort on every OS; PICKERS_REQUIRE_TOOLS (below) turns a
+      # missing tool into a failure where installing is reliable.
+      - name: Install fd and ripgrep
+        continue-on-error: true
+        run: |
+          case "$RUNNER_OS" in
+            Linux)
+              sudo apt-get update && sudo apt-get install -y fd-find ripgrep
+              sudo ln -sf "$(command -v fdfind)" /usr/local/bin/fd
+              ;;
+            macOS) brew install fd ripgrep ;;
+            Windows) choco install -y fd ripgrep ;;
+          esac
+
       - name: Run tests
         working-directory: pickers.nvim
         env:
           REPOS_DIR: ${{ github.workspace }}
+          PICKERS_REQUIRE_TOOLS: ${{ matrix.os != 'windows-latest' && '1' || '0' }}
         run: |
           exec > >(tee -a "$RUNNER_TEMP/test-output.log") 2>&1
           bash scripts/test.sh --json "$RUNNER_TEMP/testing-ir.json"

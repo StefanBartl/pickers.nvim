@@ -10,7 +10,7 @@ read_globals = { "vim" }
 -- pickers.smart.search's fd/rg calls, stubbed out so no subprocess actually
 -- runs; vim.fn.mkdir/vim.uv.fs_scandir: simulating a filesystem-boundary
 -- failure without touching a real unwritable path or broken mount).
-globals = { "vim.g", "vim.ui", "vim.system", "vim.fn", "vim.uv" }
+globals = { "vim.g", "vim.ui", "vim.system", "vim.fn", "vim.uv", "vim.notify" }
 
 -- The codebase favours readability over an 80/120 column cap.
 max_line_length = false

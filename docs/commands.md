@@ -141,6 +141,8 @@ grep="say \"hi\""        \" is a literal quote, \<space> a literal space
   exactly like the file listing, so a `grep=` only ever **narrows** the plain
   list: it never reveals gitignored or hidden files the listing hides. Further
   `grep=` tokens search only the files that already matched.
+- A source's `additional_args` are appended after these flags, so they can widen
+  the set again (a `--hidden` there wins over `find.hidden = false`).
 - Other backslashes are passed to rg as typed, so regex escapes (`\b`, `\(`)
   work; a literal `C++` needs `C\+\+`.
 - A broken run (rg/fd missing, killed at `smart.timeout`, invalid regex) is

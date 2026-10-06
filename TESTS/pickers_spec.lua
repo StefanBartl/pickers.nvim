@@ -3089,6 +3089,8 @@ do
   vim.fn.executable = function(name)
     return (name == "fd") and 1 or 0
   end
+  -- lib.nvim memoises PATH lookups: drop what the real machine put there.
+  require("lib.nvim.cross.executable").clear()
 
   local next_result
   vim.system = function(_cmd, _opts)
@@ -3113,7 +3115,34 @@ do
 
   vim.system = orig_system
   vim.fn.executable = orig_executable
+  require("lib.nvim.cross.executable").clear()
   package.loaded["pickers.smart.search"] = nil
+end
+
+-- ── pickers.smart.search — unify_path / join_root ───────────────────────────
+do
+  local search = require("pickers.smart.search")
+  check(
+    "search.unify_path: ~ and $VAR in a name are literal",
+    search.unify_path("~$report.docx") == "~$report.docx"
+      and search.unify_path("a/$HOME.txt") == "a/$HOME.txt"
+  )
+  check("search.unify_path: a leading ./ is stripped", search.unify_path("./a/b.lua") == "a/b.lua")
+  check(
+    "search.unify_path: .github is not a ./ prefix",
+    search.unify_path(".github/x.yml") == ".github/x.yml"
+  )
+  local sep = require("lib.nvim.cross.platform.is_windows")() and "a/b" or "a\\b"
+  check(
+    "search.unify_path: backslash is a separator on Windows only",
+    search.unify_path("a\\b") == sep
+  )
+  check("search.join_root: plain root", search.join_root("/r", "x/y.lua") == "/r/x/y.lua")
+  check(
+    "search.join_root: a drive root does not double the slash",
+    search.join_root("C:/", "x.lua") == "C:/x.lua"
+  )
+  check("search.join_root: the filesystem root", search.join_root("/", "etc/x") == "/etc/x")
 end
 
 -- ── pickers.filegrep — prompt parser, path scoring, query orchestration ─────
@@ -3347,8 +3376,8 @@ do
     "filegrep.argv: later pattern narrows to the survivors after '-- <pattern>'",
     index_of(calls[2], "--files-with-matches")
       and calls[2][dd + 1] == "bb"
-      and calls[2][dd + 2] == "a.txt"
-      and calls[2][dd + 3] == "b.txt"
+      and calls[2][dd + 2] == "./a.txt" -- ./ so a file named "-" is not read as stdin
+      and calls[2][dd + 3] == "./b.txt"
   )
   check("filegrep.argv: only the surviving file is listed", #its == 1 and its[1].path == "b.txt")
 
@@ -3362,7 +3391,7 @@ do
   filegrep.clear_cache()
   filegrep.query("grep=aa grep=bb", opts)
   check(
-    "filegrep.argv: above NARROW_MAX the later pattern scans the whole tree",
+    "filegrep.argv: survivors that do not fit one command line -> one whole-tree scan",
     calls[2] and calls[2][#calls[2]] == "bb"
   )
   rg_rows = "a.txt:1:1:x\nb.txt:2:1:y\n"
@@ -3398,13 +3427,13 @@ do
   -- the memo is bounded: pushing more than CACHE_MAX keys evicts the oldest
   filegrep.clear_cache()
   calls = {}
-  for i = 1, 12 do
+  for i = 1, 40 do
     filegrep.query("grep=pat" .. i, opts)
   end
   local before = #calls
   filegrep.query("grep=pat1", opts)
   check("filegrep.cache: an evicted key is recomputed", #calls == before + 1)
-  filegrep.query("grep=pat12", opts)
+  filegrep.query("grep=pat40", opts)
   check("filegrep.cache: a recent key is served from the memo", #calls == before + 1)
 
   vim.system = orig_system
@@ -3419,7 +3448,13 @@ do
   local exe = require("lib.nvim.cross.executable")
   exe.clear()
   if not (exe.find({ "fd", "fdfind" }) and exe.find("rg")) then
-    print("  skip filegrep integration: fd/rg not installed")
+    -- CI installs both and sets PICKERS_REQUIRE_TOOLS=1, so the real-tool checks
+    -- cannot silently turn into a no-op there.
+    if vim.env.PICKERS_REQUIRE_TOOLS == "1" then
+      check("filegrep.real: fd and rg are installed (PICKERS_REQUIRE_TOOLS=1)", false)
+    else
+      print("  skip filegrep integration: fd/rg not installed")
+    end
   else
     local base = vim.fn.tempname()
     local function write(rel, lines)
@@ -3434,6 +3469,13 @@ do
     write("opt.txt", { "--pre=cmd" })
     write("ignored/gi.txt", { "NWBC" })
     write(".hid/h.txt", { "NWBC" })
+    -- names that every layer has to keep byte-exact (also through the
+    -- narrowing step, where they travel on rg's command line)
+    write("~both.txt", { "NWBC TODO" })
+    write("$HOME.txt", { "NWBC TODO" })
+    write("-", { "NWBC TODO" }) -- a bare "-" argument means stdin to rg
+    local is_win = require("lib.nvim.cross.platform.is_windows")()
+    if not is_win then write("back\\slash.txt", { "NWBC TODO" }) end
     base = vim.fs.normalize(base)
 
     local function paths(items)
@@ -3495,9 +3537,38 @@ do
     )
 
     local both = q("grep=NWBC grep=TODO", find)
+    local expected = { "$HOME.txt", "-", "plain.txt", "~both.txt" }
+    if not is_win then
+      expected = { "$HOME.txt", "-", "back\\slash.txt", "plain.txt", "~both.txt" }
+    end
+    table.sort(expected)
     check(
-      "filegrep.real: two patterns narrow to the file with both",
-      vim.deep_equal(paths(both), { "plain.txt" })
+      "filegrep.real: two patterns narrow to the files with both (odd names intact)",
+      vim.deep_equal(paths(both), expected)
+    )
+    for _, it in ipairs(both) do
+      if vim.uv.fs_stat(it.abspath) == nil then
+        check("filegrep.real: abspath exists for " .. it.path, false)
+      end
+    end
+    check(
+      "filegrep.real: every row of the narrowed result points at a real file",
+      #both == #expected
+    )
+
+    if not is_win then
+      local bs = q("back", find)
+      check(
+        "filegrep.real: a backslash in a POSIX file name is kept",
+        bs[1] and bs[1].path == "back\\slash.txt" and vim.uv.fs_stat(bs[1].abspath) ~= nil
+      )
+    end
+
+    check("filegrep.real: path words are case-insensitive", has_path(q("PLAIN", find), "plain.txt"))
+    local none, none_problems = q("grep=zzzqqq", find)
+    check(
+      "filegrep.real: a clean zero-hit grep is not a problem (rg exit 1)",
+      #none == 0 and #none_problems == 0
     )
 
     local bad, bad_problems = q("grep=(a", find)
@@ -3627,6 +3698,197 @@ do
   end
 end
 
+-- ── pickers.filegrep — failure semantics, throttle, shims, ties, tool retry ─
+do
+  local filegrep = require("pickers.filegrep")
+  local exe = require("lib.nvim.cross.executable")
+  local orig_system, orig_executable = vim.system, vim.fn.executable
+  local orig_exepath, orig_notify = vim.fn.exepath, vim.notify
+
+  local have = { fd = true, rg = true }
+  vim.fn.executable = function(name)
+    return have[name] and 1 or 0
+  end
+  vim.fn.exepath = function(name)
+    return have[name] and ("/bin/" .. name) or ""
+  end
+  exe.clear()
+
+  local calls, reply = {}, { code = 0, signal = 0, stdout = "" }
+  vim.system = function(cmd)
+    calls[#calls + 1] = vim.deepcopy(cmd)
+    local r = type(reply) == "function" and reply(cmd) or reply
+    return {
+      wait = function()
+        return r
+      end,
+    }
+  end
+  local notes = {}
+  vim.notify = function(msg)
+    notes[#notes + 1] = msg
+  end
+
+  local opts = { roots = { "/r" }, find = { hidden = true } }
+  local function reset()
+    -- report() notifies through vim.schedule: let a previous case's pending
+    -- message land (and be discarded) before counting this case's.
+    vim.wait(30, function()
+      return false
+    end)
+    calls = {}
+    notes = {}
+    filegrep.clear_cache()
+  end
+
+  -- rg exit 2 WITH hits (an unreadable file): the hits stand, nothing to report,
+  -- and the result is memoised so typing in the path part respawns nothing.
+  reset()
+  reply = { code = 2, signal = 0, stdout = "a.txt:1:1:x\nb.txt:2:1:y\n", stderr = "perm denied" }
+  local r1, p1 = filegrep.query("grep=aa", opts)
+  filegrep.query("grep=aa a", opts)
+  check(
+    "filegrep.fail: rg exit 2 with hits keeps the hits and reports no problem",
+    #r1 == 2 and #p1 == 0
+  )
+  check("filegrep.fail: ...and is memoised (one spawn)", #calls == 1)
+
+  -- rg exit 2 with NO hits (a regex error): the problem carries rg's first
+  -- stderr line, and the empty result is memoised too (the same prompt would
+  -- fail the same way).
+  reset()
+  reply = { code = 2, signal = 0, stdout = "", stderr = "rg: regex parse error:\n  (a" }
+  local r2, p2 = filegrep.query("grep=(a", opts)
+  filegrep.query("grep=(a b", opts)
+  check(
+    "filegrep.fail: a regex error is reported with rg's own words",
+    #r2 == 0 and p2[1] and p2[1]:find("regex parse error", 1, true) ~= nil
+  )
+  check("filegrep.fail: ...and not respawned while typing the path part", #calls == 1)
+
+  -- killed (timeout): reported once per throttle window, never memoised
+  reset()
+  reply = { code = 1, signal = 9, stdout = "" }
+  filegrep.query("grep=aa", opts)
+  filegrep.query("grep=aa x", opts)
+  filegrep.query("grep=aa xy", opts)
+  vim.wait(200, function()
+    return #notes >= 1
+  end)
+  check("filegrep.fail: a killed run is retried every time", #calls == 3)
+  check(
+    "filegrep.fail: the same problem is shown once, not per keystroke",
+    #notes == 1 and notes[1]:find("killed", 1, true) ~= nil
+  )
+
+  -- control characters from stderr never reach the message
+  reset()
+  reply = { code = 2, signal = 0, stdout = "", stderr = "bad\27[31mred\27[0m thing" }
+  local _, p3 = filegrep.query("grep=zz", opts)
+  check("filegrep.fail: stderr is stripped of control characters", not p3[1]:find("\27", 1, true))
+
+  -- explicit survivor paths: never when rg is a .cmd/.bat shim (cmd.exe would
+  -- interpret file names), always after "--" otherwise
+  local function two_pattern_calls()
+    reset()
+    reply = function(cmd)
+      if vim.tbl_contains(cmd, "--files-with-matches") then
+        return { code = 0, signal = 0, stdout = "b.txt\n" }
+      end
+      return { code = 0, signal = 0, stdout = "a.txt:1:1:x\nb.txt:2:1:y\n" }
+    end
+    filegrep.query("grep=aa grep=bb", opts)
+    return calls[2]
+  end
+  exe.clear()
+  local plain = two_pattern_calls()
+  check("filegrep.shim: a real executable gets explicit paths", plain[#plain] == "./b.txt")
+  vim.fn.exepath = function()
+    return "C:\\tools\\rg.cmd"
+  end
+  exe.clear()
+  local shim = two_pattern_calls()
+  check("filegrep.shim: a .cmd shim gets a whole-tree scan, no file names", shim[#shim] == "bb")
+  vim.fn.exepath = function(name)
+    return have[name] and ("/bin/" .. name) or ""
+  end
+  exe.clear()
+
+  -- best `limit` rows with ties at the cut-off, in path order
+  local config = require("pickers.config")
+  config.apply({ smart = { limit = 2 } })
+  reset()
+  reply = { code = 0, signal = 0, stdout = "a3.lua\nb.lua\na1.lua\na2.lua\n" }
+  local lim = filegrep.query("a", opts)
+  check(
+    "filegrep.limit: the two best rows survive, ties broken by path",
+    #lim == 2 and lim[1].path == "a1.lua" and lim[2].path == "a2.lua"
+  )
+  config.apply({ smart = { limit = 2000 } })
+
+  -- fd listing: one case-insensitive path word
+  reset()
+  reply = { code = 0, signal = 0, stdout = "docs/Akronyms.md\nsrc/x.lua\n" }
+  local ci = filegrep.query("AKRONYMS", opts)
+  check(
+    "filegrep.query: path words are case-insensitive",
+    #ci == 1 and ci[1].path == "docs/Akronyms.md"
+  )
+
+  -- multi-root, empty prompt: merged by path, later roots are not starved
+  config.apply({ smart = { limit = 3 } })
+  reset()
+  reply = function(cmd)
+    return { code = 0, signal = 0, stdout = "m.lua\nn.lua\nz.lua\n" }
+  end
+  local mr = filegrep.query("", { roots = { "/r1", "/r2" }, find = opts.find })
+  check(
+    "filegrep.query: an empty prompt over two roots merges by path under the limit",
+    #mr == 3 and mr[1].path == "m.lua" and mr[2].path == "m.lua" and mr[3].path == "n.lua"
+  )
+  config.apply({ smart = { limit = 2000 } })
+
+  -- a drive root does not double the slash in abspath
+  reset()
+  reply = { code = 0, signal = 0, stdout = "x.lua\n" }
+  local dr = filegrep.query("", { roots = { "C:/" }, find = opts.find })
+  check(
+    "filegrep.query: abspath under a drive root has a single slash",
+    dr[1].abspath == "C:/x.lua"
+  )
+
+  -- a tool installed while nvim runs is found again (lib.nvim memoises "missing")
+  have.rg = false
+  exe.clear()
+  reset()
+  local _, miss = filegrep.query("grep=aa", opts)
+  check("filegrep.tool: a missing rg is reported", miss[1] == "rg not found on PATH")
+  have.rg = true
+  filegrep.clear_cache() -- also resets the re-lookup throttle
+  reply = { code = 0, signal = 0, stdout = "a.txt:1:1:x\n" }
+  local found = filegrep.query("grep=aa", opts)
+  check("filegrep.tool: ...and found again once it is installed", #found == 1)
+
+  -- parser: an escaped backslash does not escape the following space/quote
+  local pe = filegrep.parse([[grep=foo\\ bar]])
+  check(
+    "filegrep.parse: \\\\ before a space ends the value",
+    pe.grep[1] == [[foo\\]] and pe.path[1] == "bar"
+  )
+  local pq = filegrep.parse([[grep="C:\\temp\\" src]])
+  check(
+    "filegrep.parse: a quoted value can end in an escaped backslash",
+    pq.grep[1] == [[C:\\temp\\]] and pq.path[1] == "src"
+  )
+
+  vim.system = orig_system
+  vim.fn.executable = orig_executable
+  vim.fn.exepath = orig_exepath
+  vim.notify = orig_notify
+  exe.clear()
+  filegrep.clear_cache()
+end
+
 -- ── actions.filegrep / actions.dir: forwarded fields ────────────────────────
 do
   local afg = require("pickers.actions.filegrep")
@@ -3669,6 +3931,37 @@ do
     seen and seen.query == "akronyms grep=NWBC"
   )
   package.loaded["pickers.command"] = prev_command
+
+  -- command.handle wiring: find_all and the query reach the filegrep action,
+  -- including through the dir scope.
+  local prev_engines, prev_last = package.loaded["pickers.engines"], package.loaded["pickers.last"]
+  local smart_opts
+  package.loaded["pickers.engines"] = {
+    load = function()
+      return {
+        smart = function(o)
+          smart_opts = o
+        end,
+      }
+    end,
+  }
+  package.loaded["pickers.last"] = { set = function() end }
+  local command = require("pickers.command")
+  command.handle({ fargs = { "cwd", "filegrep", "all" }, query = "q grep=zz" })
+  check(
+    "command.handle: 'cwd filegrep all' forces the find-all flags and seeds the query",
+    smart_opts
+      and smart_opts.core == "filegrep"
+      and smart_opts.find.no_ignore == true
+      and smart_opts.query == "q grep=zz"
+  )
+  smart_opts = nil
+  command.handle({ fargs = { "dir", "cwd", "filegrep" }, query = "q grep=zz" })
+  check(
+    "command.handle: the dir scope forwards the query to filegrep",
+    smart_opts and smart_opts.core == "filegrep" and smart_opts.query == "q grep=zz"
+  )
+  package.loaded["pickers.engines"], package.loaded["pickers.last"] = prev_engines, prev_last
 end
 
 -- ── pickers.smart.search — rg_files_args ────────────────────────────────────

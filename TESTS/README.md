@@ -151,3 +151,16 @@ Test count: 575 → 592 checks (0 fails), stable across repeated runs.
 (`.luacheckrc` gained `vim.system` alongside the existing `vim.g`/`vim.ui`
 allowance, for the same reason: the spec monkeypatches it around a handful
 of cases and restores it right after).
+
+## filegrep (real tools)
+
+The `filegrep` suites run the **real** `fd` and `rg` against a temp tree (literal
+file names such as `~both.txt`, `$HOME.txt`, `-`, a POSIX file with a backslash;
+`find.hidden` / `find.no_ignore` parity between the listing and `grep=`; regex
+errors; the narrowing of a second `grep=`). They are skipped, with a printed
+note, when `fd` or `rg` is missing. `PICKERS_REQUIRE_TOOLS=1` (set by CI on
+Linux and macOS, which install both) turns a missing tool into a failure so the
+block cannot silently become a no-op. The other filegrep cases stub
+`vim.system`/`vim.fn.executable`/`vim.fn.exepath` and clear lib.nvim's memoised
+executable lookup (`require("lib.nvim.cross.executable").clear()`) around the
+stubs.
