@@ -8,5 +8,6 @@
 ---| '"files"'
 ---| '"grep"'
 ---| '"smart"'   # Combined grep + find-files, merged and ranked (pickers.smart)
+---| '"filegrep"' # Files filtered by path AND (via `grep=<pattern>` in the prompt) by content (pickers.filegrep)
 
 return {}

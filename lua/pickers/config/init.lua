@@ -394,6 +394,7 @@ local NESTED_OPTS = {
     "cwd_smart",
     "config_smart",
     "folder_smart",
+    "cwd_filegrep",
     "cwd_find_all",
   },
   usercmds = { "enable" },

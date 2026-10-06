@@ -20,6 +20,7 @@
 ---@field find_command    string[]|nil
 ---@field additional_args string[]|nil
 ---@field on_select      fun(path: string)|nil  pick_files: called with the absolute path of the file the user chose, AFTER the engine's own default action opened it (a multi-selection is not reported). Lets a caller do something with the pick -- filetree.nvim reveals it in its tree -- without replacing what opening does
+---@field core            "smart"|"filegrep"|nil  smart: which per-keystroke query core feeds the live picker (default "smart")
 ---@field find            Pickers.FindOpts|nil   pick_files: full flags (ignored when find_command is set). live_grep: only `.exclude` is honoured (hidden/no_ignore/follow are hardcoded there already)
 
 -- ###########################################################################

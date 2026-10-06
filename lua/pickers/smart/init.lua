@@ -40,6 +40,16 @@ function M.config()
   return vim.tbl_deep_extend("force", M.defaults(), user)
 end
 
+---The per-keystroke query core behind the engines' live `smart` picker:
+---`pickers.smart` itself by default, `pickers.filegrep` for the filegrep
+---action. Both expose the same `query(query, opts) -> items, problems`.
+---@param name "smart"|"filegrep"|nil
+---@return { query: fun(query: string, opts: table): Pickers.Smart.Item[], string[] }
+function M.core(name)
+  if name == "filegrep" then return require("pickers.filegrep") end
+  return M
+end
+
 ---Run a combined grep + find search for `query` and return the ranked items.
 ---@param query string
 ---@param opts  { roots: string[], find: Pickers.FindOpts, additional_args?: string[] }

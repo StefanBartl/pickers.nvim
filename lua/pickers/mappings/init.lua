@@ -55,11 +55,11 @@ local BASE_SCOPES = {
 ---@param name string
 ---@return "builtin"|"scope_action"|"find_all"|nil kind
 ---@return string|nil scope
----@return "files"|"grep"|"smart"|nil action
+---@return "files"|"grep"|"smart"|"filegrep"|nil action
 function M.classify(name)
   if vim.tbl_contains(require("pickers.builtins").names(), name) then return "builtin" end
 
-  for _, action in ipairs({ "files", "grep", "smart" }) do
+  for _, action in ipairs({ "files", "grep", "smart", "filegrep" }) do
     local scope = name:match("^(.+)_" .. action .. "$")
     if scope and scope ~= "" then return "scope_action", scope, action end
   end
@@ -139,7 +139,7 @@ function M.apply(cfg)
           "mappings."
             .. name
             .. ": unresolvable name, skipping. Expected a pickers.builtins "
-            .. "name or <scope>_<files|grep|smart|find_all> with a known scope/collection."
+            .. "name or <scope>_<files|grep|smart|filegrep|find_all> with a known scope/collection."
         )
       end
     end

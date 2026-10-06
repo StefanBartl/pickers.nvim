@@ -232,7 +232,7 @@ function M.smart(opts)
     preview = preview_fn(),
     matcher = { sort_empty = false },
     finder = function(_, ctx)
-      local items = require("pickers.smart").query(ctx.filter.search or "", {
+      local items = require("pickers.smart").core(opts.core).query(ctx.filter.search or "", {
         roots = opts.roots,
         find = opts.find,
         additional_args = opts.additional_args,

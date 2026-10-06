@@ -3,7 +3,7 @@
 
 local M = {}
 
-local ACTIONS = { "files", "grep", "smart" }
+local ACTIONS = { "files", "grep", "smart", "filegrep" }
 
 ---Open the action picker and call callback with the chosen action (or nil on cancel).
 ---@param callback fun(action: Pickers.Action|nil) Called with the chosen action, or nil when the picker is cancelled.

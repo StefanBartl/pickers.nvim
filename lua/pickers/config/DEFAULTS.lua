@@ -81,6 +81,11 @@ local M = {
     cwd_smart = nil,
     config_smart = nil,
     folder_smart = nil,
+    -- Files picker whose prompt also accepts `grep=<pattern>` ("akronyms
+    -- grep=NWBC": path contains akronyms AND content matches NWBC). Without a
+    -- `grep=` it behaves like cwd_files, so it can be the everyday picker.
+    -- Opt-in, nil by default. See pickers.filegrep.
+    cwd_filegrep = nil,
     -- "Find all" escape hatch: forces hidden+no_ignore+follow for this one
     -- search only, regardless of configured find.* defaults. Opt-in, nil by
     -- default -- same as cwd_files. Equivalent to `:Pickers cwd files all`.

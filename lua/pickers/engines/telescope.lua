@@ -254,7 +254,7 @@ function M.smart(opts)
       results_title = cheatsheet_hint(),
       finder = finders.new_dynamic({
         fn = function(prompt)
-          return require("pickers.smart").query(prompt or "", {
+          return require("pickers.smart").core(opts.core).query(prompt or "", {
             roots = opts.roots,
             find = opts.find,
             additional_args = opts.additional_args,

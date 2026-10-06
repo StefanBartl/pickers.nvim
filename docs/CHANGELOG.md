@@ -10,6 +10,20 @@ a changelog.
 
 ---
 
+[x] **New action `filegrep`: a files picker with a `grep=` content filter in the prompt.**
+  `akronyms grep=NWBC` lists files whose path matches `akronyms` AND whose content matches `NWBC`;
+  several `grep=` tokens AND together, `grep="a b"` quotes a value, and a prompt without a usable
+  `grep=` (shorter than 2 chars is ignored) is a plain files picker -- so it can be the everyday
+  main picker. Core in `lua/pickers/filegrep/` (pure `parse`/`score_path`, `query`); the first
+  pattern runs as `rg --vimgrep --max-count 1` (one row per file, positioned on the first hit),
+  further ones as `rg --files-with-matches` and are intersected, the path part is scored in Lua
+  (no file list on the command line -- Windows caps its length). Process output is memoised for 5 s
+  so editing the path part does not respawn rg. No new engine adapters: the three `smart` live
+  pickers take `opts.core = "filegrep"` and pick the core via `pickers.smart.core()`. Wired
+  everywhere an action is named: `:Pickers <scope> filegrep` (+ completion, action picker),
+  `mappings.<scope>_filegrep`, opt-in `keymaps.cwd_filegrep`. `smart/search.lua` exports
+  `classify_run` and gained `rg_files_args`. See [commands.md](commands.md#the-filegrep-action).
+
 [x] **Tab keys never break a plain picker; `builtin` tab targets work.** `tab_next`/`tab_prev`
   closed the picker and reopened the next target even outside a tab group, so binding them to
   `<Tab>`/`<S-Tab>` would have killed multi-select everywhere. Now only a picker the tab group
