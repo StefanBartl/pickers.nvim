@@ -17,6 +17,21 @@ return {
   -- "c" = child started from a -c command (v:vim_did_enter is 0, <cword> works),
   -- "l" = `nvim -l`.
   host = "l",
+  -- Guards (safety nets). The only spec file is a self-running script (its own `nvim -l`
+  -- process), where testing.nvim installs no guard at all, so the fleet measurement had no
+  -- findings and no allowlist entry is justified. The values below are the documented defaults,
+  -- written down so they apply as soon as the spec runs under a dialect that is guarded:
+  -- error where a clean suite is expected, warn where a first guarded run may still show noise.
+  guards = {
+    fs = "warn",
+    state = "warn",
+    scheduled_error = "error",
+    prompt = "error",
+    deprecation = "warn",
+    process_net = "off",
+  },
+  -- No allowlist: nothing legitimate was observed (script files are not measured).
+  guard_allow = { fs = {}, spawn = {}, network = {} },
   -- Environment variables the specs read; a child editor inherits an allowlist only (never secrets).
   env_allow = { "LIB_NVIM_PATH", "REPOS_DIR" },
 }
