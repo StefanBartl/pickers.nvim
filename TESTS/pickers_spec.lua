@@ -5749,8 +5749,25 @@ do
   collections.register({
     name = "zzqux",
     dir = "/tmp/zzqux",
-    keys = { files = "<leader>ZZqf", grep = "<leader>ZZqg", smart = "<leader>ZZqs" },
+    keys = {
+      files = "<leader>ZZqf",
+      grep = "<leader>ZZqg",
+      smart = "<leader>ZZqs",
+      filegrep = "<leader>ZZqp",
+    },
   })
+
+  check("bindings.collections: :ZzquxFileGrep registered", vim.fn.exists(":ZzquxFileGrep") == 2)
+  captured = nil
+  vim.cmd("ZzquxFileGrep a grep=bb")
+  check(
+    "bindings.collections: :ZzquxFileGrep -> handle('zzqux','filegrep') with query",
+    captured
+      and vim.deep_equal(captured.fargs, { "zzqux", "filegrep" })
+      and captured.query == "a grep=bb"
+  )
+  local kp = vim.fn.maparg("<leader>ZZqp", "n", false, true)
+  check("bindings.collections: filegrep keymap registered", not vim.tbl_isempty(kp))
 
   check("bindings.collections: :ZzquxFiles registered", vim.fn.exists(":ZzquxFiles") == 2)
   check("bindings.collections: :ZzquxGrep registered", vim.fn.exists(":ZzquxGrep") == 2)
