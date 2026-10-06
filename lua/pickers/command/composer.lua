@@ -72,7 +72,7 @@ end
 -- Search-flag escalation for one search only. `all` is the shorthand for
 -- hidden+no_ignore+follow; the three are also accepted individually and
 -- combine with `+`, since wanting one is not wanting the others. Only
--- meaningful after `files`, but offered unconditionally (same
+-- meaningful after `files` and `filegrep`, but offered unconditionally (same
 -- trailing-optional-slot leniency as action_arg) — pickers.command silently
 -- ignores it for grep/smart.
 ---@internal

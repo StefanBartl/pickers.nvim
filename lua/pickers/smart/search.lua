@@ -27,27 +27,41 @@ local M = {}
 local uv = vim.uv or vim.loop
 local spawn_env = require("lib.nvim.cross.run.env")
 
----First executable found among `names`, or nil.
+---First executable found among `names`, or nil. Through lib.nvim's memoised
+---lookup: a PATH walk costs milliseconds on Windows and this runs on every
+---keystroke of the smart action.
 ---@internal
 ---@param names string[]
 ---@return string|nil
 local function first_exe(names)
-  for _, n in ipairs(names) do
-    if vim.fn.executable(n) == 1 then return n end
-  end
-  return nil
+  return require("lib.nvim.cross.executable").find(names)
 end
 
 ---Forward-slash form of a path printed by fd/rg, without the `./` prefix some
 ---versions emit. A pure string transform on purpose: `vim.fs.normalize` also
 ---expands a leading `~` and `$VAR`, which would rewrite real file names such as
 ---`~$report.docx` (Office lock files) into a different, non-existent path.
+---Backslashes are only separators on Windows; on POSIX they are legal file-name
+---characters and are left alone.
 ---@param p string
 ---@return string
 function M.unify_path(p)
-  local s = require("lib.nvim.cross.fs.separators.unify_slashes")(p)
+  local s = p
+  if require("lib.nvim.cross.platform.is_windows")() then
+    s = require("lib.nvim.cross.fs.separators.unify_slashes")(p)
+  end
   s = s:gsub("^%./", "")
   return s
+end
+
+---Join a (normalised) search root and a relative path without doubling the
+---separator: a drive root arrives as `C:/`, which `root .. "/" .. rel` would turn
+---into `C://rel`.
+---@param root string
+---@param rel string
+---@return string
+function M.join_root(root, rel)
+  return (root:gsub("/+$", "")) .. "/" .. rel
 end
 
 ---Build the fd argument list from find flags.
@@ -189,7 +203,7 @@ function M.collect(opts)
           files[#files + 1] = {
             path = rel,
             root = root,
-            abspath = root .. "/" .. rel,
+            abspath = M.join_root(root, rel),
           }
         end
       end
@@ -216,7 +230,7 @@ function M.collect(opts)
             greps[#greps + 1] = {
               path = rel,
               root = root,
-              abspath = root .. "/" .. rel,
+              abspath = M.join_root(root, rel),
               -- `(%d+)` guarantees digits, so neither conversion can fail and
               -- neither result is fractional.
               lnum = tonumber(l) --[[@as integer]],

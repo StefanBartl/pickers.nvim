@@ -69,7 +69,17 @@ end
 ---@param path string
 ---@return string
 local function basename(path)
-  return path:match("[^/\\]+$") or path
+  -- Scan back for the last separator: linear. The old `[^/\\]+$` pattern is
+  -- retried from every start position, which is quadratic on long paths and was
+  -- the hot spot of scoring 100k candidates per keystroke.
+  for i = #path, 1, -1 do
+    local b = path:byte(i)
+    if b == 47 or b == 92 then -- "/" or "\"
+      if i == #path then return path end -- trailing separator: keep the old fallback
+      return path:sub(i + 1)
+    end
+  end
+  return path
 end
 
 ---Score a file candidate: filename match dominates, full-path match is a minor

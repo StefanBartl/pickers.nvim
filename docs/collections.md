@@ -75,3 +75,4 @@ For a collection named `"notes_lua"`:
 | `:NotesLuaFiles` | `:Pickers notes_lua files` |
 | `:NotesLuaGrep` | `:Pickers notes_lua grep` |
 | `:NotesLuaSmart` | `:Pickers notes_lua smart` |
+| `:NotesLuaFileGrep [query]` | `:Pickers notes_lua filegrep` |

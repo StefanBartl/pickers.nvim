@@ -10,6 +10,29 @@ a changelog.
 
 ---
 
+[x] **filegrep verification round: POSIX names, memo semantics, multi-root, shims.** A second four-lens
+  review of the fix commit found: `unify_path` rewrote backslashes on POSIX too, where they are legal
+  file-name characters (now Windows only); `root .. "/" .. rel` doubled the slash under a drive root
+  (`C://x`) -- new `search.join_root`; a file named `-` was read by rg as stdin when narrowing a later
+  `grep=` -- survivors are passed as `./<path>`; `\\` before a space or quote swallowed the separator
+  in the prompt parser; the memo dropped every rg exit-2 run, so a dangling symlink respawned the
+  full-tree scan on each keystroke -- only runs that themselves broke (spawn error, killed at the
+  timeout) are retried now, a regex error is memoised and reported with rg's first stderr line (control
+  characters stripped), and exit 2 with hits is a silent partial success; the first pattern's rows are
+  memoised under their own key, so editing a later `grep=` token no longer repeats the full scan; the
+  memo is an LRU of 32 (it was one slot per root, 8 in all) and is swept shortly after the TTL instead of
+  holding a 100k-file result until the next lookup; a "not installed" lookup was memoised by lib.nvim for
+  the whole session -- it is re-checked at most every 10 s; with several roots an empty prompt is merged
+  by path and no root is starved by the limit; a `.cmd`/`.bat` rg shim (cmd.exe would interpret file
+  names on the command line) always scans the tree instead of narrowing; narrowing is one spawn, never
+  one per chunk. `score.basename` is linear now (the old pattern was quadratic on long paths) and
+  `smart/search.lua` uses the memoised executable lookup too. Tests: 1077 -> 1106 (POSIX backslash name,
+  `-`/`$HOME`/`~both` through the narrowing step, failure/throttle/shim/limit-tie/tool-retry cases,
+  `command.handle` wiring), also green on Linux (WSL). Not changed on purpose: a POSIX file name
+  containing `:<digits>:<digits>:` or a newline is still mis-split by the vimgrep parse (pre-existing in
+  `smart`, needs `--null`), and explicit-file narrowing vs. the whole-tree scan disagree for files with a
+  NUL byte (rg searches an explicitly named file past a NUL).
+
 [x] **filegrep review round: file names, flag parity, seeding, speed.** A four-lens review of the
   filegrep commits found and fixed: (1) `vim.fs.normalize` on fd/rg output expanded a leading `~`
   and `$VAR`, so `~$report.docx` was listed as a different, non-existent path (also in

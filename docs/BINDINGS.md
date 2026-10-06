@@ -66,13 +66,14 @@ Every keymap, user command, and autocommand `pickers.nvim` registers. Kept in sy
 
 For every user-configured entry in the `collections` table, three compatibility commands are dynamically generated from the **PascalCase** version of the collection's name (e.g., `notes_lua` generates the commands below).
 
-Additionally, optional `keys.files` / `keys.grep` / `keys.smart` keymaps are bound if they are explicitly configured.
+Additionally, optional `keys.files` / `keys.grep` / `keys.smart` / `keys.filegrep` keymaps are bound if they are explicitly configured.
 
 | Type | Dynamic Pattern (`pattern`) | Maps To (`maps_to`) | Example (`notes_lua`) |
 | --- | --- | --- | --- |
 | **Files** | `:{PascalName}Files` | `:Pickers {name} files` | `:NotesLuaFiles` $\rightarrow$ `:Pickers notes_lua files` |
 | **Grep** | `:{PascalName}Grep` | `:Pickers {name} grep` | `:NotesLuaGrep` $\rightarrow$ `:Pickers notes_lua grep` |
 | **Smart** | `:{PascalName}Smart` | `:Pickers {name} smart` | `:NotesLuaSmart` $\rightarrow$ `:Pickers notes_lua smart` |
+| **FileGrep** | `:{PascalName}FileGrep [query]` | `:Pickers {name} filegrep` | `:NotesLuaFileGrep` $\rightarrow$ `:Pickers notes_lua filegrep` |
 
 ---
 
