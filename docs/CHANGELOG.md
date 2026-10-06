@@ -10,6 +10,28 @@ a changelog.
 
 ---
 
+[x] **filegrep third review round: CI actually requires the tools, chunking back, timeouts memoised.** A third
+  review of the previous commit found: `PICKERS_REQUIRE_TOOLS` never reached the spec in CI because
+  `.testing.lua`'s `env_allow` stripped it (now allowed; fd/rg are installed on Linux/macOS without
+  `continue-on-error`, Windows stays best effort); narrowing was all-or-nothing against the Windows
+  command-line budget on every OS, so a second `grep=` fell back to a 50x slower whole-tree scan once
+  ~330 files survived -- it chunks again (budget 24000 chars on Windows, 100000 elsewhere, at most 8
+  spawns, then one tree scan); a run killed at the timeout was never memoised, so each keystroke of the
+  path part blocked for the whole timeout again -- now only a process that could not be SPAWNED is
+  retried, a timeout keeps its partial hits and problem for the TTL; a `.cmd`/`.bat` rg shim also
+  receives the PATTERN on the cmd.exe command line, so a pattern containing `& | < > ^ % !` or a quote
+  is refused with a message instead of passed on; the "tool installed meanwhile" re-check stamp was one
+  scalar for every tool (fd's re-check spent rg's budget) and missing from the smart action -- one
+  per-tool `search.find_tool` (30 s) serves both; rg's regex errors showed only the heading
+  (`regex parse error:`), now the `error:` line with the cause is appended, cut on a character
+  boundary with C1 control characters stripped; the LRU holds 128 entries (32 thrashed with ~17 roots).
+  Corrects the previous entry: the filegrep suites pass on Linux (WSL), but the whole spec does not --
+  `drives.roots` (WSL) and `link_name` backslash (Linux) fail there independently of filegrep (open task
+  "CI red on Linux/macOS"). Tests 1106 -> 1134: first-run memo key, timeout memo, spawn failures,
+  stderr reasons, shim variants and pattern refusal, chunk budget, LRU, sweep, per-tool throttle.
+  Left as is on purpose: `score.basename` treats a backslash as a separator on POSIX as the old pattern
+  did; a 1-character path word at 100k files costs ~100 ms per keystroke (needs a prefix-reuse index).
+
 [x] **filegrep verification round: POSIX names, memo semantics, multi-root, shims.** A second four-lens
   review of the fix commit found: `unify_path` rewrote backslashes on POSIX too, where they are legal
   file-name characters (now Windows only); `root .. "/" .. rel` doubled the slash under a drive root
@@ -28,7 +50,7 @@ a changelog.
   one per chunk. `score.basename` is linear now (the old pattern was quadratic on long paths) and
   `smart/search.lua` uses the memoised executable lookup too. Tests: 1077 -> 1106 (POSIX backslash name,
   `-`/`$HOME`/`~both` through the narrowing step, failure/throttle/shim/limit-tie/tool-retry cases,
-  `command.handle` wiring), also green on Linux (WSL). Not changed on purpose: a POSIX file name
+  `command.handle` wiring). Not changed on purpose: a POSIX file name
   containing `:<digits>:<digits>:` or a newline is still mis-split by the vimgrep parse (pre-existing in
   `smart`, needs `--null`), and explicit-file narrowing vs. the whole-tree scan disagree for files with a
   NUL byte (rg searches an explicitly named file past a NUL).

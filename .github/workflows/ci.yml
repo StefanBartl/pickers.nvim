@@ -71,19 +71,25 @@ jobs:
           ref: ci-verified
       # The filegrep specs run the REAL fd and rg against a temp tree (literal
       # file names, find.* parity, regex errors): without them that block is
-      # skipped. Best effort on every OS; PICKERS_REQUIRE_TOOLS (below) turns a
-      # missing tool into a failure where installing is reliable.
+      # skipped. On Linux and macOS installing is reliable, so a failure here is
+      # a real signal and PICKERS_REQUIRE_TOOLS (below, passed through by
+      # .testing.lua's env_allow) turns a missing tool into a test failure.
+      # Windows is best effort: the block is skipped there if choco fails.
       - name: Install fd and ripgrep
-        continue-on-error: true
+        if: runner.os != 'Windows'
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: "1"
         run: |
-          case "$RUNNER_OS" in
-            Linux)
-              sudo apt-get update && sudo apt-get install -y fd-find ripgrep
-              sudo ln -sf "$(command -v fdfind)" /usr/local/bin/fd
-              ;;
-            macOS) brew install fd ripgrep ;;
-            Windows) choco install -y fd ripgrep ;;
-          esac
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            sudo apt-get update && sudo apt-get install -y fd-find ripgrep
+            sudo ln -sf "$(command -v fdfind)" /usr/local/bin/fd
+          else
+            brew install fd ripgrep
+          fi
+      - name: Install fd and ripgrep (Windows, best effort)
+        if: runner.os == 'Windows'
+        continue-on-error: true
+        run: choco install -y fd ripgrep
 
       - name: Run tests
         working-directory: pickers.nvim

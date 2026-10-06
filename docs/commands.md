@@ -146,7 +146,12 @@ grep="say \"hi\""        \" is a literal quote, \<space> a literal space
 - Other backslashes are passed to rg as typed, so regex escapes (`\b`, `\(`)
   work; a literal `C++` needs `C\+\+`.
 - A broken run (rg/fd missing, killed at `smart.timeout`, invalid regex) is
-  reported once as a warning instead of looking like zero matches.
+  reported once per 10 s as a warning instead of looking like zero matches; a
+  regex error names its cause. A run killed at the timeout keeps its partial
+  hits and is not repeated for a few seconds (a retry would block again).
+- If `rg` is a `.cmd`/`.bat` shim (cmd.exe interprets the command line), a pattern
+  containing `& | < > ^ % !` or a quote is refused with a message: install
+  `rg.exe`. A tool installed while nvim runs is found again within 30 s.
 - `:FileGrep [query]` and the picker's seed text work on all three engines.
 - Without `grep=` it lists fd's files, ranked by the same simple scorer as
   `smart` (not the engine's native fuzzy matcher) and cut to `smart.limit`
