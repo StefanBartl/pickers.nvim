@@ -57,13 +57,16 @@ end
 ---@return string[] problems  Non-empty when a fd/rg run failed, timed out, or was killed (ERR-11) -- an engine adapter MAY surface this; an empty `items` with empty `problems` is a real zero-match query.
 function M.query(query, opts)
   local sm = M.config()
-  local files, greps, problems = require("pickers.smart.search").collect({
+  local search = require("pickers.smart.search")
+  local files, greps, problems = search.collect({
     roots = opts.roots,
     query = query or "",
     find = opts.find,
     additional_args = opts.additional_args,
     timeout = sm.timeout,
   })
+  -- The engine adapters only read the items: show a broken run / refused prompt here.
+  search.report(problems)
 
   local frecency
   if sm.frecency and sm.frecency.enabled then

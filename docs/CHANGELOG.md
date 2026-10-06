@@ -12,15 +12,19 @@ a changelog.
 
 [x] **filegrep fourth review round: abort rules, memo order, one sweep chain, shim guard for smart.** A focused
   review of the third round found: `narrow()` spawned every chunk even after one was killed or hit a
-  regex error, multiplying the timeout by up to 8 per step -- it stops after a killed chunk, an exit 2
-  without hits or a spawn failure and says `-- results incomplete` (a failed spawn is retried, a kill is
-  memoised); `grep_files()` ran the first full-tree scan before it looked up the live narrowed memo, so
+  regex error, multiplying the timeout by up to 8 per step and by the number of `grep=` tokens -- it
+  stops after a killed chunk, a pattern error (exit 2 without hits and rg's `regex`/`error:` stderr; a
+  chunk whose survivor file vanished since the first scan does NOT stop the others) or a spawn failure,
+  and a failed spawn says `-- results incomplete` (it is retried, a kill is memoised and says "may be
+  truncated"); `grep_files()` ran the first full-tree scan before it looked up the live narrowed memo, so
   an expired first scan was repeated and thrown away -- the narrowed key is consulted first; two sweep
   timer chains could stay alive after `clear_cache()` -- a generation counter ends the stale one; a
   `:wait()` that came back empty after the kill was counted as a spawn failure and retried per keystroke
   -- it counts as killed (memoised); the cmd.exe guard for a `.cmd`/`.bat` shim now also covers the smart
-  action's fd/rg calls (`search.shim_refusal`); a blank first stderr line no longer hides rg's reason.
-  Tests 1134 -> 1157 (scaled to the platform budget so Linux/macOS exercise the chunk path, union and
+  action's fd/rg calls (`search.shim_refusal`) and the problems of a broken or refused smart run are shown
+  (`search.report`, 10 s throttle, shared with filegrep -- the adapters only read items); a blank first
+  stderr line no longer hides rg's reason; the advice says `fd.exe` for the `fdfind` alias.
+  Tests 1134 -> 1163 (scaled to the platform budget so Linux/macOS exercise the chunk path, union and
   abort rules, narrowing failures, memo order, 20 roots, sweep generations, the 30 s tool re-check,
   smart shim refusal; the new blocks are guarded and restore their stubs on error). `drives.roots`
   no longer aborts the whole spec under WSL (an ordinary FAIL now). Not changed: `vim.system():wait(T)`
