@@ -3855,6 +3855,13 @@ do
     "filegrep.fail: the same problem is shown once, not per keystroke",
     #notes == 1 and notes[1]:find("killed", 1, true) ~= nil
   )
+  -- clear_cache() resets the throttle: the same problem is shown again
+  filegrep.clear_cache()
+  filegrep.query("grep=aa z", opts)
+  vim.wait(200, function()
+    return #notes >= 2
+  end)
+  check("filegrep.fail: clear_cache() resets the notification throttle", #notes == 2)
 
   -- a spawn that fails outright IS retried: the fd listing, and the narrowing
   -- step (whose first-pattern result stays memoised)
@@ -3956,6 +3963,16 @@ do
       #rr == 0 and #calls == 0 and rp[1] and rp[1]:find(".cmd/.bat shim", 1, true) ~= nil
     )
   end
+  -- the refusal is SHOWN (the adapters only read items), through the shared reporter
+  reset()
+  filegrep.query("grep=a&b", opts)
+  vim.wait(200, function()
+    return #notes >= 1
+  end)
+  check(
+    "filegrep.shim: the refusal is notified through the shared reporter",
+    #notes == 1 and notes[1]:find("[pickers.search]", 1, true) ~= nil
+  )
   vim.fn.exepath = function(name)
     return have[name] and ("/bin/" .. name) or ""
   end
@@ -4095,6 +4112,8 @@ do
   local is_win = require("lib.nvim.cross.platform.is_windows")()
   local orig_system, orig_executable = vim.system, vim.fn.executable
   local orig_exepath, orig_defer, orig_hrtime = vim.fn.exepath, vim.defer_fn, vim.uv.hrtime
+  local orig_notify = vim.notify
+  vim.notify = function() end -- the reporter's warnings are not what this block checks
 
   local have = { fd = true, rg = true, toolT = false }
   local execs = {}
@@ -4212,16 +4231,60 @@ do
       narrow_runs >= 2 and #vr == narrow_runs - 1
     )
 
-    -- a killed pattern stops the remaining TOKENS too, not just the remaining chunks
+    -- ...also when the path of the missing file contains the word "regex": the
+    -- discriminator is rg's "(os error N)" suffix, not a word in stderr
+    reset()
+    narrow_runs = 0
+    reply = function(cmd)
+      if vim.tbl_contains(cmd, "--files-with-matches") then
+        narrow_runs = narrow_runs + 1
+        if narrow_runs == 1 then
+          return {
+            code = 2,
+            signal = 0,
+            stdout = "",
+            stderr = "rg: ./regex/gone.txt: No such file or directory (os error 2)\n",
+          }
+        end
+        return { code = 0, signal = 0, stdout = first_path_arg(cmd) .. "\n" }
+      end
+      return { code = 0, signal = 0, stdout = first_rows }
+    end
+    two_patterns()
+    check("filegrep.chunk: a missing file named 'regex...' is still not an abort", narrow_runs >= 2)
+
+    -- pattern/flag errors WITHOUT the word "regex" (PCRE2, bad flag) abort too
+    for _, msg in ipairs({
+      "rg: PCRE2: error compiling pattern at offset 6: missing closing parenthesis\n",
+      "error: pattern given is not valid UTF-8\n",
+      "rg: error parsing flag --bogus: no such flag\n",
+    }) do
+      reset()
+      reply = function(cmd)
+        if vim.tbl_contains(cmd, "--files-with-matches") then
+          return { code = 2, signal = 0, stdout = "", stderr = msg }
+        end
+        return { code = 0, signal = 0, stdout = first_rows }
+      end
+      two_patterns()
+      check("filegrep.chunk: abort on '" .. msg:sub(1, 28) .. "'", #narrowing_calls() == 1)
+    end
+
+    -- a killed token that found partial hits stops the later TOKENS, and the rows
+    -- left over are flagged as not checked against them
     reset()
     reply = function(cmd)
       if vim.tbl_contains(cmd, "--files-with-matches") then
-        return { code = 1, signal = 9, stdout = "" }
+        return { code = 1, signal = 9, stdout = "a.txt\n" }
       end
       return { code = 0, signal = 0, stdout = "a.txt:1:1:x\nb.txt:2:1:y\n" }
     end
-    filegrep.query("grep=aa grep=bb grep=cc grep=dd", opts)
+    local tk, tkp = filegrep.query("grep=aa grep=bb grep=cc grep=dd", opts)
     check("filegrep.chunk: a killed token stops the later tokens", #narrowing_calls() == 1)
+    check(
+      "filegrep.chunk: ...and says the later patterns were not applied",
+      #tk == 1 and tkp[1] and tkp[1]:find("later patterns not applied", 1, true) ~= nil
+    )
 
     -- a regex error in a later token reads the same for every chunk: one spawn
     reset()
@@ -4416,10 +4479,46 @@ do
     )
     search.collect({ roots = { "/r" }, query = "plain", find = opts.find })
     check("search.collect: a plain query still runs on a shim", #calls >= 1)
+
+    -- the advice for the Debian alias names a binary that exists on Windows
+    have.fd, have.fdfind = false, true
+    exe.clear()
+    search.reset_tool_retry()
+    reset()
+    local _, _, fdp = search.collect({ roots = { "/r" }, query = "a%b", find = opts.find })
+    check(
+      "search.collect: the fdfind alias is advised as fd.exe",
+      fdp[1] ~= nil and fdp[1]:find("install fd.exe", 1, true) ~= nil
+    )
+    have.fd, have.fdfind = true, nil
+
+    -- rg exit 2 WITH hits (one unreadable file) is not a problem for smart either
+    vim.fn.exepath = function(name)
+      return "/bin/" .. name
+    end
+    exe.clear()
+    search.reset_tool_retry()
+    reset()
+    reply = function(cmd)
+      if cmd[1] == "rg" then
+        return { code = 2, signal = 0, stdout = "a.txt:1:1:x\n", stderr = "rg: ./b: denied" }
+      end
+      return { code = 0, signal = 0, stdout = "" }
+    end
+    local _, sgr, sgp = search.collect({ roots = { "/r" }, query = "x", find = opts.find })
+    check(
+      "search.collect: rg exit 2 with hits keeps the hits and warns about nothing",
+      #sgr == 1 and #sgp == 0
+    )
   end)
 
   vim.system, vim.fn.executable, vim.fn.exepath = orig_system, orig_executable, orig_exepath
   vim.defer_fn, vim.uv.hrtime = orig_defer, orig_hrtime
+  -- messages scheduled by the last cases land in the muted notify, not in a later suite
+  vim.wait(30, function()
+    return false
+  end)
+  vim.notify = orig_notify
   exe.clear()
   search.reset_tool_retry()
   filegrep.clear_cache()

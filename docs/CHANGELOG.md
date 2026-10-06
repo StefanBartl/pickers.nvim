@@ -10,6 +10,22 @@ a changelog.
 
 ---
 
+[x] **filegrep fifth/sixth review round: the abort rule keys on rg's `(os error N)`, smart warns less and shows more.**
+  The fourth round's chunk abort was too coarse in two directions and is now rg's own signal: exit 2
+  without hits is a chunk-specific file error when stderr carries `(os error N)` (also in localised
+  messages) and does NOT stop the other chunks, otherwise it is a pattern/flag error (regex, PCRE2, bad
+  flag, invalid UTF-8) and does. The first version looked for the word "regex" in stderr, which a vanished
+  file named `regex_x.txt` also contains (the other chunks were silently dropped). A killed token stops
+  the later `grep=` tokens too and says `-- later patterns not applied` (the remaining rows were not
+  checked against them); `-- results incomplete` is added when chunks were left unsearched without the
+  message saying so (a failed spawn, a killed run that reported no result). Shared throttled
+  `search.report` (10 s) now also serves `smart.query`, so a broken or refused smart run is no longer
+  silent -- but rg exit 2 WITH hits (one unreadable file) is a partial success there too, as in filegrep,
+  and a missing tool is still not reported by smart. The advice names `fd.exe` for `fdfind`. Tests
+  1157 -> 1172 (a missing file named `regex...`, PCRE2/UTF-8/flag errors, a killed token with partial
+  hits, the throttle reset, the notified shim refusal, smart exit 2 with hits, fdfind advice; the block
+  mutes and drains its notifications).
+
 [x] **filegrep fourth review round: abort rules, memo order, one sweep chain, shim guard for smart.** A focused
   review of the third round found: `narrow()` spawned every chunk even after one was killed or hit a
   regex error, multiplying the timeout by up to 8 per step and by the number of `grep=` tokens -- it

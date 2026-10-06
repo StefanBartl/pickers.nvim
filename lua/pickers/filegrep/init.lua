@@ -260,9 +260,10 @@ end
 --- * a run killed at the timeout keeps its partial hits AND its problem.
 --- * any other non-zero exit keeps its problem, extended by rg's stderr reason
 ---   so a regex error says why.
---- * `abort` -- killed, or exit 2 with no hits AND a pattern error in stderr (it
----   reads the same for every file list): the caller should not spawn more of
----   them. A missing/unreadable file in one chunk is not an abort.
+--- * `abort` -- `"killed"`, or `"pattern"` for exit 2 with no hits and no
+---   "(os error N)" in stderr (a pattern/flag error reads the same for every
+---   file list): the caller should not spawn more of them. A missing/unreadable
+---   file in one chunk is not an abort.
 ---@internal
 ---@param cmd string[]
 ---@param root string
@@ -272,7 +273,7 @@ end
 ---@return string[] lines
 ---@return string|nil problem
 ---@return boolean spawn_failed
----@return boolean abort
+---@return "killed"|"pattern"|false abort
 local function run(cmd, root, timeout, tool, benign_code)
   local ok, res = pcall(function()
     return vim.system(cmd, spawn_env.apply({ cwd = root, text = true })):wait(timeout)
@@ -294,15 +295,17 @@ local function run(cmd, root, timeout, tool, benign_code)
       if reason then problem = problem .. ": " .. reason end
     end
   end
-  -- A pattern error reads the same for every file list; a missing or unreadable
-  -- file ("(os error N)") is specific to its chunk and must not stop the others.
-  local pattern_error = false
-  if res ~= nil and res.code == 2 and #lines == 0 and type(res.stderr) == "string" then
-    pattern_error = res.stderr:find("regex", 1, true) ~= nil
-      or res.stderr:match("^error:") ~= nil
-      or res.stderr:find("\nerror:", 1, true) ~= nil
+  -- Exit 2 without hits is either a pattern/flag error, which reads the same for
+  -- every file list, or a missing/unreadable file, which is specific to its
+  -- chunk. rg ends every I/O error with "(os error N)" (also in a localised
+  -- message), so that suffix -- not a word that a file NAME could contain --
+  -- tells the chunk-specific kind: it must not stop the other chunks.
+  local abort = false ---@type string|false
+  if killed then
+    abort = "killed"
+  elseif res ~= nil and res.code == 2 and #lines == 0 and type(res.stderr) == "string" then
+    if not res.stderr:find("%(os error %d+%)") then abort = "pattern" end
   end
-  local abort = killed or pattern_error
   return lines, problem, spawn_failed, abort
 end
 
@@ -397,10 +400,12 @@ local function narrow(rg, root, find, extra, pattern, paths, timeout, explicit_o
     end
     if spawn_failed or abort then
       -- Do not multiply a failure (every chunk would time out, or hit the same
-      -- regex error) by the number of chunks. A killed run already says its result
-      -- may be truncated and a pattern error is a definitive (empty) answer; only a
-      -- chunk that could not be spawned leaves files unsearched without saying so.
-      local incomplete = (spawn_failed and i < #cmds) and " -- results incomplete" or ""
+      -- regex error) by the number of chunks. A pattern error is a definitive
+      -- (empty) answer and a kill usually says "may be truncated"; anything that
+      -- left later chunks unsearched without saying so is flagged.
+      local unsearched = i < #cmds and (spawn_failed or abort == "killed")
+      local says_so = problem ~= nil and problem:find("truncated", 1, true) ~= nil
+      local incomplete = (unsearched and not says_so) and " -- results incomplete" or ""
       first_problem = (problem or "rg did not finish") .. incomplete
       any_failed = spawn_failed
       aborted = true
@@ -492,8 +497,14 @@ local function grep_files(root, find, extra, patterns, timeout, rg, explicit_ok)
       end
       paths, hits = kept_paths, kept_hits
       -- A killed run or a pattern error would only repeat for the next token:
-      -- stop here instead of multiplying it by the number of tokens.
-      if aborted then break end
+      -- stop here instead of multiplying it by the number of tokens. The rows
+      -- left over were not checked against the remaining tokens -- say so.
+      if aborted then
+        if i < #patterns and #paths > 0 and problem then
+          problems[#problems] = problems[#problems] .. " -- later patterns not applied"
+        end
+        break
+      end
     end
     return { paths = paths, hits = hits, problems = problems, failed = failed }
   end)
