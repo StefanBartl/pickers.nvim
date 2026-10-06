@@ -3337,8 +3337,13 @@ do
 
   -- argv + orchestration, with the process layer stubbed and every call recorded.
   local orig_system, orig_executable = vim.system, vim.fn.executable
+  local orig_exepath = vim.fn.exepath
   vim.fn.executable = function(name)
     return (name == "fd" or name == "rg") and 1 or 0
+  end
+  -- exepath decides the .cmd/.bat shim check: do not depend on where rg lives here
+  vim.fn.exepath = function(name)
+    return "/bin/" .. name
   end
   require("lib.nvim.cross.executable").clear()
 
@@ -3500,6 +3505,7 @@ do
 
   vim.system = orig_system
   vim.fn.executable = orig_executable
+  vim.fn.exepath = orig_exepath
   require("lib.nvim.cross.executable").clear()
   filegrep.clear_cache()
 end
@@ -3942,7 +3948,7 @@ do
     return "C:\\tools\\rg.cmd"
   end
   exe.clear()
-  for _, bad in ipairs({ "a&b", "ab|cd", "a^b", "a%PATH%", [[a\"b]] }) do
+  for _, bad in ipairs({ "a&b", "ab|cd", "a^b", "a%PATH%", [[a\"b]], "a<b", "a>b", "a!b" }) do
     reset()
     local rr, rp = filegrep.query("grep=" .. bad, opts)
     check(
@@ -4048,10 +4054,10 @@ do
   reply = { code = 0, signal = 0, stdout = "a.txt:1:1:x\n" }
   filegrep.query("grep=sweep", opts)
   check("filegrep.sweep: a memoised result arms one deferred sweep", #deferred == 1)
-  deferred[1]()
+  if deferred[1] then deferred[1]() end
   check("filegrep.sweep: a live entry keeps the sweep armed", #deferred == 2)
   skew = 60 * 1e9
-  deferred[2]()
+  if deferred[2] then deferred[2]() end
   check("filegrep.sweep: once everything expired the sweep stops", #deferred == 2)
   vim.defer_fn, vim.uv.hrtime = real_defer, real_hrtime
   reset()
@@ -4079,6 +4085,278 @@ do
   exe.clear()
   search.reset_tool_retry()
   filegrep.clear_cache()
+end
+
+-- ── pickers.filegrep — chunked narrowing, abort rules, memo order, timers ───
+do
+  local filegrep = require("pickers.filegrep")
+  local search = require("pickers.smart.search")
+  local exe = require("lib.nvim.cross.executable")
+  local is_win = require("lib.nvim.cross.platform.is_windows")()
+  local orig_system, orig_executable = vim.system, vim.fn.executable
+  local orig_exepath, orig_defer, orig_hrtime = vim.fn.exepath, vim.defer_fn, vim.uv.hrtime
+
+  local have = { fd = true, rg = true, toolT = false }
+  local execs = {}
+  vim.fn.executable = function(name)
+    execs[name] = (execs[name] or 0) + 1
+    return have[name] and 1 or 0
+  end
+  vim.fn.exepath = function(name)
+    return have[name] and ("/bin/" .. name) or ""
+  end
+  exe.clear()
+  search.reset_tool_retry()
+
+  local calls, reply = {}, nil
+  vim.system = function(cmd)
+    calls[#calls + 1] = vim.deepcopy(cmd)
+    local r = reply(cmd)
+    return {
+      wait = function()
+        return r
+      end,
+    }
+  end
+  local deferred, skew = {}, 0
+  vim.defer_fn = function(fn)
+    deferred[#deferred + 1] = fn
+  end
+  vim.uv.hrtime = function()
+    return orig_hrtime() + skew
+  end
+
+  local opts = { roots = { "/r" }, find = { hidden = true } }
+  local function reset()
+    calls, deferred, skew = {}, {}, 0
+    filegrep.clear_cache()
+  end
+  local function narrowing_calls()
+    local out = {}
+    for _, c in ipairs(calls) do
+      if vim.tbl_contains(c, "--files-with-matches") then out[#out + 1] = c end
+    end
+    return out
+  end
+  local function first_path_arg(cmd)
+    for i = #cmd, 1, -1 do
+      if cmd[i] == "--" then return cmd[i + 2] end
+    end
+  end
+
+  local ok_all, err_all = pcall(function()
+    -- scale the survivor list to the platform budget so there are always >= 2 chunks
+    local budget = is_win and 24000 or 100000
+    local n = math.ceil(1.5 * budget / 58)
+    local rows = {}
+    for i = 1, n do
+      rows[i] = string.format("%050d.txt:1:1:x", i)
+    end
+    local first_rows = table.concat(rows, "\n") .. "\n"
+    local function two_patterns()
+      return filegrep.query("grep=aa grep=bb", opts)
+    end
+
+    -- the union of the chunk results is returned
+    reset()
+    reply = function(cmd)
+      if vim.tbl_contains(cmd, "--files-with-matches") then
+        return { code = 0, signal = 0, stdout = first_path_arg(cmd) .. "\n" }
+      end
+      return { code = 0, signal = 0, stdout = first_rows }
+    end
+    local its = two_patterns()
+    local nc = #narrowing_calls()
+    check("filegrep.chunk: the survivors need several command lines", nc >= 2)
+    check("filegrep.chunk: the chunk results are unioned", #its == nc)
+
+    -- a killed chunk stops the loop and says the result is incomplete
+    reset()
+    reply = function(cmd)
+      if vim.tbl_contains(cmd, "--files-with-matches") then
+        return { code = 1, signal = 9, stdout = "" }
+      end
+      return { code = 0, signal = 0, stdout = first_rows }
+    end
+    local _, kp = two_patterns()
+    check("filegrep.chunk: a killed chunk stops the remaining ones", #narrowing_calls() == 1)
+    check(
+      "filegrep.chunk: ...and the result is flagged incomplete",
+      kp[1] and kp[1]:find("results incomplete", 1, true) ~= nil
+    )
+
+    -- a regex error in a later token reads the same for every chunk: one spawn
+    reset()
+    reply = function(cmd)
+      if vim.tbl_contains(cmd, "--files-with-matches") then
+        return { code = 2, signal = 0, stdout = "", stderr = "rg: regex parse error:\nerror: x" }
+      end
+      return { code = 0, signal = 0, stdout = first_rows }
+    end
+    local er, ep = two_patterns()
+    check("filegrep.chunk: a regex error stops after the first chunk", #narrowing_calls() == 1)
+    check(
+      "filegrep.chunk: ...and is reported once, memoised",
+      #er == 0 and ep[1] and #calls == 2 and (two_patterns()) and #calls == 2
+    )
+
+    -- a chunk that cannot be spawned: reported, never memoised
+    reset()
+    local boom = true
+    reply = function(cmd)
+      if vim.tbl_contains(cmd, "--files-with-matches") then
+        if boom then error("spawn failed") end
+        return { code = 0, signal = 0, stdout = "" }
+      end
+      return { code = 0, signal = 0, stdout = first_rows }
+    end
+    local _, sp = two_patterns()
+    check(
+      "filegrep.chunk: a failed chunk spawn is reported as incomplete",
+      sp[1] and sp[1]:find("failed to run", 1, true) ~= nil
+    )
+    local before = #narrowing_calls()
+    two_patterns()
+    check("filegrep.chunk: ...and retried on the next keystroke", #narrowing_calls() > before)
+
+    -- POSIX allows long command lines: a short survivor list is ONE spawn there
+    if not is_win then
+      local short = {}
+      for i = 1, 5000 do
+        short[i] = string.format("f%04d.txt:1:1:x", i)
+      end
+      reset()
+      reply = function(cmd)
+        if vim.tbl_contains(cmd, "--files-with-matches") then
+          return { code = 0, signal = 0, stdout = "" }
+        end
+        return { code = 0, signal = 0, stdout = table.concat(short, "\n") .. "\n" }
+      end
+      two_patterns()
+      check(
+        "filegrep.chunk: POSIX budget keeps 5000 short survivors on one line",
+        #narrowing_calls() == 1
+      )
+    end
+
+    -- a wait() that comes back empty after the kill is a run that DID spawn: memoised
+    reset()
+    reply = function()
+      return nil
+    end
+    local _, np = filegrep.query("grep=nilres", opts)
+    filegrep.query("grep=nilres x", opts)
+    check(
+      "filegrep.fail: an empty wait() result is reported and memoised, not retried",
+      np[1] and #calls == 1
+    )
+
+    -- stderr: a blank first line is skipped
+    reset()
+    reply = function()
+      return { code = 2, signal = 0, stdout = "", stderr = "\n   \nerror: boom here\n" }
+    end
+    local _, bp = filegrep.query("grep=blank", opts)
+    check(
+      "filegrep.fail: blank stderr lines are skipped",
+      bp[1] and bp[1]:find("boom here", 1, true)
+    )
+
+    -- the narrowed memo is consulted BEFORE the first run: rg1 expired, rgN live
+    reset()
+    reply = function(cmd)
+      if vim.tbl_contains(cmd, "--files-with-matches") then
+        return { code = 0, signal = 0, stdout = "a.txt\n" }
+      end
+      return { code = 0, signal = 0, stdout = "a.txt:1:1:x\nb.txt:2:1:y\n" }
+    end
+    filegrep.query("grep=oo", opts) -- rg1 for "oo" at t=0
+    skew = 4 * 1e9
+    filegrep.query("grep=oo grep=pp", opts) -- rg1 reused, rgN created at t=4
+    skew = 6 * 1e9 -- rg1 (t=0 + 5 s) expired, rgN (t=4 + 5 s) still live
+    local c0 = #calls
+    filegrep.query("grep=oo grep=pp x", opts)
+    check(
+      "filegrep.cache: a live narrowed result does not re-run the expired first scan",
+      #calls == c0
+    )
+
+    -- 20 roots x (first run + narrowing) = 40 memo keys: all stay cached
+    reset()
+    reply = function(cmd)
+      if vim.tbl_contains(cmd, "--files-with-matches") then
+        return { code = 0, signal = 0, stdout = "a.txt\n" }
+      end
+      return { code = 0, signal = 0, stdout = "a.txt:1:1:x\n" }
+    end
+    local roots20 = {}
+    for i = 1, 20 do
+      roots20[i] = "/root" .. i
+    end
+    filegrep.query("grep=aa grep=bb", { roots = roots20, find = opts.find })
+    local c1 = #calls
+    filegrep.query("grep=aa grep=bb x", { roots = roots20, find = opts.find })
+    check("filegrep.cache: a many-root scope stays memoised (CACHE_MAX)", #calls == c1)
+
+    -- sweep timers: clear_cache() must not leave two chains alive
+    reset()
+    reply = function()
+      return { code = 0, signal = 0, stdout = "a.txt:1:1:x\n" }
+    end
+    filegrep.query("grep=t1", opts)
+    check("filegrep.sweep: one timer armed", #deferred == 1)
+    filegrep.clear_cache()
+    filegrep.query("grep=t2", opts)
+    check("filegrep.sweep: a new generation arms its own timer", #deferred == 2)
+    deferred[1]() -- the stale timer ends without re-arming
+    check("filegrep.sweep: a stale timer does not start a second chain", #deferred == 2)
+    deferred[2]()
+    check("filegrep.sweep: the current timer re-arms while entries are live", #deferred == 3)
+
+    -- the 30 s tool re-check is time based and per tool
+    reset()
+    exe.clear()
+    search.reset_tool_retry()
+    have.toolT = false
+    execs.toolT = 0
+    search.find_tool("toolT")
+    local base_execs = execs.toolT
+    have.toolT = true
+    check(
+      "search.find_tool: within the window a miss stays a miss",
+      search.find_tool("toolT") == nil
+    )
+    skew = 31 * 1e9
+    check(
+      "search.find_tool: after 30 s the tool is looked up again and found",
+      search.find_tool("toolT") == "toolT" and execs.toolT > base_execs
+    )
+
+    -- the smart action refuses a pattern cmd.exe would interpret, like filegrep
+    vim.fn.exepath = function(name)
+      return "C:\\tools\\" .. name .. ".cmd"
+    end
+    exe.clear()
+    search.reset_tool_retry()
+    reset()
+    reply = function()
+      return { code = 0, signal = 0, stdout = "" }
+    end
+    local sf, sg, sprobs = search.collect({ roots = { "/r" }, query = "a&b", find = opts.find })
+    check(
+      "search.collect: a .cmd shim gets no cmd.exe metacharacters (fd and rg)",
+      #sf == 0 and #sg == 0 and #calls == 0 and #sprobs == 2
+    )
+    search.collect({ roots = { "/r" }, query = "plain", find = opts.find })
+    check("search.collect: a plain query still runs on a shim", #calls >= 1)
+  end)
+
+  vim.system, vim.fn.executable, vim.fn.exepath = orig_system, orig_executable, orig_exepath
+  vim.defer_fn, vim.uv.hrtime = orig_defer, orig_hrtime
+  exe.clear()
+  search.reset_tool_retry()
+  filegrep.clear_cache()
+  if not ok_all then check("filegrep round-4 block ran without error", false, tostring(err_all)) end
 end
 
 -- ── actions.filegrep / actions.dir: forwarded fields ────────────────────────
@@ -6473,7 +6751,8 @@ do
   check("drives.roots: shells out to the platform's own tool", seen_cmd ~= nil)
   check(
     "drives.roots: picks powershell on Windows, df elsewhere",
-    (is_win and seen_cmd[1] == "powershell") or (not is_win and seen_cmd[1] == "df")
+    seen_cmd ~= nil
+      and ((is_win and seen_cmd[1] == "powershell") or (not is_win and seen_cmd[1] == "df"))
   )
   check("drives.roots: parses at least one root", got ~= nil and #got >= 1, vim.inspect(got))
   check(
