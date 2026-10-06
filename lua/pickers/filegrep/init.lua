@@ -8,7 +8,7 @@
 ---   akronyms                  -> files with "akronyms" in the path   (like a files picker)
 ---   akronyms grep=NWBC        -> ... that also contain "NWBC"
 ---   grep=NWBC grep=TODO       -> files containing BOTH patterns
----   grep="foo bar" cfg        -> quote a value to put spaces in it
+---   grep="foo bar" cfg        -> quote a value to put spaces in it (`\"` is a literal quote)
 ---
 --- Without a usable `grep=` token it behaves exactly like a files picker, so it
 --- can serve as the everyday "main" picker. Every engine adapter drives
@@ -18,63 +18,95 @@
 ---
 --- Strategy: the FIRST grep pattern runs as `rg --vimgrep --max-count 1` (one
 --- row per file, positioned on the first hit); every further pattern runs as
---- `rg --files-with-matches` and is intersected. The path part is then scored
---- in Lua (`pickers.smart.score.match`: substring first, weak subsequence
---- fallback). Filtering by path in Lua rather than handing fd/rg a file list
---- keeps the argument vector short -- Windows caps the command line length.
+--- `rg --files-with-matches` restricted to the files that survived so far
+--- (chunked to stay under the Windows command-line limit; a full-tree scan
+--- when too many survived). The path part is scored in Lua
+--- (`pickers.smart.score`: substring first, weak subsequence fallback).
 ---
---- Process output is memoised for a few seconds, so typing in the path part
---- (the common case once a `grep=` is set) re-scores in Lua without spawning
---- anything.
+--- The rg half honours `find.hidden` / `find.no_ignore` / `find.follow` exactly
+--- like the fd half does, so adding a `grep=` only ever narrows the plain
+--- listing (it never reveals gitignored or hidden files the listing hides).
+---
+--- Process output is memoised for a few seconds (compact: path arrays, not one
+--- table per file), so typing in the path part -- the common case once a
+--- `grep=` is set -- re-scores in Lua without spawning anything.
 
 local M = {}
 
 local uv = vim.uv or vim.loop
 local search = require("pickers.smart.search")
+local score = require("pickers.smart.score")
 local spawn_env = require("lib.nvim.cross.run.env")
+local executable = require("lib.nvim.cross.executable")
 
----A `grep=` value shorter than this is ignored: a 1-char pattern matches nearly
----every file and would only make rg thrash while the user is still typing.
+---A `grep=` value shorter than this (in characters) is ignored: a 1-char pattern
+---matches nearly every file and would only make rg thrash while the user is
+---still typing.
 M.MIN_GREP_LEN = 2
 
----How long a process result stays reusable, in ms.
-local CACHE_TTL_MS = 5000
-local CACHE_MAX = 16
+---At most this many distinct `grep=` tokens run per query (each one is a
+---process spawn on the main thread); further ones are ignored.
+M.MAX_GREP_TOKENS = 4
 
----@type table<string, { at: number, value: any }>
-local cache = {}
+---How long a process result stays reusable, in seconds.
+local CACHE_TTL_S = 5
+---Memoised results kept at most (oldest dropped first).
+local CACHE_MAX = 8
+---Command-line budget (chars) for narrowing a later pattern to the survivors;
+---Windows caps a command line at 32767 chars.
+local ARGV_BUDGET = 24000
+---Above this many survivors a later pattern scans the whole tree instead.
+local NARROW_MAX = 3000
+---Seconds before the same problem message is shown again.
+local REPORT_EVERY_S = 10
+
+local notify = require("lib.nvim.notify").create("[pickers.filegrep]")
+local ns =
+  require("lib.nvim.cache.memory").namespace("pickers.nvim.filegrep", { ttl = CACHE_TTL_S })
 ---@type string[]
 local cache_keys = {}
 
+---@class Pickers.FileGrep.Entry
+---@field paths    string[]                 Paths relative to the root, sorted
+---@field hits?    { lnum: integer, col: integer, text: string }[]  Parallel to `paths` (grep runs only)
+---@field lcs?     string[]                 Lowercased `paths`, built on the first path-word query
+---@field problems string[]
+
+---Memoise one process run. A run that failed outright (a problem and nothing to
+---show) is NOT stored, so the next keystroke retries it; a partial success
+---(e.g. rg exit 2 on one unreadable file but with hits) is stored, problems kept.
 ---@internal
 ---@param key string
----@param fn fun(): any
----@return any
+---@param fn fun(): Pickers.FileGrep.Entry
+---@return Pickers.FileGrep.Entry
 local function cached(key, fn)
-  local now = uv.now()
-  local hit = cache[key]
-  if hit and now - hit.at < CACHE_TTL_MS then return hit.value end
-  local value = fn()
-  -- value = { cands, problems }: a failed or timed-out run must be retried,
-  -- not replayed from cache for the whole TTL.
-  if value[2] and #value[2] > 0 then return value end
-  if not cache[key] then
-    cache_keys[#cache_keys + 1] = key
-    if #cache_keys > CACHE_MAX then cache[table.remove(cache_keys, 1)] = nil end
+  local hit = ns.get(key)
+  if hit then return hit end
+  local entry = fn()
+  if #entry.paths == 0 and #entry.problems > 0 then return entry end
+  for i, k in ipairs(cache_keys) do
+    if k == key then
+      table.remove(cache_keys, i)
+      break
+    end
   end
-  cache[key] = { at = now, value = value }
-  return value
+  cache_keys[#cache_keys + 1] = key
+  if #cache_keys > CACHE_MAX then ns.invalidate(table.remove(cache_keys, 1)) end
+  ns.set(key, entry)
+  return entry
 end
 
 ---Drop every memoised process result (tests, and a manual "refresh").
 function M.clear_cache()
-  cache = {}
+  ns.clear()
   cache_keys = {}
 end
 
----Split a prompt into whitespace-separated words; double quotes group words and
----are dropped, so `grep="a b"` yields the single word `grep=a b`. An unclosed
----quote (user still typing) runs to the end of the prompt.
+---Split a prompt into whitespace-separated words. Double quotes group words and
+---are dropped, so `grep="a b"` yields the single word `grep=a b`; `\"` and `\ `
+---are a literal quote / space (any other backslash is kept as typed, so regex
+---escapes like `\b` or `\(` pass through). An unclosed quote (user still typing)
+---runs to the end of the prompt.
 ---@internal
 ---@param s string
 ---@return string[]
@@ -86,23 +118,37 @@ local function words(s)
       cur = {}
     end
   end
-  for i = 1, #s do
+  local i, n = 1, #s
+  while i <= n do
     local c = s:sub(i, i)
-    if c == '"' then
+    local nxt = s:sub(i + 1, i + 1)
+    if c == "\\" and (nxt == '"' or nxt == " ") then
+      cur[#cur + 1] = nxt
+      i = i + 1
+    elseif c == '"' then
       in_quote = not in_quote
     elseif c:match("%s") and not in_quote then
       flush()
     else
       cur[#cur + 1] = c
     end
+    i = i + 1
   end
   flush()
   return out
 end
 
+---Number of UTF-8 characters in `s` (continuation bytes are not counted).
+---@internal
+---@param s string
+---@return integer
+local function char_len(s)
+  return select(2, s:gsub("[^\128-\191]", ""))
+end
+
 ---@class Pickers.FileGrep.Parsed
 ---@field path    string[]  Path-filter words (all must match)
----@field grep    string[]  Content patterns long enough to run (all must match)
+---@field grep    string[]  Distinct content patterns long enough to run (all must match)
 ---@field pending boolean   True when a `grep=` token exists but is still too short to run
 
 ---Parse a prompt into path words and `grep=` patterns. Pure.
@@ -110,13 +156,15 @@ end
 ---@return Pickers.FileGrep.Parsed
 function M.parse(query)
   local parsed = { path = {}, grep = {}, pending = false } ---@type Pickers.FileGrep.Parsed
+  local seen = {}
   for _, w in ipairs(words(query or "")) do
     if w:sub(1, 5) == "grep=" then
       local value = w:sub(6)
-      if #value >= M.MIN_GREP_LEN then
-        parsed.grep[#parsed.grep + 1] = value
-      else
+      if char_len(value) < M.MIN_GREP_LEN then
         parsed.pending = true
+      elseif not seen[value] and #parsed.grep < M.MAX_GREP_TOKENS then
+        seen[value] = true
+        parsed.grep[#parsed.grep + 1] = value
       end
     else
       parsed.path[#parsed.path + 1] = w
@@ -148,56 +196,94 @@ local function run(cmd, root, timeout, tool, benign_code)
   return lines, problem
 end
 
----@internal
----@param name string
----@return string|nil
-local function exe(name)
-  if name == "fd" then
-    for _, n in ipairs({ "fd", "fdfind" }) do
-      if vim.fn.executable(n) == 1 then return n end
-    end
-    return nil
-  end
-  return vim.fn.executable(name) == 1 and name or nil
-end
-
----@class Pickers.FileGrep.Candidate
----@field path    string
----@field root    string
----@field abspath string
----@field lnum?   integer
----@field col?    integer
----@field text?   string
-
 ---All files below `root` (fd), memoised.
 ---@internal
----@return Pickers.FileGrep.Candidate[] cands
----@return string[] problems
-local function list_files(root, find, timeout)
-  local fd = exe("fd")
-  if not fd then return {}, { "fd not found on PATH" } end
+---@param root string
+---@param find Pickers.FindOpts|nil
+---@param timeout integer
+---@param fd string|nil  fd executable name, nil when not installed
+---@return Pickers.FileGrep.Entry
+local function list_files(root, find, timeout, fd)
+  if not fd then return { paths = {}, problems = { "fd not found on PATH" } } end
   local key = table.concat({ "fd", root, vim.inspect(find or {}) }, "\0")
-  return unpack(cached(key, function()
+  return cached(key, function()
     local cmd = { fd }
     vim.list_extend(cmd, search.fd_args(find or {}, ""))
     local lines, problem = run(cmd, root, timeout, "fd")
-    local cands = {}
+    local paths = {}
     for i, line in ipairs(lines) do
-      local rel = vim.fs.normalize(line)
-      cands[i] = { path = rel, root = root, abspath = vim.fs.normalize(root .. "/" .. rel) }
+      paths[i] = search.unify_path(line)
     end
-    return { cands, problem and { problem } or {} }
-  end))
+    table.sort(paths)
+    return { paths = paths, problems = problem and { problem } or {} }
+  end)
+end
+
+---rg flags that make the content half see the same file set as the fd listing:
+---rg_args/rg_files_args hardcode `--hidden --no-ignore-vcs`, and a later flag
+---wins, so the find.* settings are appended after them.
+---@internal
+---@param find Pickers.FindOpts|nil
+---@param extra string[]|nil  source.additional_args
+---@return string[]
+local function rg_extra(find, extra)
+  local out = {}
+  find = find or {}
+  out[#out + 1] = find.no_ignore and "--no-ignore" or "--ignore-vcs"
+  if not find.hidden then out[#out + 1] = "--no-hidden" end
+  if find.follow then out[#out + 1] = "--follow" end
+  vim.list_extend(out, extra or {})
+  return out
+end
+
+---Files among `paths` that also contain `pattern`, as a set. Runs against the
+---explicit survivor list in argv chunks (cheap: rg only opens those files), or
+---over the whole tree when there are too many survivors for a command line.
+---@internal
+---@return table<string, boolean>
+local function narrow(rg, root, find, extra, pattern, paths, timeout, problems)
+  local base = { rg }
+  vim.list_extend(base, search.rg_files_args(find or {}, rg_extra(find, extra), pattern))
+  local set = {}
+
+  local function collect(cmd)
+    local lines, problem = run(cmd, root, timeout, "rg", 1)
+    if problem then problems[#problems + 1] = problem end
+    for _, line in ipairs(lines) do
+      set[search.unify_path(line)] = true
+    end
+  end
+
+  if #paths > NARROW_MAX then
+    collect(base)
+    return set
+  end
+
+  local base_len = 0
+  for _, a in ipairs(base) do
+    base_len = base_len + #a + 1
+  end
+  local chunk, size = {}, base_len
+  local function flush()
+    if #chunk == 0 then return end
+    collect(vim.list_extend(vim.deepcopy(base), chunk))
+    chunk, size = {}, base_len
+  end
+  for _, p in ipairs(paths) do
+    if size + #p + 1 > ARGV_BUDGET then flush() end
+    chunk[#chunk + 1] = p
+    size = size + #p + 1
+  end
+  flush()
+  return set
 end
 
 ---Files below `root` matching every pattern in `patterns`; the first pattern
 ---also supplies the position/text of its first hit. Memoised per pattern set.
 ---@internal
----@return Pickers.FileGrep.Candidate[] cands
----@return string[] problems
-local function grep_files(root, find, extra, patterns, timeout)
-  local rg = exe("rg")
-  if not rg then return {}, { "rg not found on PATH" } end
+---@return Pickers.FileGrep.Entry
+local function grep_files(root, find, extra, patterns, timeout, rg)
+  if not rg then return { paths = {}, problems = { "rg not found on PATH" } } end
   local key = table.concat({
     "rg",
     root,
@@ -205,54 +291,53 @@ local function grep_files(root, find, extra, patterns, timeout)
     vim.inspect(extra or {}),
     table.concat(patterns, "\0"),
   }, "\1")
-  return unpack(cached(key, function()
+  return cached(key, function()
     local problems = {}
+    local opts = rg_extra(find, extra)
 
-    local first_extra = vim.list_extend({ "--max-count", "1" }, extra or {})
+    local first_extra = vim.list_extend({ "--max-count", "1" }, opts)
     local cmd = { rg }
     vim.list_extend(cmd, search.rg_args(find or {}, first_extra, patterns[1]))
     local lines, problem = run(cmd, root, timeout, "rg", 1)
     if problem then problems[#problems + 1] = problem end
 
-    local cands = {} ---@type Pickers.FileGrep.Candidate[]
     -- --max-count caps matching LINES, but --vimgrep still prints one row per
     -- match on that line: keep only the first row of each file.
-    local seen = {} ---@type table<string, boolean>
+    local rows, seen = {}, {}
     for _, line in ipairs(lines) do
       local file, l, c, text = line:match("^(.-):(%d+):(%d+):(.*)$")
-      local rel = file and vim.fs.normalize(file)
+      local rel = file and search.unify_path(file)
       if rel and not seen[rel] then
         seen[rel] = true
-        cands[#cands + 1] = {
-          path = rel,
-          root = root,
-          abspath = vim.fs.normalize(root .. "/" .. rel),
-          lnum = tonumber(l) --[[@as integer]],
-          col = tonumber(c) --[[@as integer]],
-          text = text,
-        }
+        rows[#rows + 1] = { path = rel, lnum = tonumber(l), col = tonumber(c), text = text }
       end
     end
+    table.sort(rows, function(a, b)
+      return a.path < b.path
+    end)
 
     -- Every further pattern narrows the set to files that contain it too.
     for i = 2, #patterns do
-      if #cands == 0 then break end
-      local rcmd = { rg }
-      vim.list_extend(rcmd, search.rg_files_args(find or {}, extra, patterns[i]))
-      local hits, p = run(rcmd, root, timeout, "rg", 1)
-      if p then problems[#problems + 1] = p end
-      local set = {}
-      for _, h in ipairs(hits) do
-        set[vim.fs.normalize(h)] = true
+      if #rows == 0 then break end
+      local survivors = {}
+      for j, r in ipairs(rows) do
+        survivors[j] = r.path
       end
+      local set = narrow(rg, root, find, extra, patterns[i], survivors, timeout, problems)
       local kept = {}
-      for _, cand in ipairs(cands) do
-        if set[cand.path] then kept[#kept + 1] = cand end
+      for _, r in ipairs(rows) do
+        if set[r.path] then kept[#kept + 1] = r end
       end
-      cands = kept
+      rows = kept
     end
-    return { cands, problems }
-  end))
+
+    local paths, hits = {}, {}
+    for i, r in ipairs(rows) do
+      paths[i] = r.path
+      hits[i] = { lnum = r.lnum, col = r.col, text = r.text }
+    end
+    return { paths = paths, hits = hits, problems = problems }
+  end)
 end
 
 ---Score `path` against every path word (all must match). Pure.
@@ -263,7 +348,7 @@ end
 function M.score_path(words_, path, w)
   local total = 0
   for _, word in ipairs(words_) do
-    local s = require("pickers.smart.score").score_file(word, path, w)
+    local s = score.score_file(word, path, w)
     if not s then return nil end
     total = total + s
   end
@@ -272,12 +357,31 @@ end
 
 ---Picker row text: `path:lnum: text` for a content hit, the bare path otherwise.
 ---@internal
----@param cand Pickers.FileGrep.Candidate
+---@param path string
+---@param hit { lnum: integer, text: string }|nil
 ---@return string
-local function display(cand)
-  if not cand.lnum then return cand.path end
-  local text = (cand.text or ""):gsub("^%s+", "")
-  return string.format("%s:%d: %s", cand.path, cand.lnum, text)
+local function display(path, hit)
+  if not hit then return path end
+  local text = (hit.text or ""):gsub("^%s+", "")
+  return string.format("%s:%d: %s", path, hit.lnum, text)
+end
+
+local last_msg, last_at = nil, 0
+
+---Show the first problem of a run (ERR-11: a broken run must not look like zero
+---matches), at most once per REPORT_EVERY_S for the same message so typing does
+---not flood the screen.
+---@internal
+---@param problems string[]
+local function report(problems)
+  local msg = problems[1]
+  if not msg then return end
+  local now = uv.hrtime() / 1e9
+  if msg == last_msg and now - last_at < REPORT_EVERY_S then return end
+  last_msg, last_at = msg, now
+  vim.schedule(function()
+    notify.warn(msg)
+  end)
 end
 
 ---Run the file+content search for one prompt and return ranked items.
@@ -291,55 +395,121 @@ function M.query(query, opts)
   local roots = opts.roots or { uv.cwd() or "." }
   local timeout = sm.timeout or 3000
   local weights = sm.weights or {}
-
-  -- Light {cand, score} rows first: the full item tables are only built for the
-  -- rows that survive the limit (a 100k-file tree would otherwise allocate 100k).
-  local scored = {} ---@type { cand: Pickers.FileGrep.Candidate, score: number }[]
-  local problems = {} ---@type string[]
+  local limit = sm.limit
   local has_grep = #parsed.grep > 0
-  local no_words = #parsed.path == 0
+
+  local needles = {}
+  for i, w in ipairs(parsed.path) do
+    needles[i] = w:lower()
+  end
+
+  -- Resolve the tool once per query (lib.nvim memoises the PATH lookup).
+  local fd = (not has_grep) and executable.find({ "fd", "fdfind" }) or nil
+  local rg = has_grep and executable.find("rg") or nil
+
+  -- Parallel arrays instead of a table per candidate: ents[k] = cache entry,
+  -- idxs[k] = row in it, scs[k] = score, roots_of[k] = its root.
+  local ents, idxs, scs, roots_of = {}, {}, {}, {}
+  local n = 0
+  local problems = {} ---@type string[]
 
   for _, root in ipairs(roots) do
     root = vim.fs.normalize(root)
-    local cands, probs
+    local entry
     if has_grep then
-      cands, probs = grep_files(root, opts.find, opts.additional_args, parsed.grep, timeout)
+      entry = grep_files(root, opts.find, opts.additional_args, parsed.grep, timeout, rg)
     else
-      cands, probs = list_files(root, opts.find, timeout)
+      entry = list_files(root, opts.find, timeout, fd)
     end
-    vim.list_extend(problems, probs)
+    vim.list_extend(problems, entry.problems)
+    local paths = entry.paths
 
-    for _, cand in ipairs(cands) do
-      local s = no_words and 0 or M.score_path(parsed.path, cand.path, weights)
-      if s then scored[#scored + 1] = { cand = cand, score = s } end
+    if #needles == 0 then
+      -- Nothing to score: every row ties, so the (already sorted) listing is
+      -- the ranking and only the first `limit` rows are ever looked at.
+      local take = #paths
+      if limit and n + take > limit then take = limit - n end
+      for i = 1, take do
+        n = n + 1
+        ents[n], idxs[n], scs[n], roots_of[n] = entry, i, 0, root
+      end
+      if limit and n >= limit then break end
+    else
+      local lcs = entry.lcs
+      if not lcs then
+        lcs = {}
+        for i = 1, #paths do
+          lcs[i] = paths[i]:lower()
+        end
+        entry.lcs = lcs
+      end
+      local score_file_lc = score.score_file_lc
+      for i = 1, #paths do
+        local total, matched = 0, true
+        for w = 1, #needles do
+          local s = score_file_lc(needles[w], lcs[i], weights)
+          if not s then
+            matched = false
+            break
+          end
+          total = total + s
+        end
+        if matched then
+          n = n + 1
+          ents[n], idxs[n], scs[n], roots_of[n] = entry, i, total, root
+        end
+      end
     end
   end
 
-  table.sort(scored, function(a, b)
-    if a.score == b.score then return a.cand.path < b.cand.path end
-    return a.score > b.score
-  end)
+  ---@type integer[]
+  local order = {}
+  if #needles == 0 then
+    for k = 1, n do
+      order[k] = k
+    end
+  else
+    -- Only the best `limit` rows are needed: find the limit-th best score from a
+    -- sorted copy of the numbers (cheap default comparator), keep rows at or
+    -- above it, and run the expensive comparator sort on just those.
+    local threshold
+    if limit and n > limit then
+      local tmp = table.move(scs, 1, n, 1, {})
+      table.sort(tmp)
+      threshold = tmp[n - limit + 1]
+    end
+    for k = 1, n do
+      if not threshold or scs[k] >= threshold then order[#order + 1] = k end
+    end
+    table.sort(order, function(a, b)
+      if scs[a] == scs[b] then return ents[a].paths[idxs[a]] < ents[b].paths[idxs[b]] end
+      return scs[a] > scs[b]
+    end)
+  end
 
-  local n = #scored
-  if sm.limit and n > sm.limit then n = sm.limit end
+  local count = #order
+  if limit and count > limit then count = limit end
   local items = {} ---@type Pickers.Smart.Item[]
-  for i = 1, n do
-    local cand = scored[i].cand
-    items[i] = {
-      kind = cand.lnum and "grep" or "file",
-      path = cand.path,
-      root = cand.root,
-      abspath = cand.abspath,
-      lnum = cand.lnum,
-      col = cand.col,
-      text = cand.text,
-      score = scored[i].score,
-      display = display(cand),
+  for r = 1, count do
+    local k = order[r]
+    local entry, i, root = ents[k], idxs[k], roots_of[k]
+    local path = entry.paths[i]
+    local hit = entry.hits and entry.hits[i] or nil
+    items[r] = {
+      kind = hit and "grep" or "file",
+      path = path,
+      root = root,
+      abspath = root .. "/" .. path,
+      lnum = hit and hit.lnum or nil,
+      col = hit and hit.col or nil,
+      text = hit and hit.text or nil,
+      score = scs[k],
+      display = display(path, hit),
+      _rank = r,
     }
   end
-  for i, it in ipairs(items) do
-    it._rank = i
-  end
+
+  report(problems)
   return items, problems
 end
 

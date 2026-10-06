@@ -251,6 +251,7 @@ function M.smart(opts)
   pickers
     .new({}, {
       prompt_title = opts.prompt or "Smart",
+      default_text = opts.query,
       results_title = cheatsheet_hint(),
       finder = finders.new_dynamic({
         fn = function(prompt)

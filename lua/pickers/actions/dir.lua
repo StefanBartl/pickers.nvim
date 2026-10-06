@@ -78,11 +78,13 @@ end
 ---@param path       string
 ---@param action     Pickers.Action
 ---@param engine_mod table
-local function dispatch(path, action, engine_mod)
+---@param query      string|nil  initial prompt text (pickers.tabs / user commands carry it)
+local function dispatch(path, action, engine_mod, query)
   local tail = vim.fn.fnamemodify(path, ":t")
   local source = {
     roots = { path },
     prompt = (tail ~= "" and tail or path) .. "> ",
+    query = (query and query ~= "") and query or nil,
   }
   -- Delegates to pickers.command.dispatch (not actions.files/grep directly)
   -- so :PickersRepeat also covers dir-scope dispatches -- pickers.last.set()
@@ -95,7 +97,8 @@ end
 ---@param nav_arg    string|nil        nil → interactive dir-nav picker
 ---@param action     Pickers.Action|nil  nil → interactive action picker
 ---@param engine_mod table
-function M.run(nav_arg, action, engine_mod)
+---@param query      string|nil  initial prompt text for the opened picker
+function M.run(nav_arg, action, engine_mod, query)
   local cfg = require("pickers.config").get()
 
   local function after_path(path)
@@ -104,10 +107,10 @@ function M.run(nav_arg, action, engine_mod)
       return
     end
     if action then
-      dispatch(path, action, engine_mod)
+      dispatch(path, action, engine_mod, query)
     else
       require("pickers.ui.action_picker").open(function(chosen)
-        if chosen then dispatch(path, chosen, engine_mod) end
+        if chosen then dispatch(path, chosen, engine_mod, query) end
       end)
     end
   end

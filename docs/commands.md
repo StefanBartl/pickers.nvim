@@ -129,11 +129,23 @@ akronyms                 files with "akronyms" in the path   (same as a files pi
 akronyms grep=NWBC       ...that also contain NWBC
 grep=NWBC grep=TODO      files containing BOTH patterns
 grep="foo bar" cfg       quote a value to put spaces in it
+grep="say \"hi\""        \" is a literal quote, \<space> a literal space
 ```
 
 - Without a usable `grep=` it behaves like the files picker, so it can serve as
   an everyday main picker. A `grep=` value shorter than two characters is
-  ignored until it grows (no rg run per half-typed token).
+  ignored until it grows (no rg run per half-typed token). At most four
+  distinct `grep=` tokens run per query (each is a process spawn); identical
+  ones are merged.
+- The content half honours `find.hidden`, `find.no_ignore` and `find.follow`
+  exactly like the file listing, so a `grep=` only ever **narrows** the plain
+  list: it never reveals gitignored or hidden files the listing hides. Further
+  `grep=` tokens search only the files that already matched.
+- Other backslashes are passed to rg as typed, so regex escapes (`\b`, `\(`)
+  work; a literal `C++` needs `C\+\+`.
+- A broken run (rg/fd missing, killed at `smart.timeout`, invalid regex) is
+  reported once as a warning instead of looking like zero matches.
+- `:FileGrep [query]` and the picker's seed text work on all three engines.
 - Without `grep=` it lists fd's files, ranked by the same simple scorer as
   `smart` (not the engine's native fuzzy matcher) and cut to `smart.limit`
   (default 2000) rows. The file list is scored on every keystroke, so on very

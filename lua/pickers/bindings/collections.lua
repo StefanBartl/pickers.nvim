@@ -44,7 +44,7 @@ function M.register(coll)
     util.usercmd(filegrep_cmd, function(opts)
       require("pickers.command").handle({
         fargs = { name, "filegrep" },
-        query = table.concat(opts.fargs, " "),
+        query = vim.trim(opts.args or ""),
       })
     end, "[pickers coll] :" .. filegrep_cmd .. " [query] → :Pickers " .. name .. " filegrep", "*")
   end
