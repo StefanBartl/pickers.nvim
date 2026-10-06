@@ -62,6 +62,11 @@ local ROUTES = {
     desc = "Smart (grep + find) in interactively picked folder",
   },
   {
+    name = "cwd_filegrep",
+    fargs = { "cwd", "filegrep" },
+    desc = "Find files in CWD; add grep=<pattern> to filter by content",
+  },
+  {
     name = "cwd_find_all",
     fargs = { "cwd", "files", "all" },
     desc = "Find all files in CWD (forces hidden+no_ignore+follow)",

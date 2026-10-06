@@ -85,6 +85,34 @@ function M.rg_args(find, extra, query)
   return args
 end
 
+---Build the rg argument list for "which files contain `pattern`" (one path per
+---line, no line numbers). Same flags as `rg_args`; used by pickers.filegrep to
+---AND several `grep=` patterns together.
+---@param find Pickers.FindOpts  only `.exclude` is honoured
+---@param extra string[]|nil  source.additional_args
+---@param pattern string
+---@return string[]
+function M.rg_files_args(find, extra, pattern)
+  local args = {
+    "--files-with-matches",
+    "--color",
+    "never",
+    "--smart-case",
+    "--hidden",
+    "--no-ignore-vcs",
+    "-g",
+    "!.git",
+  }
+  for _, e in ipairs((find or {}).exclude or {}) do
+    args[#args + 1] = "-g"
+    args[#args + 1] = "!" .. e
+  end
+  vim.list_extend(args, extra or {})
+  args[#args + 1] = "--"
+  args[#args + 1] = pattern
+  return args
+end
+
 ---Classify a finished (or failed) `vim.system` run as a problem string, or
 ---nil for a normal outcome -- including a tool's own "no matches" exit code,
 ---which is not an error. Lets `M.collect` tell "empty because nothing
@@ -98,7 +126,7 @@ end
 ---@param res vim.SystemCompleted|nil
 ---@param benign_code integer|nil  an extra exit code that is not an error (rg: 1 = no matches)
 ---@return string|nil
-local function classify_run(tool, root, ok, res, benign_code)
+function M.classify_run(tool, root, ok, res, benign_code)
   if not ok then return tool .. " failed to run in " .. root .. ": " .. tostring(res) end
   if not res then return tool .. " produced no result in " .. root end
   if res.signal and res.signal ~= 0 then
@@ -141,7 +169,7 @@ function M.collect(opts)
       local ok, res = pcall(function()
         return vim.system(cmd, spawn_env.apply({ cwd = root, text = true })):wait(timeout)
       end)
-      local problem = classify_run("fd", root, ok, res)
+      local problem = M.classify_run("fd", root, ok, res)
       if problem then problems[#problems + 1] = problem end
       if ok and res and res.stdout then
         for line in res.stdout:gmatch("[^\r\n]+") do
@@ -165,7 +193,7 @@ function M.collect(opts)
         return vim.system(cmd, spawn_env.apply({ cwd = root, text = true })):wait(timeout)
       end)
       -- rg's own exit code 1 means "ran fine, matched nothing" -- benign.
-      local problem = classify_run("rg", root, ok, res, 1)
+      local problem = M.classify_run("rg", root, ok, res, 1)
       if problem then problems[#problems + 1] = problem end
       if ok and res and res.stdout then
         for line in res.stdout:gmatch("[^\r\n]+") do

@@ -305,7 +305,7 @@ function M.smart(opts)
   ---@param query string
   ---@return string[]
   local function contents(query)
-    local items = require("pickers.smart").query(query or "", {
+    local items = require("pickers.smart").core(opts.core).query(query or "", {
       roots = opts.roots,
       find = opts.find,
       additional_args = opts.additional_args,

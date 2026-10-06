@@ -99,6 +99,7 @@ A fuller spec -- the complete key list is |pickers-config|: >lua
       cwd_smart    = nil,             -- smart (grep + find) in CWD
       config_smart = nil,             -- smart (grep + find) in nvim config
       folder_smart = nil,             -- smart (grep + find) in picked folder
+      cwd_filegrep = nil,             -- files by path + `grep=<pattern>` content filter
     },
     mappings = {},                    -- declarative mappings, empty by default (see |pickers-keymaps|)
     usercmds = { enable = true },
@@ -164,7 +165,9 @@ toggle keymaps/usercmds.
 
   scope    One of: cwd config folder repos system drives dir
            or any user-defined collection name (see |pickers-collections|)
-  action   One of: files grep smart      (smart: see |pickers-smart|)
+  action   One of: files grep smart filegrep  (smart: see |pickers-smart|)
+           filegrep = files picker; add `grep=<pattern>` to the prompt to also
+           filter by content ("akronyms grep=NWBC"; several grep= AND together)
   nav      (dir only) alias name, integer depth, or path=<dir>
 
 A trailing "all" after "files" is the "find all" escape hatch: forces

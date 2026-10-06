@@ -19,10 +19,11 @@ They mirror the keymaps from the original individual modules exactly:
 | _(disabled)_ `cwd_smart` | `:Pickers cwd smart` — combined grep + find in CWD | — |
 | _(disabled)_ `config_smart` | `:Pickers config smart` — combined grep + find in nvim config | — |
 | _(disabled)_ `folder_smart` | `:Pickers folder smart` — pick folder, then combined grep + find | — |
+| _(disabled)_ `cwd_filegrep` | `:Pickers cwd filegrep` — find files in CWD; add `grep=<pattern>` to the prompt to filter by content | — |
 | _(disabled)_ `cwd_find_all` | `:Pickers cwd files all` — find files in CWD, forcing hidden+no_ignore+follow | `<leader>fa` |
 
 `cwd_files`, `repos_files`, `repos_grep`, `system_files`, `cwd_smart`,
-`config_smart`, `folder_smart`, and `cwd_find_all` are opt-in (`nil` by
+`config_smart`, `folder_smart`, `cwd_filegrep`, and `cwd_find_all` are opt-in (`nil` by
 default) — set a `keymaps.<name>` value to enable one:
 ```lua
 require("pickers").setup({

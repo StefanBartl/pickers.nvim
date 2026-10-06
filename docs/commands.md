@@ -8,7 +8,7 @@
 :Pickers dir [nav] [action]
 ```
 
-`action` is one of `files`, `grep`, or `smart`. When an argument is omitted an
+`action` is one of `files`, `grep`, `smart`, or `filegrep`. When an argument is omitted an
 interactive picker appears (`hover_select` or `vim.ui.select`).
 
 ### Search-flag escalation
@@ -48,6 +48,7 @@ uses under the hood; see [docs/keymaps.md](keymaps.md#declarative-mappings-per-e
 | `cwd` | — | _(none)_ | action picker for CWD |
 | `cwd` | — | `files` | find files in CWD |
 | `cwd` | — | `smart` | combined grep + find in CWD (merged & ranked) |
+| `cwd` | — | `filegrep` | find files in CWD; `grep=<pattern>` in the prompt also filters by content |
 | `cwd` | — | `files all` | find files in CWD, forcing hidden+no_ignore+follow |
 | `config` | — | `grep` | live grep in nvim config |
 | `folder` | — | `files` | pick a folder → find files |
@@ -114,6 +115,37 @@ telescope/fzf-lua/snacks because all three drive the same core
 
 > fzf-lua note: the smart action uses fzf-lua's Lua-function live mode, which
 > needs fzf ≥ 0.45. On older fzf, use the telescope or snacks engine for it.
+
+---
+
+## The `filegrep` action
+
+`:Pickers <scope> filegrep` is a **file picker whose prompt can also filter by
+content**. Type a path query as usual and add `grep=<pattern>` to keep only the
+files that contain a match:
+
+```
+akronyms                 files with "akronyms" in the path   (same as a files picker)
+akronyms grep=NWBC       ...that also contain NWBC
+grep=NWBC grep=TODO      files containing BOTH patterns
+grep="foo bar" cfg       quote a value to put spaces in it
+```
+
+- Without a usable `grep=` it behaves like the files picker, so it can serve as
+  an everyday main picker. A `grep=` value shorter than two characters is
+  ignored until it grows (no rg run per half-typed token).
+- Path words must all match (substring first, weak subsequence fallback); the
+  `grep=` value is a ripgrep regex, smart-case.
+- A content match shows as `path:line: text` and opens at the first hit; one row
+  per file.
+- rg/fd output is memoised for a few seconds, so refining the path part after a
+  `grep=` re-ranks without spawning anything.
+- Needs `rg` and `fd`. Ranking and filtering are identical on
+  telescope/fzf-lua/snacks (same core, `lua/pickers/filegrep/`); the fzf-lua
+  note above applies here too.
+
+Opt-in keymap: `keymaps.cwd_filegrep`. As a declarative mapping:
+`mappings = { cwd_filegrep = { "<leader>mp" } }`.
 
 ---
 

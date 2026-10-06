@@ -3116,6 +3116,119 @@ do
   package.loaded["pickers.smart.search"] = nil
 end
 
+-- ── pickers.filegrep — prompt parser, path scoring, query orchestration ─────
+do
+  local filegrep = require("pickers.filegrep")
+
+  local p1 = filegrep.parse("akronyms grep=NWBC")
+  check("filegrep.parse: path word", #p1.path == 1 and p1.path[1] == "akronyms")
+  check("filegrep.parse: grep pattern", #p1.grep == 1 and p1.grep[1] == "NWBC")
+
+  local p2 = filegrep.parse('grep="foo bar" cfg grep=TODO')
+  check("filegrep.parse: quoted value keeps the space", p2.grep[1] == "foo bar")
+  check("filegrep.parse: several grep tokens", #p2.grep == 2 and p2.grep[2] == "TODO")
+  check("filegrep.parse: path word beside quotes", #p2.path == 1 and p2.path[1] == "cfg")
+
+  local p3 = filegrep.parse("grep=N")
+  check("filegrep.parse: too-short grep is pending, not run", #p3.grep == 0 and p3.pending)
+  local p4 = filegrep.parse("")
+  check("filegrep.parse: empty prompt", #p4.path == 0 and #p4.grep == 0 and not p4.pending)
+
+  local w = { filename = 1.0, content = 1.0, both = 25 }
+  check(
+    "filegrep.score_path: no words matches anything",
+    filegrep.score_path({}, "a/b.lua", w) == 0
+  )
+  check(
+    "filegrep.score_path: a non-matching word drops the path",
+    filegrep.score_path({ "zzz" }, "a/b.lua", w) == nil
+  )
+  check(
+    "filegrep.score_path: every word must match",
+    filegrep.score_path({ "docs", "zzz" }, "docs/a.md", w) == nil
+      and filegrep.score_path({ "docs", "a.md" }, "docs/a.md", w) ~= nil
+  )
+
+  -- query(): stub the process layer; branch on which tool/mode was spawned.
+  local orig_system = vim.system
+  local orig_executable = vim.fn.executable
+  vim.fn.executable = function(name)
+    return (name == "fd" or name == "rg") and 1 or 0
+  end
+  local spawned = 0
+  vim.system = function(cmd, _)
+    spawned = spawned + 1
+    local out
+    if cmd[1] == "fd" then
+      out = "docs/akronyms.md\nsrc/a.lua\n"
+    elseif vim.tbl_contains(cmd, "--files-with-matches") then
+      out = "src/b.lua\n"
+    else
+      out = "docs/akronyms.md:3:1:  NWBC here\nsrc/b.lua:1:1:NWBC\n"
+    end
+    return {
+      wait = function()
+        return { code = 0, signal = 0, stdout = out }
+      end,
+    }
+  end
+
+  local opts = { roots = { "/r" }, find = {} }
+
+  filegrep.clear_cache()
+  local items = filegrep.query("akronyms", opts)
+  check(
+    "filegrep.query: no grep= lists files filtered by path",
+    #items == 1 and items[1].path == "docs/akronyms.md" and items[1].kind == "file"
+  )
+
+  filegrep.clear_cache()
+  local g = filegrep.query("akronyms grep=NWBC", opts)
+  check("filegrep.query: path AND content", #g == 1 and g[1].path == "docs/akronyms.md")
+  check(
+    "filegrep.query: content row carries position and display",
+    g[1].kind == "grep" and g[1].lnum == 3 and g[1].display == "docs/akronyms.md:3: NWBC here"
+  )
+
+  filegrep.clear_cache()
+  local both = filegrep.query("grep=NWBC grep=TODO", opts)
+  check("filegrep.query: second grep= narrows the set", #both == 1 and both[1].path == "src/b.lua")
+
+  filegrep.clear_cache()
+  local pend = filegrep.query("akronyms grep=N", opts)
+  check("filegrep.query: pending grep= falls back to the files listing", pend[1].kind == "file")
+
+  filegrep.clear_cache()
+  spawned = 0
+  filegrep.query("grep=NWBC", opts)
+  local first_spawns = spawned
+  filegrep.query("grep=NWBC src", opts)
+  check("filegrep.query: typing in the path part does not respawn rg", spawned == first_spawns)
+
+  vim.system = orig_system
+  vim.fn.executable = orig_executable
+  filegrep.clear_cache()
+
+  check(
+    "mappings.classify: <scope>_filegrep is a scope action",
+    select(3, require("pickers.mappings").classify("cwd_filegrep")) == "filegrep"
+  )
+  check(
+    "smart.core: filegrep resolves to its own module, default to smart",
+    require("pickers.smart").core("filegrep") == filegrep
+      and require("pickers.smart").core() == require("pickers.smart")
+  )
+end
+
+-- ── pickers.smart.search — rg_files_args ────────────────────────────────────
+do
+  local search = require("pickers.smart.search")
+  local a = search.rg_files_args({ exclude = { "*.log" } }, { "-w" }, "foo")
+  check("search.rg_files_args: lists files only", a[1] == "--files-with-matches")
+  check("search.rg_files_args: exclude + extra + -- pattern", has(a, "!*.log") and has(a, "-w"))
+  check("search.rg_files_args: ends in -- pattern", a[#a - 1] == "--" and a[#a] == "foo")
+end
+
 -- ── pickers.smart.frecency — opt-in recency/frequency ranking boost ─────────
 do
   local frecency = require("pickers.smart.frecency")
