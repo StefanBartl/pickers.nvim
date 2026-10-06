@@ -38,6 +38,18 @@ local function first_exe(names)
   return nil
 end
 
+---Forward-slash form of a path printed by fd/rg, without the `./` prefix some
+---versions emit. A pure string transform on purpose: `vim.fs.normalize` also
+---expands a leading `~` and `$VAR`, which would rewrite real file names such as
+---`~$report.docx` (Office lock files) into a different, non-existent path.
+---@param p string
+---@return string
+function M.unify_path(p)
+  local s = require("lib.nvim.cross.fs.separators.unify_slashes")(p)
+  s = s:gsub("^%./", "")
+  return s
+end
+
 ---Build the fd argument list from find flags.
 ---@param find Pickers.FindOpts
 ---@param query string
@@ -173,11 +185,11 @@ function M.collect(opts)
       if problem then problems[#problems + 1] = problem end
       if ok and res and res.stdout then
         for line in res.stdout:gmatch("[^\r\n]+") do
-          local rel = vim.fs.normalize(line) -- forward slashes on every OS
+          local rel = M.unify_path(line) -- forward slashes on every OS
           files[#files + 1] = {
             path = rel,
             root = root,
-            abspath = vim.fs.normalize(root .. "/" .. rel),
+            abspath = root .. "/" .. rel,
           }
         end
       end
@@ -200,11 +212,11 @@ function M.collect(opts)
           -- vimgrep: file:line:col:text
           local file, l, c, text = line:match("^(.-):(%d+):(%d+):(.*)$")
           if file then
-            local rel = vim.fs.normalize(file) -- forward slashes on every OS
+            local rel = M.unify_path(file) -- forward slashes on every OS
             greps[#greps + 1] = {
               path = rel,
               root = root,
-              abspath = vim.fs.normalize(root .. "/" .. rel),
+              abspath = root .. "/" .. rel,
               -- `(%d+)` guarantees digits, so neither conversion can fail and
               -- neither result is fractional.
               lnum = tonumber(l) --[[@as integer]],

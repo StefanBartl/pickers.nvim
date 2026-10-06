@@ -10,6 +10,28 @@ a changelog.
 
 ---
 
+[x] **filegrep review round: file names, flag parity, seeding, speed.** A four-lens review of the
+  filegrep commits found and fixed: (1) `vim.fs.normalize` on fd/rg output expanded a leading `~`
+  and `$VAR`, so `~$report.docx` was listed as a different, non-existent path (also in
+  `smart/search.lua`) -- now a pure slash transform (`search.unify_path`); (2) the `grep=` half ran
+  rg with a hardcoded `--hidden --no-ignore-vcs`, so typing `grep=` revealed gitignored/hidden files
+  the plain listing hides and dropped followed symlinks -- `find.hidden/no_ignore/follow` are now
+  appended after those flags; (3) `:FileGrep [query]`, `:{Name}FileGrep` and tab carry-over seeded
+  the prompt on snacks only -- telescope (`default_text`) and fzf-lua (`query`) now take it, and
+  `dir`-scope targets forward the query too; (4) `:FileGrep` rebuilt the query from f-args, which
+  collapsed spaces and ate backslashes -- it uses the raw `opts.args`; (5) the "failed run" cache
+  rule also dropped rg exit-2 runs that still had hits (an unreadable file) -- only runs with no
+  result are retried; (6) fd/rg problems were dropped by the adapters -- the first one is now
+  shown once per 10 s; (7) `find_all` (`:Pickers cwd filegrep all`) and the scope label in the
+  prompt were ignored. Hardening: at most 4 distinct `grep=` tokens, a `grep=` shorter than 2
+  *characters* (not bytes) is ignored, `\"` / `\<space>` escapes. Speed (measured): the PATH lookup
+  went through lib.nvim's memoised `cross.executable` (a hit cost ~19 ms per keystroke on Windows),
+  the memo moved to `lib.nvim.cache.memory` (hrtime TTL, sweep) holding compact path arrays, path
+  words are lowercased once per entry (`score.match_lc`/`score_file_lc`), only the best `limit` rows
+  are sorted, and later patterns search only the surviving files in argv chunks. Warm keystroke on a
+  134-file tree: 20-28 ms -> 0.2-0.5 ms. Tests: 1032 -> 1077, now including real fd/rg runs on a temp
+  tree, argv assertions, per-engine seed/core routing, `actions.filegrep`/`actions.dir`.
+
 [x] **New action `filegrep`: a files picker with a `grep=` content filter in the prompt.**
   `akronyms grep=NWBC` lists files whose path matches `akronyms` AND whose content matches `NWBC`;
   several `grep=` tokens AND together, `grep="a b"` quotes a value, and a prompt without a usable

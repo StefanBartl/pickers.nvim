@@ -164,17 +164,19 @@ function M.register()
 
   -- Files picker with a `grep=<pattern>` content filter; the optional argument
   -- seeds the prompt, e.g. `:FileGrep akronyms grep=NWBC`.
+  -- `opts.args` (the text as typed), not `fargs`: f-args splitting collapses runs
+  -- of spaces and eats backslashes, which would change a quoted grep= value.
   usercmd("FileGrep", function(opts)
     require("pickers.command").handle({
       fargs = { "cwd", "filegrep" },
-      query = table.concat(opts.fargs, " "),
+      query = vim.trim(opts.args or ""),
     })
   end, "[pickers] :FileGrep [query] → :Pickers cwd filegrep (query seeds the prompt)", "*")
 
   usercmd("FileGrepConfig", function(opts)
     require("pickers.command").handle({
       fargs = { "config", "filegrep" },
-      query = table.concat(opts.fargs, " "),
+      query = vim.trim(opts.args or ""),
     })
   end, "[pickers] :FileGrepConfig [query] → :Pickers config filegrep", "*")
 

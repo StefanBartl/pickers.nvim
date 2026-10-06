@@ -70,6 +70,28 @@ other matches are dropped from the list rather than merged into its score.
 - **Module:** [`smart/score.lua`](../../lua/pickers/smart/score.lua)
 - **Config:** `smart.dedup_grep_rows` (default `false`)
 
+## Filegrep — files by path, narrowed by content
+
+A files picker whose prompt also takes `grep=<pattern>`: `akronyms grep=NWBC`
+lists files with `akronyms` in the path **and** `NWBC` in the content. Several
+`grep=` tokens AND together; without one it is a plain files picker, so it can
+be the everyday main picker. One row per file, opening at the first hit.
+
+It reuses the engines' `smart` live-picker adapters (`opts.core = "filegrep"`),
+so there is no per-engine code. The content half honours `find.*` like the
+file listing does, later `grep=` patterns only scan the files that survived,
+and process output is memoised for a few seconds so refining the path part
+spawns nothing.
+
+- **Module:** [`filegrep/`](../../lua/pickers/filegrep/) — `parse`, `query`;
+  [`actions/filegrep.lua`](../../lua/pickers/actions/filegrep.lua)
+- **Usercmds:** `:Pickers <scope> filegrep`, `:FileGrep [query]`,
+  `:FileGrepConfig [query]`, `:{PascalName}FileGrep` per collection
+- **Keymaps:** opt-in `cwd_filegrep`, `mappings.<scope>_filegrep`, and
+  `keys.filegrep` per collection
+- **Config:** shares `smart = { weights, limit, timeout }`
+- Details: [commands.md](../commands.md#the-filegrep-action)
+
 ## Search-flag escalation
 
 Three independent flags widen a `files` search, and they can be combined with

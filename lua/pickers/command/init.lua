@@ -65,7 +65,7 @@ end
 ---@param action          Pickers.Action
 ---@param source          Pickers.Source
 ---@param engine_mod      table
----@param find_all  table|nil  search-flag override (files action only)
+---@param find_all  table|nil  search-flag override (files and filegrep actions)
 ---@param query    string|nil  initial query for the picker (pickers.tabs carries it across a switch)
 local function dispatch_action(action, source, engine_mod, find_all, query)
   if query and query ~= "" then source.query = query end
@@ -75,7 +75,7 @@ local function dispatch_action(action, source, engine_mod, find_all, query)
   elseif action == "smart" then
     require("pickers.actions.smart").run(source, engine_mod)
   elseif action == "filegrep" then
-    require("pickers.actions.filegrep").run(source, engine_mod)
+    require("pickers.actions.filegrep").run(source, engine_mod, find_all)
   else
     require("pickers.actions.files").run(source, engine_mod, find_all)
   end
@@ -238,7 +238,7 @@ function M.handle(opts)
       nav_arg = nil
       action = arg2
     end
-    require("pickers.actions.dir").run(nav_arg, action, engine_mod)
+    require("pickers.actions.dir").run(nav_arg, action, engine_mod, opts.query)
     return
   end
 

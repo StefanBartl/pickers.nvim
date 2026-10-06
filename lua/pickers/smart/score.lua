@@ -24,8 +24,18 @@ local M = {}
 ---@return number|nil
 function M.match(hay, needle)
   if needle == "" then return 0 end
-  hay = hay:lower()
-  needle = needle:lower()
+  return M.match_lc(hay:lower(), needle:lower())
+end
+
+---`M.match` for a haystack and needle that are ALREADY lowercased. Lets a
+---caller that scores many haystacks against the same needle (pickers.filegrep
+---scores every candidate path on each keystroke) lowercase each only once
+---instead of once per call.
+---@param hay    string  lowercase
+---@param needle string  lowercase
+---@return number|nil
+function M.match_lc(hay, needle)
+  if needle == "" then return 0 end
 
   local start = hay:find(needle, 1, true) -- plain substring (needle may be regex-y; treat literally here)
   if start then
@@ -73,6 +83,20 @@ function M.score_file(query, path, w)
   local sp = M.match(path, query)
   if not sn and not sp then return nil end
   return (sn or 0) * w.filename + (sp or 0) * 0.3
+end
+
+---`M.score_file` for an already-lowercased needle and path. Same result as
+---`score_file` (a name match implies a path match, as the name is a suffix of
+---the path, so testing the path first and bailing out on nil loses nothing).
+---@param needle_lc string  lowercase
+---@param path_lc   string  lowercase, relative to its root
+---@param w         Pickers.Smart.Weights
+---@return number|nil
+function M.score_file_lc(needle_lc, path_lc, w)
+  local sp = M.match_lc(path_lc, needle_lc)
+  if not sp then return nil end
+  local sn = M.match_lc(basename(path_lc), needle_lc)
+  return (sn or 0) * (w.filename or 1.0) + sp * 0.3
 end
 
 ---Score a grep candidate: content match dominates, with a small filename bonus.

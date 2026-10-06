@@ -327,6 +327,7 @@ function M.smart(opts)
 
   fzf.fzf_live(contents, {
     prompt = opts.prompt or "Smart> ",
+    query = opts.query,
     cwd = root,
     is_live = true,
     multiprocess = false,

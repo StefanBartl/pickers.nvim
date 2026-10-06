@@ -3155,6 +3155,9 @@ do
   vim.fn.executable = function(name)
     return (name == "fd" or name == "rg") and 1 or 0
   end
+  -- lib.nvim memoises PATH lookups: drop what an earlier test (or the real
+  -- machine) put there so the stub above is what filegrep sees.
+  require("lib.nvim.cross.executable").clear()
   local spawned = 0
   vim.system = function(cmd, _)
     spawned = spawned + 1
@@ -3239,6 +3242,7 @@ do
 
   vim.system = orig_system
   vim.fn.executable = orig_executable
+  require("lib.nvim.cross.executable").clear()
   filegrep.clear_cache()
 
   check(
@@ -3250,6 +3254,421 @@ do
     require("pickers.smart").core("filegrep") == filegrep
       and require("pickers.smart").core() == require("pickers.smart")
   )
+end
+
+-- ── pickers.filegrep — parser details, scorer equivalence, argv, caps ───────
+do
+  local filegrep = require("pickers.filegrep")
+
+  local q1 = filegrep.parse([[grep="say \"hi\"" x]])
+  check('filegrep.parse: \\" inside quotes is a literal quote', q1.grep[1] == 'say "hi"')
+  check("filegrep.parse: the word after the quoted value is a path word", q1.path[1] == "x")
+  check(
+    "filegrep.parse: \\<space> is a literal space",
+    filegrep.parse([[grep=foo\ bar]]).grep[1] == "foo bar"
+  )
+  check(
+    "filegrep.parse: other backslashes (regex escapes) are kept",
+    filegrep.parse([[grep=\bfoo\b]]).grep[1] == [[\bfoo\b]]
+  )
+  check(
+    "filegrep.parse: identical grep= tokens are merged",
+    #filegrep.parse("grep=aa grep=aa").grep == 1
+  )
+  check(
+    "filegrep.parse: at most MAX_GREP_TOKENS patterns",
+    #filegrep.parse("grep=aa grep=bb grep=cc grep=dd grep=ee grep=ff").grep
+      == filegrep.MAX_GREP_TOKENS
+  )
+  check("filegrep.parse: one multibyte char is still too short", filegrep.parse("grep=é").pending)
+  check("filegrep.parse: two multibyte chars run", #filegrep.parse("grep=éé").grep == 1)
+
+  local sc = require("pickers.smart.score")
+  local w = { filename = 1.0, content = 1.0, both = 25 }
+  for _, c in ipairs({
+    { "doc", "Docs/akronyms.md" },
+    { "zz", "a/b.lua" },
+    { "a.md", "docs/a.md" },
+    { "mdx", "Docs/akronyms.md" },
+    { "KRN", "docs/akronyms.md" },
+  }) do
+    check(
+      "score_file_lc == score_file for '" .. c[1] .. "' in " .. c[2],
+      sc.score_file_lc(c[1]:lower(), c[2]:lower(), w) == sc.score_file(c[1], c[2], w)
+    )
+  end
+
+  -- argv + orchestration, with the process layer stubbed and every call recorded.
+  local orig_system, orig_executable = vim.system, vim.fn.executable
+  vim.fn.executable = function(name)
+    return (name == "fd" or name == "rg") and 1 or 0
+  end
+  require("lib.nvim.cross.executable").clear()
+
+  local calls, rg_rows, narrow_out = {}, "a.txt:1:1:x\nb.txt:2:1:y\n", "b.txt\n"
+  vim.system = function(cmd)
+    calls[#calls + 1] = vim.deepcopy(cmd)
+    local out
+    if cmd[1] == "fd" then
+      out = "z/b.lua\nz/a.lua\nq.md\n"
+    elseif vim.tbl_contains(cmd, "--files-with-matches") then
+      out = narrow_out
+    else
+      out = rg_rows
+    end
+    return {
+      wait = function()
+        return { code = 0, signal = 0, stdout = out }
+      end,
+    }
+  end
+  local function index_of(list, val)
+    for i, v in ipairs(list) do
+      if v == val then return i end
+    end
+  end
+  local opts = { roots = { "/r" }, find = { hidden = false, no_ignore = false, follow = true } }
+
+  filegrep.clear_cache()
+  local its = filegrep.query("grep=aa grep=bb", opts)
+  check("filegrep.argv: two spawns for two patterns", #calls == 2)
+  check(
+    "filegrep.argv: first pattern is one vimgrep row per file",
+    index_of(calls[1], "--vimgrep") and index_of(calls[1], "--max-count")
+  )
+  check(
+    "filegrep.argv: find.* flags come AFTER the hardcoded ones (the later flag wins)",
+    index_of(calls[1], "--ignore-vcs") > index_of(calls[1], "--no-ignore-vcs")
+      and index_of(calls[1], "--no-hidden") > index_of(calls[1], "--hidden")
+      and index_of(calls[1], "--follow") ~= nil
+  )
+  local dd = index_of(calls[2], "--")
+  check(
+    "filegrep.argv: later pattern narrows to the survivors after '-- <pattern>'",
+    index_of(calls[2], "--files-with-matches")
+      and calls[2][dd + 1] == "bb"
+      and calls[2][dd + 2] == "a.txt"
+      and calls[2][dd + 3] == "b.txt"
+  )
+  check("filegrep.argv: only the surviving file is listed", #its == 1 and its[1].path == "b.txt")
+
+  -- more survivors than fit a command line -> whole-tree scan, no path arguments
+  local many = {}
+  for i = 1, 3001 do
+    many[i] = string.format("f%04d.txt:1:1:x", i)
+  end
+  rg_rows = table.concat(many, "\n") .. "\n"
+  calls = {}
+  filegrep.clear_cache()
+  filegrep.query("grep=aa grep=bb", opts)
+  check(
+    "filegrep.argv: above NARROW_MAX the later pattern scans the whole tree",
+    calls[2] and calls[2][#calls[2]] == "bb"
+  )
+  rg_rows = "a.txt:1:1:x\nb.txt:2:1:y\n"
+
+  -- find.no_ignore / hidden flip the other way
+  calls = {}
+  filegrep.clear_cache()
+  filegrep.query("grep=aa", { roots = { "/r" }, find = { hidden = true, no_ignore = true } })
+  check(
+    "filegrep.argv: no_ignore -> --no-ignore, hidden -> no --no-hidden",
+    index_of(calls[1], "--no-ignore") and not index_of(calls[1], "--no-hidden")
+  )
+
+  -- limit, ordering and several roots
+  local config = require("pickers.config")
+  config.apply({ smart = { limit = 1 } })
+  filegrep.clear_cache()
+  local lim = filegrep.query("", opts)
+  check("filegrep.query: smart.limit truncates the plain listing", #lim == 1)
+  local lim2 = filegrep.query("a", opts)
+  check(
+    "filegrep.query: the best-scoring row survives the limit",
+    #lim2 == 1 and lim2[1].path == "z/a.lua"
+  )
+  config.apply({ smart = { limit = 2000 } })
+  filegrep.clear_cache()
+  local two = filegrep.query("", { roots = { "/r1", "/r2" }, find = opts.find })
+  check(
+    "filegrep.query: two roots keep distinct abspaths for the same relative path",
+    #two == 6 and two[1].abspath ~= two[2].abspath
+  )
+
+  -- the memo is bounded: pushing more than CACHE_MAX keys evicts the oldest
+  filegrep.clear_cache()
+  calls = {}
+  for i = 1, 12 do
+    filegrep.query("grep=pat" .. i, opts)
+  end
+  local before = #calls
+  filegrep.query("grep=pat1", opts)
+  check("filegrep.cache: an evicted key is recomputed", #calls == before + 1)
+  filegrep.query("grep=pat12", opts)
+  check("filegrep.cache: a recent key is served from the memo", #calls == before + 1)
+
+  vim.system = orig_system
+  vim.fn.executable = orig_executable
+  require("lib.nvim.cross.executable").clear()
+  filegrep.clear_cache()
+end
+
+-- ── pickers.filegrep — real fd/rg against a temp tree (skipped without them) ─
+do
+  local filegrep = require("pickers.filegrep")
+  local exe = require("lib.nvim.cross.executable")
+  exe.clear()
+  if not (exe.find({ "fd", "fdfind" }) and exe.find("rg")) then
+    print("  skip filegrep integration: fd/rg not installed")
+  else
+    local base = vim.fn.tempname()
+    local function write(rel, lines)
+      vim.fn.mkdir(vim.fn.fnamemodify(base .. "/" .. rel, ":h"), "p")
+      vim.fn.writefile(lines, base .. "/" .. rel)
+    end
+    vim.fn.mkdir(base .. "/.git", "p") -- a repo root, so .gitignore applies
+    write(".gitignore", { "ignored/" })
+    write("~tilde.txt", { "NWBC tilde" })
+    write("plain.txt", { "NWBC TODO" })
+    write("other.txt", { "NWBC" })
+    write("opt.txt", { "--pre=cmd" })
+    write("ignored/gi.txt", { "NWBC" })
+    write(".hid/h.txt", { "NWBC" })
+    base = vim.fs.normalize(base)
+
+    local function paths(items)
+      local out = {}
+      for _, it in ipairs(items) do
+        out[#out + 1] = it.path
+      end
+      table.sort(out)
+      return out
+    end
+    local function q(prompt, find)
+      return filegrep.query(prompt, { roots = { base }, find = find })
+    end
+    local find = { hidden = true, no_ignore = false, follow = true }
+    filegrep.clear_cache()
+
+    local t = q("tilde", find)
+    check(
+      "filegrep.real: a '~' file name is not rewritten (path and abspath)",
+      #t == 1 and t[1].path == "~tilde.txt" and vim.uv.fs_stat(t[1].abspath) ~= nil
+    )
+    local tg = q("tilde grep=NWBC", find)
+    check(
+      "filegrep.real: ...also through the content half",
+      #tg == 1 and tg[1].path == "~tilde.txt"
+    )
+
+    local pre, pre_problems = q("grep=--pre=cmd", find)
+    check(
+      "filegrep.real: a pattern that looks like an rg flag is searched literally",
+      #pre == 1 and pre[1].path == "opt.txt" and #pre_problems == 0
+    )
+
+    -- (a path word also matches by subsequence, so assert on the one file, not a count)
+    local function has_path(items, p)
+      return vim.tbl_contains(paths(items), p)
+    end
+    check(
+      "filegrep.real: gitignored dir hidden in the listing AND with grep=",
+      not has_path(q("gi.txt", find), "ignored/gi.txt")
+        and not has_path(q("gi.txt grep=NWBC", find), "ignored/gi.txt")
+    )
+    local all = { hidden = true, no_ignore = true, follow = true }
+    check(
+      "filegrep.real: find.no_ignore shows it in both",
+      has_path(q("gi.txt", all), "ignored/gi.txt")
+        and has_path(q("gi.txt grep=NWBC", all), "ignored/gi.txt")
+    )
+    local nohid = { hidden = false, no_ignore = false, follow = true }
+    check(
+      "filegrep.real: find.hidden=false hides dotfiles in both",
+      not has_path(q("h.txt", nohid), ".hid/h.txt")
+        and not has_path(q("h.txt grep=NWBC", nohid), ".hid/h.txt")
+    )
+    check(
+      "filegrep.real: find.hidden=true shows them in both",
+      has_path(q("h.txt", find), ".hid/h.txt")
+        and has_path(q("h.txt grep=NWBC", find), ".hid/h.txt")
+    )
+
+    local both = q("grep=NWBC grep=TODO", find)
+    check(
+      "filegrep.real: two patterns narrow to the file with both",
+      vim.deep_equal(paths(both), { "plain.txt" })
+    )
+
+    local bad, bad_problems = q("grep=(a", find)
+    check(
+      "filegrep.real: an invalid regex yields no rows and a reported problem",
+      #bad == 0 and #bad_problems >= 1
+    )
+
+    vim.fn.delete(base, "rf")
+    filegrep.clear_cache()
+  end
+end
+
+-- ── engines: smart() seeds the prompt and routes through the chosen core ────
+do
+  local fake_item = {
+    kind = "grep",
+    path = "a.txt",
+    root = "/r",
+    abspath = "/r/a.txt",
+    lnum = 3,
+    col = 2,
+    text = "hit",
+    score = 1,
+    display = "a.txt:3: hit",
+  }
+  local queries = {}
+  local prev = {
+    ["pickers.filegrep"] = package.loaded["pickers.filegrep"],
+    ["telescope.finders"] = package.loaded["telescope.finders"],
+    ["telescope.pickers"] = package.loaded["telescope.pickers"],
+    ["telescope.sorters"] = package.loaded["telescope.sorters"],
+    ["telescope.config"] = package.loaded["telescope.config"],
+    ["fzf-lua"] = package.loaded["fzf-lua"],
+    ["fzf-lua.actions"] = package.loaded["fzf-lua.actions"],
+    ["snacks.picker"] = package.loaded["snacks.picker"],
+    ["pickers.engines.telescope"] = package.loaded["pickers.engines.telescope"],
+    ["pickers.engines.fzf"] = package.loaded["pickers.engines.fzf"],
+    ["pickers.engines.snacks"] = package.loaded["pickers.engines.snacks"],
+  }
+  package.loaded["pickers.filegrep"] = {
+    query = function(prompt, o)
+      queries[#queries + 1] = { prompt = prompt, opts = o }
+      return { fake_item }, {}
+    end,
+  }
+  local eopts = {
+    core = "filegrep",
+    query = "seed grep=zz",
+    roots = { "/r" },
+    prompt = "P> ",
+    find = {},
+  }
+
+  -- telescope
+  local tcap
+  package.loaded["telescope.finders"] = {
+    new_dynamic = function(o)
+      return o
+    end,
+  }
+  package.loaded["telescope.pickers"] = {
+    new = function(_, o)
+      tcap = o
+      return {
+        find = function() end,
+      }
+    end,
+  }
+  package.loaded["telescope.sorters"] = {
+    empty = function()
+      return "empty"
+    end,
+  }
+  package.loaded["telescope.config"] = {
+    values = {
+      grep_previewer = function()
+        return "gp"
+      end,
+    },
+  }
+  package.loaded["pickers.engines.telescope"] = nil
+  require("pickers.engines.telescope").smart(eopts)
+  check("engines.telescope.smart: the query seeds the prompt", tcap.default_text == "seed grep=zz")
+  local tres = tcap.finder.fn("typed")
+  check(
+    "engines.telescope.smart: opts.core picks the query core",
+    queries[#queries].prompt == "typed" and tres[1] == fake_item
+  )
+
+  -- fzf-lua
+  local fcap, fcontents
+  package.loaded["fzf-lua"] = {
+    fzf_live = function(contents, o)
+      fcontents, fcap = contents, o
+    end,
+  }
+  package.loaded["fzf-lua.actions"] = {
+    file_edit_or_qf = function() end,
+  }
+  package.loaded["pickers.engines.fzf"] = nil
+  require("pickers.engines.fzf").smart(eopts)
+  check("engines.fzf.smart: the query seeds the prompt", fcap.query == "seed grep=zz")
+  check(
+    "engines.fzf.smart: content rows are path:line:col:text via the chosen core",
+    fcontents("typed")[1] == "a.txt:3:2:hit" and queries[#queries].prompt == "typed"
+  )
+
+  -- snacks
+  local scap
+  package.loaded["snacks.picker"] = {
+    pick = function(o)
+      scap = o
+    end,
+  }
+  package.loaded["pickers.engines.snacks"] = nil
+  require("pickers.engines.snacks").smart(eopts)
+  check("engines.snacks.smart: the query seeds the prompt", scap.search == "seed grep=zz")
+  local sres = scap.finder(nil, { filter = { search = "typed" } })
+  check(
+    "engines.snacks.smart: rows carry file and position from the chosen core",
+    sres[1].file == "/r/a.txt" and sres[1].pos[1] == 3 and queries[#queries].prompt == "typed"
+  )
+
+  for name, mod in pairs(prev) do
+    package.loaded[name] = mod
+  end
+end
+
+-- ── actions.filegrep / actions.dir: forwarded fields ────────────────────────
+do
+  local afg = require("pickers.actions.filegrep")
+  local got
+  local engine = {
+    smart = function(o)
+      got = o
+    end,
+  }
+  afg.run(
+    { roots = { "/r" }, prompt = "CWD> ", query = "q", additional_args = { "-w" } },
+    engine,
+    { hidden = false }
+  )
+  check(
+    "actions.filegrep: core, roots, query and additional_args are forwarded",
+    got.core == "filegrep"
+      and got.roots[1] == "/r"
+      and got.query == "q"
+      and got.additional_args[1] == "-w"
+  )
+  check("actions.filegrep: the find-all override is merged into find", got.find.hidden == false)
+  check(
+    "actions.filegrep: the scope label stays in the prompt",
+    got.prompt:find("^CWD grep=> ") ~= nil
+  )
+  local ok = pcall(afg.run, { roots = { "/r" }, prompt = "x> " }, {})
+  check("actions.filegrep: an engine without smart() is reported, not thrown", ok)
+
+  local prev_command = package.loaded["pickers.command"]
+  local seen
+  package.loaded["pickers.command"] = {
+    dispatch = function(_, source)
+      seen = source
+    end,
+  }
+  require("pickers.actions.dir").run("cwd", "filegrep", {}, "akronyms grep=NWBC")
+  check(
+    "actions.dir: the query reaches the dispatched source",
+    seen and seen.query == "akronyms grep=NWBC"
+  )
+  package.loaded["pickers.command"] = prev_command
 end
 
 -- ── pickers.smart.search — rg_files_args ────────────────────────────────────
