@@ -83,7 +83,9 @@ end
 ---@return string
 function M.link_name(abs)
   local trimmed = abs:gsub("[/\\]+$", "")
-  local name = fn.fnamemodify(trimmed, ":t")
+  -- Both separators on every platform: `:t` only knows `\` on Windows, but a path
+  -- written there (a link, a Windows-style entry) still ends in its last segment elsewhere.
+  local name = trimmed:match("[^/\\]*$")
   return name ~= "" and name or abs
 end
 
