@@ -42,6 +42,29 @@ local function has(list, val)
   return vim.tbl_contains(list, val)
 end
 
+-- ── In-memory clipboard provider ────────────────────────────────────────────
+-- The specs read the "+" register back. A headless CI runner has no clipboard tool, and the
+-- developer's machine has a real one the specs must not clobber -- so both use this provider.
+-- It has to be registered before the first clipboard access (the provider is resolved lazily).
+do
+  local held = { ["+"] = { {}, "v" }, ["*"] = { {}, "v" } }
+  local function copy(reg)
+    return function(lines, regtype)
+      held[reg] = { vim.deepcopy(lines), regtype }
+    end
+  end
+  local function paste(reg)
+    return function()
+      return held[reg]
+    end
+  end
+  vim.g.clipboard = {
+    name = "pickers-spec-memory",
+    copy = { ["+"] = copy("+"), ["*"] = copy("*") },
+    paste = { ["+"] = paste("+"), ["*"] = paste("*") },
+  }
+end
+
 -- ── to_pascal ───────────────────────────────────────────────────────────────
 do
   local util = require("pickers.bindings.util")
@@ -1410,6 +1433,9 @@ do
   vim.fn.mkdir(proj .. "/.git", "p")
   vim.fn.mkdir(proj .. "/src/deep", "p")
   vim.fn.mkdir(proj .. "/docs", "p")
+  -- Resolved: a buffer's name is the real path (macOS: /private/var/..., not /var/...), and
+  -- buffer_relative is computed against it.
+  proj = vim.uv.fs_realpath(proj) or proj
   local a = proj .. "/src/a.lua"
   local b = proj .. "/src/deep/b.lua"
   vim.fn.writefile({ "" }, a)
@@ -1641,11 +1667,22 @@ do
   -- fzf hands the action a LIST of lines, or (other providers) a metadata table.
   local fzf_actions = require("pickers.entry_actions.adapters.fzf").get_actions()
   local prev_fzf = package.loaded["fzf-lua"]
-  package.loaded["fzf-lua"] = { resume = function() end }
+  local resumed = false
+  package.loaded["fzf-lua"] = {
+    resume = function()
+      resumed = true
+    end,
+  }
   local target = vim.fn.fnamemodify("fzf_shape.lua", ":p"):gsub("\\", "/")
   vim.fn.setreg("+", "")
   fzf_actions["ctrl-y"]({ path = target })
   check("entry_actions.fzf: a { path = ... } table is one entry", vim.fn.getreg("+") == target)
+  -- the action resumes the picker on a deferred timer: let it fire against the stub, not
+  -- against whatever is (not) installed once the stub is gone
+  vim.wait(1000, function()
+    return resumed
+  end, 10)
+  check("entry_actions.fzf: the copy action resumes the picker", resumed)
   package.loaded["fzf-lua"] = prev_fzf
 end
 
@@ -2381,7 +2418,9 @@ do
   -- Windows only treats a path as absolute with a drive letter, so a bare
   -- leading "/" would silently resolve relative to the cwd instead and the
   -- edit-opens-the-right-buffer assertion below would compare the wrong path.
-  local fake_root = vim.fn.fnamemodify(vim.fn.tempname(), ":h")
+  -- Resolved: the edited buffer's name is the real path (macOS: /private/var/..., not /var/...).
+  local tmp_dir = vim.fn.fnamemodify(vim.fn.tempname(), ":h")
+  local fake_root = vim.uv.fs_realpath(tmp_dir) or tmp_dir
   local fake_map = {
     ["x.lua"] = { code = "M ", orig_path = nil },
     ["y.lua"] = { code = " M", orig_path = nil },
@@ -8636,6 +8675,8 @@ do
   local li_root = (vim.fn.tempname():gsub("\\", "/"))
   vim.fn.mkdir(li_root .. "/docs", "p")
   vim.fn.mkdir(li_root .. "/src", "p")
+  -- Resolved: the edited buffer's name is the real path (macOS: /private/var/..., not /var/...).
+  li_root = (vim.uv.fs_realpath(li_root) or li_root):gsub("\\", "/")
   vim.fn.writefile({ "x" }, li_root .. "/src/a.lua")
   vim.fn.writefile({ "intro" }, li_root .. "/docs/note.md")
   vim.cmd("only")
