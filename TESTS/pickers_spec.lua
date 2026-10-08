@@ -158,6 +158,33 @@ do
   config.apply({ smart = { dedup_grep_rows = false } })
 end
 
+-- ── keymaps = false / usercmds = false switch the groups off (REL-20) ───────
+do
+  local config = require("pickers.config")
+  local function count_pickers_maps()
+    local n = 0
+    for _, m in ipairs(vim.api.nvim_get_keymap("n")) do
+      if (m.desc or ""):find("^pickers:") then n = n + 1 end
+    end
+    return n
+  end
+  local before = count_pickers_maps()
+  config.apply({ keymaps = false, usercmds = false })
+  local cfg = config.get()
+  check("keymaps = false: keymaps.enable is false", cfg.keymaps.enable == false)
+  check("usercmds = false: usercmds.enable is false", cfg.usercmds.enable == false)
+  require("pickers.bindings").setup(cfg)
+  check(
+    "keymaps = false: bindings register no keymap",
+    count_pickers_maps() == before,
+    count_pickers_maps() .. " vs " .. before
+  )
+  config.apply({ keymaps = true, usercmds = true })
+  cfg = config.get()
+  check("keymaps = true: the defaults are enabled", cfg.keymaps.enable == true)
+  check("usercmds = true: the defaults are enabled", cfg.usercmds.enable == true)
+end
+
 -- ── pickers.bindings.keymaps — repos_files/repos_grep/system_files opt-in ───
 do
   local config = require("pickers.config")
