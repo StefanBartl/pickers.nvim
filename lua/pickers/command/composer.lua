@@ -36,6 +36,7 @@ end
 -- dir's nav slot accepts aliases, numeric depth, "path=...", or (when the nav
 -- is omitted) an action word — smarter than any built-in type.
 composer.register_type("PICKERS_DIR_NAV", {
+  desc = "Start directory: levels up, alias (git, home) or path=<dir>",
   validate = function(raw)
     return true, raw, nil
   end,
@@ -55,6 +56,7 @@ composer.register_type("PICKERS_DIR_NAV", {
 -- enough; a custom type (not `enum`) because the candidate list is queried
 -- from the registry rather than declared inline per-route.
 composer.register_type("PICKERS_BUILTIN_NAME", {
+  desc = "Native engine picker to open, e.g. git_branches",
   validate = function(raw)
     return true, raw, nil
   end,
@@ -63,10 +65,26 @@ composer.register_type("PICKERS_BUILTIN_NAME", {
   end,
 })
 
+-- One line per action for the help float (`composer.help`); the four names are the
+-- complete ACTION_VALUES set.
+local ACTION_DESC = {
+  files = "Find files by name",
+  grep = "Live grep over file contents",
+  smart = "File names and contents in one ranked list",
+  filegrep = "File names, narrowed by grep=<pattern> in the prompt",
+}
+
 ---@internal
 ---@return Lib.UserCmd.Composer.ArgSpec
 local function action_arg()
-  return { name = "action", type = "STRING", values = ACTION_VALUES, optional = true }
+  return {
+    name = "action",
+    type = "STRING",
+    values = ACTION_VALUES,
+    optional = true,
+    desc = "What to search (omit to choose in a picker)",
+    enum_desc = ACTION_DESC,
+  }
 end
 
 -- Search-flag escalation for one search only. `all` is the shorthand for
@@ -91,6 +109,16 @@ local function find_all_arg()
       "no_ignore+follow",
     },
     optional = true,
+    desc = "Widen a files/filegrep search once (combine with +)",
+    enum_desc = {
+      all = "hidden + no_ignore + follow",
+      hidden = "Include dotfiles",
+      no_ignore = "Include files hidden by ignore rules",
+      follow = "Follow symlinks",
+      ["hidden+no_ignore"] = "Dotfiles and ignored files",
+      ["hidden+follow"] = "Dotfiles, following symlinks",
+      ["no_ignore+follow"] = "Ignored files, following symlinks",
+    },
   }
 end
 
@@ -154,7 +182,7 @@ local function collection_route(name)
 end
 
 composer.register_type("PICKERS_TAB_GROUP", {
-  desc = "a pickers.tabs group name",
+  desc = "Group from tabs.groups to open (default: default)",
   validate = function(raw)
     return true, raw, nil
   end,
