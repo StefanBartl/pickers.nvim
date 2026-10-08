@@ -506,6 +506,19 @@ function M.apply(opts)
   -- ERR-50: validated (and unknown keys dropped) before anything below reads
   -- from it, so a typo cannot vanish silently into either the top-level
   -- default or a deep-merged sub-table that would otherwise absorb it.
+  -- REL-20: `keymaps = false` / `usercmds = false` mean `{ enable = false }`.
+  -- The shared lib.nvim helper owns the shape; `true` is `{ enable = true }`
+  -- here because apply() merges into the active config (a later `true` must
+  -- switch the group back on).
+  local normalize = require("lib.nvim.normalize")
+  local function switch(value)
+    if value == true then return { enable = true } end
+    return normalize.normalize_switch_group(value)
+  end
+  opts = vim.tbl_extend("force", opts, {
+    keymaps = switch(opts.keymaps),
+    usercmds = switch(opts.usercmds),
+  })
   local sanitized = sanitize_level(opts, TOP_LEVEL_OPTS, "")
 
   if type(sanitized.engine) == "string" then cfg.engine = sanitized.engine end

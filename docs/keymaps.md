@@ -58,6 +58,8 @@ Disable all keymaps:
 require("pickers").setup({ keymaps = { enable = false } })
 ```
 
+`keymaps = false` is the short spelling of the same (and `usercmds = false` of `usercmds = { enable = false }`).
+
 ## Declarative mappings (per-entry engine override)
 
 `mappings` is a second, more flexible keymap surface alongside the fixed
