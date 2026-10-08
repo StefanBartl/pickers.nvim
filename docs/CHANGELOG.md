@@ -10,6 +10,14 @@ a changelog.
 
 ---
 
+[x] **`:Pickers` option float: every positional argument now says what it is for.** lib.nvim's help float
+  (the cheatsheet key after `:Pickers cwd `) shows one line per next argument. The `action` slot
+  (`files`/`grep`/`smart`/`filegrep`, with a line per value), the `all` search-escalation slot (`all`,
+  `hidden`, `no_ignore`, `follow` and their `+` combinations), `dir`'s nav slot (`PICKERS_DIR_NAV`: levels
+  up, alias or `path=`) and `builtin`'s name (`PICKERS_BUILTIN_NAME`) had no text; the `tabs` group text
+  now names where the groups come from. `help.undocumented("Pickers", { args = true })` is empty and a
+  spec block pins it, plus the one-short-line, no-full-stop style of every text. Tests 1178 -> 1181.
+
 [x] **filegrep fifth/sixth review round: the abort rule keys on rg's `(os error N)`, smart warns less and shows more.**
   The fourth round's chunk abort was too coarse in two directions and is now rg's own signal: exit 2
   without hits is a chunk-specific file error when stderr carries `(os error N)` (also in localised

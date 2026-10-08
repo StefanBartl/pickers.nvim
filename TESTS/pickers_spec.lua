@@ -2907,6 +2907,75 @@ do
   end
 end
 
+-- ── :Pickers option float — every positional argument has a one-line text ───
+-- lib.nvim's help float (<M-h> on the command line) shows one line per positional argument,
+-- taken from the argument's `desc`, the text of its type (`register_type`) or, for a closed set,
+-- `enum_desc`. Pins that no route of :Pickers ships an argument without one, and that the lines
+-- keep the float's house style: one short line, no trailing full stop. Skipped on a lib.nvim
+-- without `help.undocumented` / `arg_desc`.
+do
+  local okc, composer = pcall(require, "lib.nvim.bindings.usercmd.composer")
+  local oke, entries = pcall(require, "lib.nvim.bindings.usercmd.composer.help.entries")
+  if
+    not (
+      okc
+      and oke
+      and type(composer.help) == "table"
+      and type(composer.help.undocumented) == "function"
+      and type(entries.arg_desc) == "function"
+    )
+  then
+    print("  skip :Pickers option float tests (lib.nvim has no argument texts)")
+  else
+    -- A collection route is generated per collection, so one is configured to cover it too.
+    require("pickers.config").apply({ collections = { { name = "notes", dir = "/tmp/notes" } } })
+    require("pickers.command.composer").register(require("pickers.config").get())
+
+    local missing = {}
+    for _, m in ipairs(composer.help.undocumented("Pickers", { args = true })) do
+      missing[#missing + 1] = ("%s %s %s"):format(m.route, m.kind, m.name)
+    end
+    check(
+      "option float: every :Pickers flag and argument has a text",
+      #missing == 0,
+      table.concat(missing, ", ")
+    )
+
+    local function house_style(text)
+      return type(text) == "string"
+        and text ~= ""
+        and not text:find("\n", 1, true)
+        and #text <= 80
+        and not text:find("%.$")
+    end
+
+    local handle = composer.registry().Pickers
+    local walked, bad = 0, {}
+    for _, route in ipairs(handle and handle:spec().routes or {}) do
+      for _, arg in ipairs(route.args or {}) do
+        walked = walked + 1
+        local label = table.concat(route.path, " ") .. " " .. arg.name
+        if not house_style(entries.arg_desc(arg)) then bad[#bad + 1] = label end
+        for value, text in pairs(arg.enum_desc or {}) do
+          if not house_style(text) then bad[#bad + 1] = label .. "=" .. value end
+          -- A text for a value the argument does not offer is a typo that shows nowhere.
+          if not has(arg.enum or arg.values or {}, value) then
+            bad[#bad + 1] = label .. "=" .. value .. " (not a value)"
+          end
+        end
+      end
+    end
+    check("option float: the routes' arguments were walked", walked > 0)
+    check(
+      "option float: every :Pickers argument text is one short line, no full stop",
+      #bad == 0,
+      table.concat(bad, ", ")
+    )
+
+    require("pickers.config").apply({ collections = {} })
+  end
+end
+
 -- ── pickers.builtins — registry shape, names(), run() dispatch ──────────────
 do
   local builtins = require("pickers.builtins")
