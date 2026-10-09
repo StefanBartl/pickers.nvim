@@ -2,7 +2,7 @@
   "$schema": "https://raw.githubusercontent.com/LuaLS/vscode-lua/master/setting/schema.json",
   "runtime.version": "LuaJIT",
   "runtime.pathStrict": true,
-  "diagnostics.globals": ["vim"],
+  "diagnostics.globals": [],
   "workspace.checkThirdParty": false,
   "workspace.ignoreDir": [".claude", ".deps"],
   "telemetry.enable": false
