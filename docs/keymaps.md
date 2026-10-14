@@ -150,7 +150,7 @@ snacks. See `lua/pickers/keys/`.
 | `copy_absolute` | `<C-y>` · `[a`, `[f` | ✓ | fixed (`ctrl-y`) | ✓ |
 | `copy_dirname` | `<M-y>` · `]a` | ✓ | fixed (`alt-y`) | ✓ |
 | `copy_env_rooted` | `<M-v>` · `[e` | ✓ | fixed (`alt-v`) | ✓ |
-| `copy_project_root`² | `<M-t>` · `[R` | ✓ | fixed (`alt-t`) | ✓ |
+| `copy_project_root` | `<M-t>` · `[R` | ✓ | fixed (`alt-t`) | ✓ |
 | `copy_project_relative` | `<M-e>` · `]R` | ✓ | fixed (`alt-e`) | ✓ |
 | `copy_buffer_relative` | `<M-j>` · `]b` | ✓ | fixed (`alt-j`) | ✓ |
 | `markdown_link` | `<M-l>` · `ML`, `MM` | ✓ | fixed (`alt-l`) | ✓ |
@@ -297,9 +297,9 @@ anything else (`[a`, `ML`, `<leader>sm`, `<Space>`) is a chord. On snacks
 normal mode means both the list window's *and* the input window's own normal
 mode; telescope only needs the latter since it has a single prompt buffer
 whose normal mode already covers both (`mappings.n`). fzf-lua's own `--bind`
-syntax has no concept of a multi-keystroke ch
-² In a `pick_item` list whose items carry `previews`, `<M-t>` switches the preview mode instead (set `preview_toggle_key` to move it).
-ct lhs resolve to (`ctrl-y`/`alt-y`/`alt-v`/
+syntax has no concept of a multi-keystroke chord (it binds a single logical
+key, not a pending-key state machine), so its bindings are fixed to the same
+single physical keys the direct lhs resolve to (`ctrl-y`/`alt-y`/`alt-v`/
 `alt-t`/`alt-e`/`alt-j`/`alt-l`/`alt-o`/`alt-x`) — same class as its
 `ctrl-a`/`ctrl-o`/`shift-enter`/`f1`. The Alt keys are chosen to stay clear of
 the engines' own defaults (snacks `<A-d>`/`<A-f>`/`<A-h>`/`<A-i>`/`<A-m>`/
