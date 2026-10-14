@@ -34,4 +34,16 @@ return {
   guard_allow = { fs = {}, spawn = {}, network = {} },
   -- Environment variables the specs read; a child editor inherits an allowlist only (never secrets).
   env_allow = { "LIB_NVIM_PATH", "REPOS_DIR", "PICKERS_REQUIRE_TOOLS" },
+  -- Findings the minimal conformance editor cannot avoid (docs/CONFORMANCE.md of testing.nvim); reviewed 2026-10-14.
+  conformance = {
+    waivers = {
+      {
+        check = "K6",
+        level = "error",
+        text = "No picker engine",
+        reason = "a picker engine (telescope, fzf-lua, snacks) is external; the minimal conformance editor has none",
+        expires = "2027-04-14",
+      },
+    },
+  },
 }
