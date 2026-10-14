@@ -126,7 +126,7 @@ All of these live in the augroup `"pickers.nvim"` when lib.nvim is present; with
 | `copy_absolute` | `<C-y>` · chords `[a`, `[f` | patched | fixed (`ctrl-y`) | export only¹ |
 | `copy_dirname` | `<M-y>` · chord `]a` | patched | fixed (`alt-y`) | export only¹ |
 | `copy_env_rooted` | `<M-v>` · chord `[e` | patched | fixed (`alt-v`) | export only¹ |
-| `copy_project_root` | `<M-t>` · chord `[R` | patched | fixed (`alt-t`) | export only¹ |
+| `copy_project_root`² | `<M-t>` · chord `[R` | patched | fixed (`alt-t`) | export only¹ |
 | `copy_project_relative` | `<M-e>` · chord `]R` | patched | fixed (`alt-e`) | export only¹ |
 | `copy_buffer_relative` | `<M-j>` · chord `]b` | patched | fixed (`alt-j`) | export only¹ |
 | `markdown_link` | `<M-l>` · chords `ML`, `MM` | patched | fixed (`alt-l`) | export only¹ |
@@ -139,6 +139,8 @@ All of these live in the augroup `"pickers.nvim"` when lib.nvim is present; with
 The path-copy/system rows carry a **direct key** (Ctrl/Alt, bound in insert *and* normal mode — the prompt is always in insert mode) and filetree.nvim's **chords** (`[a`, `ML`, `<leader>sm`, …), which bind in normal mode only so they never swallow typed characters. Copies act on the `<Tab>`-selected entries, else the current one. See [docs/keymaps.md](keymaps.md#in-picker-keys-preview-scroll--history--entry-actions).
 
 ¹ snacks: pickers.nvim doesn't own `Snacks.setup()`, but snacks reads `Snacks.config.picker` each time a picker opens — so the keys are patched into that table once snacks is loaded (`pickers.entry_actions.patch`), a key you already bound winning. `keys.snacks_win()` stays exported for merging by hand.
+
+² In a `pick_item` list whose items carry `previews`, `<M-t>` (`alt-t` in fzf-lua) switches the preview mode instead of `copy_project_root`; set `preview_toggle_key` to move it. fzf-lua previews are text, so the item's `line` is not scrolled to there.
 
 ### Quickfix-window keys (`quickfix.keys`)
 
