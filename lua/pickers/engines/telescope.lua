@@ -292,7 +292,57 @@ end
 ---(string or table), via `entry.value` rather than telescope's `entry[1]` —
 ---the latter isn't guaranteed to equal the whole entry once a custom
 ---`entry_maker` is in play.
----@param opts { items: (string|Pickers.Item)[], prompt: string, on_select: fun(item: string|Pickers.Item) }
+---A previewer that follows the current preview mode of `state` (see
+---`pickers.preview_modes`): the file (and line) of the item in a mode that has
+---one, the item's own lines otherwise. Telescope caches a preview buffer by
+---name, so the mode is part of the name and switching back is instant.
+---@internal
+---@param state Pickers.PreviewModes
+---@param conf table  telescope.config
+---@return table previewer
+local function modes_previewer(state, conf)
+  local previewers = require("telescope.previewers")
+  return previewers.new_buffer_previewer({
+    title = "Preview",
+    dyn_title = function()
+      return state:label()
+    end,
+    get_buffer_by_name = function(_, entry)
+      return state:current() .. "\0" .. tostring(entry.value.text)
+    end,
+    define_preview = function(self, entry)
+      local spec = state:spec(entry.value)
+      local bufnr, winid = self.state.bufnr, self.state.winid
+      if spec and spec.file then
+        conf.values.buffer_previewer_maker(spec.file, bufnr, {
+          bufname = self.state.bufname,
+          winid = winid,
+          callback = function()
+            if spec.line and winid and vim.api.nvim_win_is_valid(winid) then
+              pcall(vim.api.nvim_win_set_cursor, winid, { spec.line, 0 })
+              vim.api.nvim_win_call(winid, function()
+                vim.cmd("normal! zz")
+              end)
+            end
+          end,
+        })
+        return
+      end
+      vim.api.nvim_buf_set_lines(
+        bufnr,
+        0,
+        -1,
+        false,
+        (spec and spec.lines) or { "(no preview in this mode)" }
+      )
+      if spec and spec.ft and spec.ft ~= "" then
+        require("telescope.previewers.utils").highlighter(bufnr, spec.ft)
+      end
+    end,
+  })
+end
+
+---@param opts { items: (string|Pickers.Item)[], prompt: string, on_select: fun(item: string|Pickers.Item), preview_modes?: string[], preview_toggle_key?: string }
 function M.pick_item(opts)
   local ok, _, pickers, finders, conf, actions, action_state
   ok, _, pickers, finders, conf, actions, action_state = load_telescope()
@@ -308,6 +358,8 @@ function M.pick_item(opts)
       break
     end
   end
+  -- Items with `previews` get switchable previews instead of the file-only one.
+  local modes = require("pickers.preview_modes").new(opts)
 
   pickers
     .new({}, {
@@ -323,14 +375,22 @@ function M.pick_item(opts)
         end,
       }),
       sorter = conf.values.generic_sorter({}),
-      previewer = has_preview and (image_previewer() or conf.values.file_previewer({})) or false,
+      previewer = modes and modes_previewer(modes, conf)
+        or (has_preview and (image_previewer() or conf.values.file_previewer({})) or false),
       history = history_opts(),
-      attach_mappings = require("pickers.result_count").wrap_attach_mappings(function(_, _map)
+      attach_mappings = require("pickers.result_count").wrap_attach_mappings(function(_, map)
         actions.select_default:replace(function(bufnr)
           actions.close(bufnr)
           local sel = action_state.get_selected_entry()
           if sel then opts.on_select(sel.value) end
         end)
+        if modes and map then
+          map({ "i", "n" }, modes.key, function(prompt_bufnr)
+            modes:toggle()
+            local picker = action_state.get_current_picker(prompt_bufnr)
+            if picker then picker:refresh_previewer() end
+          end, { desc = "switch the preview mode" })
+        end
         return true
       end),
     })

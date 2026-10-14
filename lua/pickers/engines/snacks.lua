@@ -274,6 +274,48 @@ function M.pick_item(opts)
   end
 
   local preview = preview_fn()
+  local snacks_opts = preview and { preview = preview } or nil
+
+  -- Items with `previews`: a preview that follows the current mode, and a key
+  -- that switches it (see `pickers.preview_modes`).
+  local pm = require("pickers.preview_modes")
+  local modes = pm.new(opts)
+  if modes then
+    local key = pm.snacks_key(modes.key)
+    local keys = {
+      [key] = {
+        "pickers_toggle_preview_mode",
+        mode = { "i", "n" },
+        desc = "switch the preview mode",
+      },
+    }
+    snacks_opts = {
+      preview = function(ctx)
+        -- `select` wraps every entry: the one that was passed in is `.item`.
+        local spec = modes:spec(ctx.item.item)
+        if spec and spec.file then
+          local proxy = setmetatable(
+            { item = { file = spec.file, pos = spec.line and { spec.line, 0 } or nil } },
+            { __index = ctx }
+          )
+          require("snacks.picker.preview").file(proxy)
+          return
+        end
+        ctx.preview:reset()
+        ctx.preview:set_lines((spec and spec.lines) or { "(no preview in this mode)" })
+        if spec and spec.ft and spec.ft ~= "" then ctx.preview:highlight({ ft = spec.ft }) end
+        ctx.preview:set_title(modes:label())
+      end,
+      actions = {
+        pickers_toggle_preview_mode = function(picker)
+          modes:toggle()
+          picker.preview:refresh(picker)
+        end,
+      },
+      win = { input = { keys = keys }, list = { keys = keys } },
+    }
+  end
+
   Picker.select(opts.items, {
     prompt = opts.prompt,
     format_item = function(item)
@@ -283,7 +325,7 @@ function M.pick_item(opts)
     -- this is the only way in -- and the only key that may travel this way:
     -- `select`'s own `on_close` completes the vim.ui.select contract, and a
     -- merge would replace it rather than wrap it.
-    snacks = preview and { preview = preview } or nil,
+    snacks = snacks_opts,
   }, function(item)
     if item then opts.on_select(item) end
   end)

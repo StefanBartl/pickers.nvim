@@ -380,6 +380,47 @@ function M.pick_item(opts)
     end
   end
 
+  -- Items with `previews`: the preview follows the current mode and a key
+  -- switches it (see `pickers.preview_modes`). fzf only sees text lines, so the
+  -- hidden second field is the item's index, not a file.
+  local pm = require("pickers.preview_modes")
+  local modes = pm.new(opts)
+  if modes then
+    local lines, by_line = {}, {}
+    for i, it in ipairs(opts.items) do
+      local text = (type(it) == "table") and it.text or it
+      lines[i] = text .. "\t" .. i
+      by_line[lines[i]] = it
+    end
+    fzf.fzf_exec(lines, {
+      prompt = opts.prompt,
+      fzf_opts = vim.tbl_extend("force", {
+        ["--no-multi"] = true,
+        ["--delimiter"] = "\\t",
+        ["--with-nth"] = "1",
+      }, history_fzf_opts("item") or {}, cheatsheet_header()),
+      preview = function(selected)
+        local line = (type(selected) == "table") and selected[1] or selected
+        local idx = line and tonumber(line:match("\t(%d+)$"))
+        return pm.as_text(idx and modes:spec(opts.items[idx]))
+      end,
+      winopts = { on_create = setup_double_esc },
+      actions = {
+        ["default"] = function(selected)
+          if selected and selected[1] then opts.on_select(by_line[selected[1]] or selected[1]) end
+        end,
+        [pm.fzf_key(modes.key)] = {
+          fn = function()
+            modes:toggle()
+          end,
+          exec_silent = true,
+          postfix = "refresh-preview",
+        },
+      },
+    })
+    return
+  end
+
   if not has_preview then
     -- `opts.items` may still be `Pickers.Item` tables even with no `file` set
     -- anywhere (`file` is optional -- see the type doc) -- fzf-lua's contents
