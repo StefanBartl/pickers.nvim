@@ -299,6 +299,16 @@ function M.pick_item(opts)
             { __index = ctx }
           )
           require("snacks.picker.preview").file(proxy)
+          -- `preview:loc()` reads the position from the real picker item, not from the
+          -- proxy, so the line is put in view here
+          local win = ctx.preview.win and ctx.preview.win.win
+          if spec.line and win and vim.api.nvim_win_is_valid(win) then
+            pcall(vim.api.nvim_win_set_cursor, win, { spec.line, 0 })
+            vim.api.nvim_win_call(win, function()
+              vim.cmd("normal! zz")
+            end)
+          end
+          ctx.preview:set_title(modes:label())
           return
         end
         ctx.preview:reset()
@@ -313,6 +323,8 @@ function M.pick_item(opts)
         end,
       },
       win = { input = { keys = keys }, list = { keys = keys } },
+      -- the `select` layout hides the preview by default; a feature made of previews shows it
+      layout = { preset = "select", hidden = {} },
     }
   end
 

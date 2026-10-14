@@ -402,7 +402,8 @@ function M.pick_item(opts)
       preview = function(selected)
         local line = (type(selected) == "table") and selected[1] or selected
         local idx = line and tonumber(line:match("\t(%d+)$"))
-        return pm.as_text(idx and modes:spec(opts.items[idx]))
+        -- fzf has no preview title: the first line names the modes, the current one in brackets
+        return modes:label() .. "\n" .. pm.as_text(idx and modes:spec(opts.items[idx]))
       end,
       winopts = { on_create = setup_double_esc },
       actions = {

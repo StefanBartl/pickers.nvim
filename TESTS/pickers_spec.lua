@@ -9009,7 +9009,17 @@ do
     "preview_modes: fzf key",
     pm.fzf_key("<M-t>") == "alt-t" and pm.fzf_key("<C-p>") == "ctrl-p"
   )
+  check(
+    "preview_modes: fzf key names",
+    pm.fzf_key("<CR>") == "enter"
+      and pm.fzf_key("<S-Tab>") == "shift-tab"
+      and pm.fzf_key("<M-CR>") == "alt-enter"
+  )
   check("preview_modes: as_text of lines", pm.as_text({ lines = { "a", "b" } }) == "a\nb")
+  check(
+    "preview_modes: as_text tolerates non-strings",
+    pm.as_text({ lines = { 1, "b" } }) == "1\nb"
+  )
   check("preview_modes: as_text of nothing", pm.as_text(nil) == "")
 
   -- telescope: custom previewer + a key mapped on the prompt
@@ -9169,6 +9179,33 @@ do
     "pick_item/snacks: table mode sets the lines and the title",
     set[1] == "| x |" and title == "normal [table]"
   )
+  -- file mode: the preview module shows the file, the line is put in view by the engine
+  local prev_sp = package.loaded["snacks.picker.preview"]
+  local file_shown
+  package.loaded["snacks.picker.preview"] = {
+    file = function(proxy)
+      file_shown = proxy.item.file
+    end,
+  }
+  local sbuf = vim.api.nvim_create_buf(false, true)
+  vim.api.nvim_buf_set_lines(sbuf, 0, -1, false, { "1", "2", "3", "4", "5" })
+  local swin = vim.api.nvim_get_current_win()
+  local prev_sbuf = vim.api.nvim_win_get_buf(swin)
+  vim.api.nvim_win_set_buf(swin, sbuf)
+  sel.snacks.actions.pickers_toggle_preview_mode({ preview = ctx.preview }) -- back to "normal"
+  ctx.preview.win = { win = swin }
+  ctx.item = { item = { text = "F", previews = { normal = { file = "some/file.lua", line = 4 } } } }
+  sel.snacks.preview(ctx)
+  check(
+    "pick_item/snacks: file mode shows the file and puts the line in view",
+    file_shown == "some/file.lua" and vim.api.nvim_win_get_cursor(swin)[1] == 4
+  )
+  check(
+    "pick_item/snacks: the select layout shows the preview",
+    sel.snacks.layout.preset == "select" and next(sel.snacks.layout.hidden) == nil
+  )
+  vim.api.nvim_win_set_buf(swin, prev_sbuf)
+  package.loaded["snacks.picker.preview"] = prev_sp
   package.loaded["snacks.picker"] = prev_snacks
   package.loaded["pickers.engines.snacks"] = nil
 
@@ -9195,8 +9232,8 @@ do
     fz.lines[1] == "A\t1" and fz.lines[2] == "B\t2"
   )
   check(
-    "pick_item/fzf: preview of the normal mode of the file-less item",
-    fz.o.preview({ "B\t2" }) ~= nil
+    "pick_item/fzf: a file that cannot be read says so under the mode line",
+    vim.startswith(fz.o.preview({ "B\t2" }) or "", "[normal] table\ncould not read ")
   )
   local act = fz.o.actions["alt-t"]
   check(
@@ -9206,7 +9243,7 @@ do
   act.fn()
   check(
     "pick_item/fzf: after the toggle the preview shows the table lines",
-    fz.o.preview({ "A\t1" }) == "| x |\n| - |"
+    fz.o.preview({ "A\t1" }) == "normal [table]\n| x |\n| - |"
   )
   fz.o.actions["default"]({ "A\t1" })
   check("pick_item/fzf: on_select gets the exact original item", picked == items[1])

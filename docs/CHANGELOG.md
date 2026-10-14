@@ -17,6 +17,13 @@ a changelog.
   buffer previewer (cached per entry and mode), snacks a preview function plus a picker action, fzf-lua a
   preview function and a silent `refresh-preview` bind (the hidden second field is the item index there, not a
   file). Items without `previews` behave as before. New `pickers.preview_modes` holds the shared state.
+  Review fixes: snacks puts the item's `line` in view itself (`preview:loc()` reads the real picker item, not
+  the proxy) and shows the preview in the `select` layout (hidden there by default); telescope keys its
+  buffer cache by the entry's position (two entries with the same text no longer share a preview) and
+  updates the preview title on toggle; fzf-lua names the modes in the first preview line and spells `<CR>` /
+  `<S-Tab>` as `enter` / `shift-tab`. Known limits: the default toggle key `<M-t>` is also the
+  `copy_project_root` entry action, so in a `pick_item` with `previews` it switches the preview instead (set
+  `preview_toggle_key` to change it); fzf-lua previews are text, so `line` is not scrolled to there.
 
 [x] **`:Pickers` option float: every positional argument now says what it is for.** lib.nvim's help float
   (the cheatsheet key after `:Pickers cwd `) shows one line per next argument. The `action` slot
