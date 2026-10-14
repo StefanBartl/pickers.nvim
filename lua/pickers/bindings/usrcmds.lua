@@ -70,6 +70,15 @@ local function complete_repo(arglead)
   return require("pickers.sources.repos").complete(arglead)
 end
 
+---Completion for the compat commands that take no real argument: they accept
+---an optional argument for backwards compatibility and ignore it, so there is
+---nothing to offer.
+---@internal
+---@return string[]
+local function complete_none()
+  return {}
+end
+
 local BASE_SCOPE_DESC = {
   cwd = "vim.uv.cwd()",
   config = "stdpath('config')",
@@ -106,41 +115,47 @@ end
 
 ---Register all built-in compat user-commands listed in the module @description.
 function M.register()
-  usercmd("DirPicker", function(opts)
-    local fargs = { "dir" }
-    for _, a in ipairs(opts.fargs) do
-      fargs[#fargs + 1] = a
-    end
-    require("pickers.command").handle({ fargs = fargs })
-  end, "[pickers compat] :DirPicker [nav] → :Pickers dir [nav]", "*")
+  usercmd(
+    "DirPicker",
+    function(opts)
+      local fargs = { "dir" }
+      for _, a in ipairs(opts.fargs) do
+        fargs[#fargs + 1] = a
+      end
+      require("pickers.command").handle({ fargs = fargs })
+    end,
+    "[pickers compat] :DirPicker [nav] → :Pickers dir [nav]",
+    "*",
+    require("pickers.command.composer").complete_dir_nav
+  )
 
   usercmd("FindConfig", function(_)
     require("pickers.command").handle({ fargs = { "config", "files" } })
-  end, "[pickers compat] :FindConfig → :Pickers config files", "?")
+  end, "[pickers compat] :FindConfig → :Pickers config files", "?", complete_none)
 
   usercmd("GrepConfig", function(_)
     require("pickers.command").handle({ fargs = { "config", "grep" } })
-  end, "[pickers compat] :GrepConfig → :Pickers config grep", "?")
+  end, "[pickers compat] :GrepConfig → :Pickers config grep", "?", complete_none)
 
   usercmd("FindInFolder", function(_)
     require("pickers.command").handle({ fargs = { "folder", "files" } })
-  end, "[pickers compat] :FindInFolder → :Pickers folder files", "*")
+  end, "[pickers compat] :FindInFolder → :Pickers folder files", "*", complete_none)
 
   usercmd("LiveGrep", function(_)
     require("pickers.command").handle({ fargs = { "cwd", "grep" } })
-  end, "[pickers compat] :LiveGrep → :Pickers cwd grep", "?")
+  end, "[pickers compat] :LiveGrep → :Pickers cwd grep", "?", complete_none)
 
   usercmd("AllDrives", function(_)
     require("pickers.command").handle({ fargs = { "drives", "files" } })
-  end, "[pickers compat] :AllDrives → :Pickers drives files", "?")
+  end, "[pickers compat] :AllDrives → :Pickers drives files", "?", complete_none)
 
   usercmd("AllDrivesGrep", function(_)
     require("pickers.command").handle({ fargs = { "drives", "grep" } })
-  end, "[pickers compat] :AllDrivesGrep → :Pickers drives grep", "?")
+  end, "[pickers compat] :AllDrivesGrep → :Pickers drives grep", "?", complete_none)
 
   usercmd("FindOnSystem", function(_)
     require("pickers.command").handle({ fargs = { "system", "files" } })
-  end, "[pickers compat] :FindOnSystem → :Pickers system files", "?")
+  end, "[pickers compat] :FindOnSystem → :Pickers system files", "?", complete_none)
 
   usercmd(
     "RepoFiles",
@@ -182,15 +197,27 @@ function M.register()
 
   usercmd("PickersRepeat", function(_)
     require("pickers.last").run()
-  end, "[pickers] :PickersRepeat — reopen the last :Pickers action", "?")
+  end, "[pickers] :PickersRepeat — reopen the last :Pickers action", "?", complete_none)
 
-  usercmd("PickersScopes", function(_)
-    list_scopes()
-  end, "[pickers] :PickersScopes — list every resolvable scope (built-ins + collections)", "?")
+  usercmd(
+    "PickersScopes",
+    function(_)
+      list_scopes()
+    end,
+    "[pickers] :PickersScopes — list every resolvable scope (built-ins + collections)",
+    "?",
+    complete_none
+  )
 
-  usercmd("PickersResume", function(_)
-    require("pickers.builtins").run("resume")
-  end, "[pickers] :PickersResume — reopen the last picker with its last query", "?")
+  usercmd(
+    "PickersResume",
+    function(_)
+      require("pickers.builtins").run("resume")
+    end,
+    "[pickers] :PickersResume — reopen the last picker with its last query",
+    "?",
+    complete_none
+  )
 end
 
 return M
