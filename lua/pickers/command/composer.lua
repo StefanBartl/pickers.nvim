@@ -35,20 +35,26 @@ end
 
 -- dir's nav slot accepts aliases, numeric depth, "path=...", or (when the nav
 -- is omitted) an action word — smarter than any built-in type.
+---Candidates for dir's nav slot: action words, aliases, depths and "path=".
+---Also the -complete of :DirPicker (pickers.bindings.usrcmds).
+---@param arg_lead string
+---@return string[]
+function M.complete_dir_nav(arg_lead)
+  local candidates = vim.list_extend({}, ACTION_VALUES)
+  vim.list_extend(candidates, require("pickers.actions.dir").alias_names())
+  for i = 1, 9 do
+    candidates[#candidates + 1] = tostring(i)
+  end
+  candidates[#candidates + 1] = "path="
+  return prefix(candidates, arg_lead)
+end
+
 composer.register_type("PICKERS_DIR_NAV", {
   desc = "Start directory: levels up, alias (git, home) or path=<dir>",
   validate = function(raw)
     return true, raw, nil
   end,
-  complete = function(arg_lead)
-    local candidates = vim.list_extend({}, ACTION_VALUES)
-    vim.list_extend(candidates, require("pickers.actions.dir").alias_names())
-    for i = 1, 9 do
-      candidates[#candidates + 1] = tostring(i)
-    end
-    candidates[#candidates + 1] = "path="
-    return prefix(candidates, arg_lead)
-  end,
+  complete = M.complete_dir_nav,
 })
 
 -- Registered builtin name — see pickers.builtins. Static list (the registry

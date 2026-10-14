@@ -46,6 +46,20 @@ return {
         reason = "a picker engine (telescope, fzf-lua, snacks) is external; the minimal conformance editor has none",
         expires = "2027-04-14",
       },
+      {
+        check = "K5",
+        level = "warn",
+        text = ":FileGrep takes",
+        reason = "the argument is a free-text query that seeds the prompt; there is no closed set to complete",
+        expires = "2027-04-14",
+      },
+      {
+        check = "K5",
+        level = "warn",
+        text = ":FileGrepConfig takes",
+        reason = "the argument is a free-text query that seeds the prompt; there is no closed set to complete",
+        expires = "2027-04-14",
+      },
     },
   },
 }

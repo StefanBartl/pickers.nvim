@@ -683,7 +683,7 @@ a changelog.
   `Pickers.FindOpts`) overrides the global `find` defaults for that
   collection's `files` action — merged, not replaced, so unset fields keep
   the global value. Grep is unaffected (no `find` flags there). Built-in
-  scopes (cwd/config/folder/repos/wkdbooks/system/drives) stay global-only —
+  scopes (cwd, config, folder, repos, wkdbooks, system, drives) stay global-only —
   they aren't user-configurable objects the way collections are, so there's
   no natural per-scope config surface to attach an override to. See
   `pickers.actions.files`, `pickers.sources.collection`, and
