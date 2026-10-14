@@ -14,6 +14,25 @@ local function note(msg)
   vim.health.info("ℹ️ INFO " .. msg)
 end
 
+--- Optional sibling plugins (engines and images.nvim are reported above). Each
+--- is a soft dependency: a feature quietly degrades without it, so a missing
+--- one is info, never a warning.
+---@return nil
+local function check_soft_dependencies()
+  local deps = {
+    { "fileops.ops.file", "fileops.nvim", "explorer refresh after browse-picker file changes" },
+    { "gopath.env_shorten", "gopath.nvim", "$VAR-shortened paths in inserted markdown links" },
+    { "lazy.core.config", "lazy.nvim", "engine patches wait for the plugin load event" },
+  }
+  for _, dep in ipairs(deps) do
+    if pcall(require, dep[1]) then
+      vim.health.ok(("%s found: %s"):format(dep[2], dep[3]))
+    else
+      vim.health.info(("%s not installed: %s unavailable"):format(dep[2], dep[3]))
+    end
+  end
+end
+
 ---Run all `:checkhealth pickers` sections: dependencies, picker engines, CLI
 ---tools, configuration, and collections.
 function M.check()
@@ -239,6 +258,9 @@ function M.check()
       end
     end
   end
+
+  vim.health.start("pickers.nvim — soft dependencies (all optional)")
+  check_soft_dependencies()
 
   -- ── Declared tools (lib.nvim.deps) ──────────────────────────────────────
   -- pickers.nvim's own docs/install.json — the same rg/fd checks above, but
