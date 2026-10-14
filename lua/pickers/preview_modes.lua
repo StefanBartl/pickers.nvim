@@ -40,7 +40,7 @@ function State:toggle()
   return self.modes[self.idx]
 end
 
----Title for the preview window: the current mode, the other ones in brackets-free form.
+---Title for the preview window: all modes, the current one in brackets (`[normal] table`).
 ---@return string
 function State:label()
   local out = {}
@@ -119,10 +119,14 @@ end
 ---@param key string
 ---@return string
 function M.fzf_key(key)
+  local NAMES = { cr = "enter", s = "shift", bs = "bspace", ["s-tab"] = "shift-tab" }
+  local function name(n)
+    return NAMES[n] or n
+  end
   local k = key:lower()
   local mod, rest = k:match("^<([mac])%-(.+)>$")
-  if mod then return ((mod == "c") and "ctrl-" or "alt-") .. rest end
-  return (k:gsub("^<(.+)>$", "%1"))
+  if mod then return ((mod == "c") and "ctrl-" or "alt-") .. name(rest) end
+  return name((k:gsub("^<(.+)>$", "%1")))
 end
 
 ---Preview text for engines that can only show a string (fzf-lua): the lines,
@@ -131,7 +135,13 @@ end
 ---@return string
 function M.as_text(spec)
   if not spec then return "" end
-  if spec.lines then return table.concat(spec.lines, "\n") end
+  if spec.lines then
+    local out = {}
+    for i, l in ipairs(spec.lines) do
+      out[i] = tostring(l)
+    end
+    return table.concat(out, "\n")
+  end
   if spec.file then
     local ok, lines = pcall(vim.fn.readfile, spec.file)
     if not ok then return "could not read " .. spec.file end

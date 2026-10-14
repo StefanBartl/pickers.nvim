@@ -308,7 +308,8 @@ local function modes_previewer(state, conf)
       return state:label()
     end,
     get_buffer_by_name = function(_, entry)
-      return state:current() .. "\0" .. tostring(entry.value.text)
+      -- the entry's position, not its text: two entries may read the same
+      return state:current() .. "\0" .. tostring(entry.index or entry.value.text)
     end,
     define_preview = function(self, entry)
       local spec = state:spec(entry.value)
@@ -388,7 +389,13 @@ function M.pick_item(opts)
           map({ "i", "n" }, modes.key, function(prompt_bufnr)
             modes:toggle()
             local picker = action_state.get_current_picker(prompt_bufnr)
-            if picker then picker:refresh_previewer() end
+            if picker then
+              -- `dyn_title` is only honoured with telescope's `dynamic_preview_title`
+              if picker.preview_border and picker.preview_border.change_title then
+                pcall(picker.preview_border.change_title, picker.preview_border, modes:label())
+              end
+              picker:refresh_previewer()
+            end
           end, { desc = "switch the preview mode" })
         end
         return true
