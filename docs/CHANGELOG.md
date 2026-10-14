@@ -10,6 +10,14 @@ a changelog.
 
 ---
 
+[x] **`pick_item()` switchable previews.** A `Pickers.Item` may carry
+  `previews = { normal = { file, line }, table = { lines, ft } }` (any mode names); all three engines then
+  preview the current mode and `<M-t>` (`opts.preview_toggle_key`) cycles them. Built for markdown.nvim's
+  `:Markdown table list`: the table in its file context vs only the table, formatted. telescope uses a custom
+  buffer previewer (cached per entry and mode), snacks a preview function plus a picker action, fzf-lua a
+  preview function and a silent `refresh-preview` bind (the hidden second field is the item index there, not a
+  file). Items without `previews` behave as before. New `pickers.preview_modes` holds the shared state.
+
 [x] **`:Pickers` option float: every positional argument now says what it is for.** lib.nvim's help float
   (the cheatsheet key after `:Pickers cwd `) shows one line per next argument. The `action` slot
   (`files`/`grep`/`smart`/`filegrep`, with a line per value), the `all` search-escalation slot (`all`,

@@ -8964,6 +8964,256 @@ do
   popup.clear()
 end
 
+-- ── pick_item(): switchable previews (Pickers.Item.previews) ────────────────
+-- An item may carry `previews = { <mode> = { file/line | lines/ft } }`; every
+-- engine then previews the current mode and a key switches it. State lives in
+-- pickers.preview_modes; the engines are stubbed like in the block above.
+do
+  local pm = require("pickers.preview_modes")
+  local items = {
+    {
+      text = "A",
+      previews = {
+        normal = { file = "/tmp/a.md", line = 7 },
+        table = { lines = { "| x |", "| - |" }, ft = "markdown" },
+      },
+    },
+    { text = "B", file = "/tmp/b.md" },
+  }
+
+  check(
+    "preview_modes: no previews anywhere -> no state",
+    pm.new({ items = { "a", { text = "b" } } }) == nil
+  )
+  local st = pm.new({ items = items })
+  check("preview_modes: modes found on the items, normal first", st:label() == "[normal] table")
+  check("preview_modes: normal resolves to file + line", st:spec(items[1]).line == 7)
+  check("preview_modes: a plain `file` stands in for normal", st:spec(items[2]).file == "/tmp/b.md")
+  check(
+    "preview_modes: toggle moves to the next mode",
+    st:toggle() == "table" and st:label() == "normal [table]"
+  )
+  check("preview_modes: table mode gives the lines", st:spec(items[1]).lines[1] == "| x |")
+  check("preview_modes: an item without the mode has no spec", st:spec(items[2]) == nil)
+  check("preview_modes: toggle wraps around", st:toggle() == "normal")
+  check(
+    "preview_modes: explicit order wins",
+    pm.new({ items = items, preview_modes = { "table", "normal" } }):current() == "table"
+  )
+  check("preview_modes: key default", st.key == "<M-t>")
+  check(
+    "preview_modes: snacks key",
+    pm.snacks_key("<M-t>") == "<a-t>" and pm.snacks_key("<C-p>") == "<c-p>"
+  )
+  check(
+    "preview_modes: fzf key",
+    pm.fzf_key("<M-t>") == "alt-t" and pm.fzf_key("<C-p>") == "ctrl-p"
+  )
+  check("preview_modes: as_text of lines", pm.as_text({ lines = { "a", "b" } }) == "a\nb")
+  check("preview_modes: as_text of nothing", pm.as_text(nil) == "")
+
+  -- telescope: custom previewer + a key mapped on the prompt
+  local prev = {}
+  for _, k in ipairs({
+    "telescope.builtin",
+    "telescope.pickers",
+    "telescope.finders",
+    "telescope.config",
+    "telescope.actions",
+    "telescope.actions.state",
+    "telescope.previewers",
+    "telescope.previewers.utils",
+  }) do
+    prev[k] = package.loaded[k]
+  end
+  local captured, mapped, refreshed, made, highlighted = nil, {}, 0, {}, nil
+  package.loaded["telescope.builtin"] = {}
+  package.loaded["telescope.pickers"] = {
+    new = function(_, o)
+      captured = o
+      return {
+        find = function()
+          o.attach_mappings(0, function(modes_, key, fn)
+            mapped[key] = { modes = modes_, fn = fn }
+          end)
+        end,
+      }
+    end,
+  }
+  package.loaded["telescope.finders"] = {
+    new_table = function(o)
+      return o
+    end,
+  }
+  package.loaded["telescope.config"] = {
+    values = {
+      generic_sorter = function()
+        return "sorter"
+      end,
+      file_previewer = function()
+        return "file_previewer"
+      end,
+      buffer_previewer_maker = function(path, bufnr, o)
+        made = { path = path, bufnr = bufnr, o = o }
+      end,
+    },
+  }
+  package.loaded["telescope.actions"] =
+    { select_default = { replace = function() end }, close = function() end }
+  package.loaded["telescope.actions.state"] = {
+    get_current_picker = function()
+      return {
+        refresh_previewer = function()
+          refreshed = refreshed + 1
+        end,
+      }
+    end,
+    get_selected_entry = function()
+      return nil
+    end,
+  }
+  package.loaded["telescope.previewers"] = {
+    new_buffer_previewer = function(o)
+      return o
+    end,
+  }
+  package.loaded["telescope.previewers.utils"] = {
+    highlighter = function(_, ft)
+      highlighted = ft
+    end,
+  }
+  package.loaded["pickers.engines.telescope"] = nil
+  local tel = require("pickers.engines.telescope")
+
+  tel.pick_item({ items = items, prompt = "Tables", on_select = function() end })
+  check(
+    "pick_item/telescope: previews -> a custom previewer, not the file one",
+    type(captured.previewer) == "table"
+  )
+  check(
+    "pick_item/telescope: the toggle key is mapped in insert and normal",
+    mapped["<M-t>"] and #mapped["<M-t>"].modes == 2
+  )
+  local previewer = captured.previewer
+  check("pick_item/telescope: title shows the modes", previewer.dyn_title() == "[normal] table")
+  check(
+    "pick_item/telescope: buffer cache name contains the mode",
+    previewer.get_buffer_by_name(nil, { value = items[1] })
+      ~= (function()
+        mapped["<M-t>"].fn(0)
+        return previewer.get_buffer_by_name(nil, { value = items[1] })
+      end)()
+  )
+  check("pick_item/telescope: the toggle refreshed the previewer", refreshed == 1)
+  local fake =
+    { state = { bufnr = vim.api.nvim_create_buf(false, true), winid = 0, bufname = "x" } }
+  previewer.define_preview(fake, { value = items[1] })
+  check(
+    "pick_item/telescope: table mode writes the lines into the preview buffer",
+    vim.api.nvim_buf_get_lines(fake.state.bufnr, 0, -1, false)[1] == "| x |"
+      and highlighted == "markdown"
+  )
+  mapped["<M-t>"].fn(0)
+  previewer.define_preview(fake, { value = items[1] })
+  check(
+    "pick_item/telescope: normal mode hands the file to telescope's buffer maker",
+    made.path == "/tmp/a.md" and made.bufnr == fake.state.bufnr
+  )
+
+  package.loaded["pickers.engines.telescope"] = nil
+  for k, v in pairs(prev) do
+    package.loaded[k] = v
+  end
+
+  -- snacks: preview function + action + key
+  local prev_snacks = package.loaded["snacks.picker"]
+  local sel
+  package.loaded["snacks.picker"] = {
+    select = function(_, o, _)
+      sel = o
+    end,
+  }
+  package.loaded["pickers.engines.snacks"] = nil
+  local sn = require("pickers.engines.snacks")
+  sn.pick_item({ items = items, prompt = "Tables", on_select = function() end })
+  check(
+    "pick_item/snacks: preview function + toggle action installed",
+    type(sel.snacks.preview) == "function"
+      and type(sel.snacks.actions.pickers_toggle_preview_mode) == "function"
+  )
+  check(
+    "pick_item/snacks: key bound on input and list",
+    sel.snacks.win.input.keys["<a-t>"] ~= nil and sel.snacks.win.list.keys["<a-t>"] ~= nil
+  )
+  local set, title, refreshed_snacks = nil, nil, 0
+  local ctx = {
+    item = { item = items[1] },
+    preview = {
+      reset = function() end,
+      set_lines = function(_, lines)
+        set = lines
+      end,
+      highlight = function() end,
+      set_title = function(_, t)
+        title = t
+      end,
+      refresh = function()
+        refreshed_snacks = refreshed_snacks + 1
+      end,
+    },
+  }
+  sel.snacks.actions.pickers_toggle_preview_mode({ preview = ctx.preview })
+  check("pick_item/snacks: toggling refreshes the preview", refreshed_snacks == 1)
+  sel.snacks.preview(ctx)
+  check(
+    "pick_item/snacks: table mode sets the lines and the title",
+    set[1] == "| x |" and title == "normal [table]"
+  )
+  package.loaded["snacks.picker"] = prev_snacks
+  package.loaded["pickers.engines.snacks"] = nil
+
+  -- fzf-lua: index field, preview text, toggle action with a refresh
+  local prev_fzf = package.loaded["fzf-lua"]
+  local fz
+  package.loaded["fzf-lua"] = {
+    fzf_exec = function(lines, o)
+      fz = { lines = lines, o = o }
+    end,
+  }
+  package.loaded["pickers.engines.fzf"] = nil
+  local fzf_engine = require("pickers.engines.fzf")
+  local picked
+  fzf_engine.pick_item({
+    items = items,
+    prompt = "Tables",
+    on_select = function(i)
+      picked = i
+    end,
+  })
+  check(
+    "pick_item/fzf: hidden index field after the text",
+    fz.lines[1] == "A\t1" and fz.lines[2] == "B\t2"
+  )
+  check(
+    "pick_item/fzf: preview of the normal mode of the file-less item",
+    fz.o.preview({ "B\t2" }) ~= nil
+  )
+  local act = fz.o.actions["alt-t"]
+  check(
+    "pick_item/fzf: toggle action is silent and refreshes the preview",
+    act.exec_silent == true and act.postfix == "refresh-preview"
+  )
+  act.fn()
+  check(
+    "pick_item/fzf: after the toggle the preview shows the table lines",
+    fz.o.preview({ "A\t1" }) == "| x |\n| - |"
+  )
+  fz.o.actions["default"]({ "A\t1" })
+  check("pick_item/fzf: on_select gets the exact original item", picked == items[1])
+  package.loaded["fzf-lua"] = prev_fzf
+  package.loaded["pickers.engines.fzf"] = nil
+end
+
 -- ── Summary ─────────────────────────────────────────────────────────────────
 print(string.format("\n%d passed, %d failed", passed, failed))
 os.exit(failed == 0 and 0 or 1)

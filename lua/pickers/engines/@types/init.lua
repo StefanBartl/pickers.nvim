@@ -43,5 +43,15 @@
 ---                      passthrough — a hidden per-line field fzf previews via
 ---                      a pure-Lua callback). Items without `file` still show
 ---                      (with no/blank preview) alongside ones that have it.
+---@field line integer?  1-based line of `file` to put in view (modes preview).
+---@field previews table<string, Pickers.PreviewSpec>?  Switchable previews:
+---                      mode name -> what to show (`file`/`line` or `lines`/`ft`).
+---                      When at least one item carries this, every engine shows
+---                      the preview of the current mode and the key
+---                      `opts.preview_toggle_key` (default `<M-t>`) cycles the
+---                      modes (`opts.preview_modes` fixes their order; else
+---                      "normal" first, then alphabetically). A `file` on the
+---                      item stands in for a missing "normal" mode. See
+---                      `pickers.preview_modes`.
 
 return {}
