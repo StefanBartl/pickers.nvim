@@ -10,6 +10,15 @@ a changelog.
 
 ---
 
+[x] **`pick_item()` previews: fzf-lua scrolls to the line, and the switch moved to `<M-c>`.** fzf-lua's
+  preview of a mode with a `line` now puts that line in view (centred) instead of showing the top: every fzf
+  line carries one hidden field per mode with that mode's line (0 = top), fzf-lua's `preview_offset` scrolls
+  to the first mode's field (`+{3}+1-/2`, the mode line on top kept as a fixed header `~1`), and the toggle
+  key runs `change-preview-window(...)` with the other modes' fields, which fzf cycles in step with the mode.
+  Checked against a real fzf 0.73. A `lines` spec may carry a `line` too (fzf-lua honours it). The default
+  toggle key is now `<M-c>` instead of `<M-t>`, which was `copy_project_root`'s key and got shadowed in
+  these lists; `preview_toggle_key` still moves it per call.
+
 [x] **`pick_item()` switchable previews.** A `Pickers.Item` may carry
   `previews = { normal = { file, line }, table = { lines, ft } }` (any mode names); all three engines then
   preview the current mode and `<M-t>` (`opts.preview_toggle_key`) cycles them. Built for markdown.nvim's

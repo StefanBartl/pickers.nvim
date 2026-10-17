@@ -150,7 +150,7 @@ snacks. See `lua/pickers/keys/`.
 | `copy_absolute` | `<C-y>` · `[a`, `[f` | ✓ | fixed (`ctrl-y`) | ✓ |
 | `copy_dirname` | `<M-y>` · `]a` | ✓ | fixed (`alt-y`) | ✓ |
 | `copy_env_rooted` | `<M-v>` · `[e` | ✓ | fixed (`alt-v`) | ✓ |
-| `copy_project_root`² | `<M-t>` · `[R` | ✓ | fixed (`alt-t`) | ✓ |
+| `copy_project_root` | `<M-t>` · `[R` | ✓ | fixed (`alt-t`) | ✓ |
 | `copy_project_relative` | `<M-e>` · `]R` | ✓ | fixed (`alt-e`) | ✓ |
 | `copy_buffer_relative` | `<M-j>` · `]b` | ✓ | fixed (`alt-j`) | ✓ |
 | `markdown_link` | `<M-l>` · `ML`, `MM` | ✓ | fixed (`alt-l`) | ✓ |
@@ -338,4 +338,4 @@ after your own setup.
 entry-action adapters' `get_*()`) stay exported, for wiring into your own engine
 `setup()` calls manually instead of relying on the patch.
 
-² In a `pick_item` list whose items carry `previews`, `<M-t>` switches the preview mode instead (set `preview_toggle_key` to move it).
+In a `pick_item` list whose items carry `previews`, `<M-c>` (`alt-c` in fzf-lua) cycles the preview mode (`preview_toggle_key` moves it per call); it does not shadow `copy_project_root`'s `<M-t>`.

@@ -9000,7 +9000,28 @@ do
     "preview_modes: explicit order wins",
     pm.new({ items = items, preview_modes = { "table", "normal" } }):current() == "table"
   )
-  check("preview_modes: key default", st.key == "<M-t>")
+  check("preview_modes: key default", st.key == "<M-c>", st.key)
+  -- The preview switch must not shadow an in-picker key of its own plugin
+  -- (it used to be <M-t>, copy_project_root's key).
+  do
+    local clash
+    for action, lhs in pairs(require("pickers.config.DEFAULTS").keys) do
+      for _, k in ipairs(type(lhs) == "table" and lhs or { lhs }) do
+        if type(k) == "string" and k:lower() == pm.DEFAULT_KEY:lower() then clash = action end
+      end
+    end
+    check("preview_modes: default key collides with no in-picker key", clash == nil, clash)
+  end
+  check(
+    "preview_modes: scroll line per mode, 0 without one",
+    vim.deep_equal(st:lines_per_mode(items[1]), { 7, 0 })
+      and vim.deep_equal(st:lines_per_mode(items[2]), { 0, 0 })
+      and st:current() == "normal"
+  )
+  check(
+    "preview_modes: fzf scroll offsets cycle through the mode fields",
+    vim.deep_equal(st:fzf_scroll(3), { initial = "+{3}+1-/2:~1", cycle = "+{4}+1-/2|+{3}+1-/2" })
+  )
   check(
     "preview_modes: snacks key",
     pm.snacks_key("<M-t>") == "<a-t>" and pm.snacks_key("<C-p>") == "<c-p>"
@@ -9102,7 +9123,7 @@ do
   )
   check(
     "pick_item/telescope: the toggle key is mapped in insert and normal",
-    mapped["<M-t>"] and #mapped["<M-t>"].modes == 2
+    mapped["<M-c>"] and #mapped["<M-c>"].modes == 2
   )
   local previewer = captured.previewer
   check("pick_item/telescope: title shows the modes", previewer.dyn_title() == "[normal] table")
@@ -9110,7 +9131,7 @@ do
     "pick_item/telescope: buffer cache name contains the mode",
     previewer.get_buffer_by_name(nil, { value = items[1] })
       ~= (function()
-        mapped["<M-t>"].fn(0)
+        mapped["<M-c>"].fn(0)
         return previewer.get_buffer_by_name(nil, { value = items[1] })
       end)()
   )
@@ -9123,7 +9144,7 @@ do
     vim.api.nvim_buf_get_lines(fake.state.bufnr, 0, -1, false)[1] == "| x |"
       and highlighted == "markdown"
   )
-  mapped["<M-t>"].fn(0)
+  mapped["<M-c>"].fn(0)
   previewer.define_preview(fake, { value = items[1] })
   check(
     "pick_item/telescope: normal mode hands the file to telescope's buffer maker",
@@ -9153,7 +9174,7 @@ do
   )
   check(
     "pick_item/snacks: key bound on input and list",
-    sel.snacks.win.input.keys["<a-t>"] ~= nil and sel.snacks.win.list.keys["<a-t>"] ~= nil
+    sel.snacks.win.input.keys["<a-c>"] ~= nil and sel.snacks.win.list.keys["<a-c>"] ~= nil
   )
   local set, title, refreshed_snacks = nil, nil, 0
   local ctx = {
@@ -9227,25 +9248,37 @@ do
       picked = i
     end,
   })
+  -- Fields: text, index, then each mode's line (0 = top): A's normal mode is
+  -- file line 7, its table mode has no line; B's plain `file` has none either.
   check(
-    "pick_item/fzf: hidden index field after the text",
-    fz.lines[1] == "A\t1" and fz.lines[2] == "B\t2"
+    "pick_item/fzf: hidden index field, then one scroll line per mode",
+    fz.lines[1] == "A\t1\t7\t0" and fz.lines[2] == "B\t2\t0\t0",
+    vim.inspect(fz.lines)
+  )
+  -- fzf's text preview only scrolls through --preview-window: the first mode's
+  -- field (3), +1 for the mode line kept as a fixed header, centred.
+  check(
+    "pick_item/fzf: the preview scrolls to the first mode's line",
+    fz.o.preview_offset == "+{3}+1-/2:~1",
+    tostring(fz.o.preview_offset)
   )
   check(
     "pick_item/fzf: a file that cannot be read says so under the mode line",
-    vim.startswith(fz.o.preview({ "B\t2" }) or "", "[normal] table\ncould not read ")
+    vim.startswith(fz.o.preview({ "B\t2\t0\t0" }) or "", "[normal] table\ncould not read ")
   )
-  local act = fz.o.actions["alt-t"]
+  local act = fz.o.actions["alt-c"]
   check(
-    "pick_item/fzf: toggle action is silent and refreshes the preview",
-    act.exec_silent == true and act.postfix == "refresh-preview"
+    "pick_item/fzf: toggle is silent, steps the scroll field along and refreshes",
+    act.exec_silent == true
+      and act.postfix == "change-preview-window(+{4}+1-/2|+{3}+1-/2)+refresh-preview",
+    tostring(act.postfix)
   )
   act.fn()
   check(
     "pick_item/fzf: after the toggle the preview shows the table lines",
-    fz.o.preview({ "A\t1" }) == "normal [table]\n| x |\n| - |"
+    fz.o.preview({ "A\t1\t7\t0" }) == "normal [table]\n| x |\n| - |"
   )
-  fz.o.actions["default"]({ "A\t1" })
+  fz.o.actions["default"]({ "A\t1\t7\t0" })
   check("pick_item/fzf: on_select gets the exact original item", picked == items[1])
   package.loaded["fzf-lua"] = prev_fzf
   package.loaded["pickers.engines.fzf"] = nil
