@@ -382,35 +382,46 @@ function M.pick_item(opts)
 
   -- Items with `previews`: the preview follows the current mode and a key
   -- switches it (see `pickers.preview_modes`). fzf only sees text lines, so the
-  -- hidden second field is the item's index, not a file. The preview is fzf's
-  -- own text window, which only fzf can scroll: the fields from the third on
-  -- carry each mode's `line`, `preview_offset` scrolls to the first mode's,
-  -- and the toggle key steps fzf's scroll field along with the mode.
+  -- hidden last field is the item's index, not a file; it is read from the end
+  -- of the line, so an item text with a TAB in it still finds its index. The
+  -- mode is kept in Lua only: the preview text itself starts near the spec's
+  -- `line` (`pm.fzf_text`), and fzf's own scroll offset is left alone, so
+  -- fzf-lua's resize/flex/fullscreen handling cannot pull it out of step.
   local pm = require("pickers.preview_modes")
   local modes = pm.new(opts)
   if modes then
     local lines, by_line = {}, {}
     for i, it in ipairs(opts.items) do
       local text = (type(it) == "table") and it.text or it
-      lines[i] = text .. "\t" .. i .. "\t" .. table.concat(modes:lines_per_mode(it), "\t")
+      lines[i] = text .. "\t" .. i
       by_line[lines[i]] = it
     end
-    local scroll = modes:fzf_scroll(3)
     fzf.fzf_exec(lines, {
       prompt = opts.prompt,
-      preview_offset = scroll.initial,
+      -- the mode line on top of the text stays put when the preview is scrolled
+      preview_offset = "~" .. pm.FZF_HEADER_LINES,
       fzf_opts = vim.tbl_extend("force", {
         ["--no-multi"] = true,
         ["--delimiter"] = "\\t",
         ["--with-nth"] = "1",
       }, history_fzf_opts("item") or {}, cheatsheet_header()),
-      preview = function(selected)
+      preview = function(selected, preview_lines)
         local line = (type(selected) == "table") and selected[1] or selected
-        local idx = line and tonumber(line:match("^[^\t]*\t(%d+)"))
+        local idx = line and tonumber(line:match("\t(%d+)$"))
         -- fzf has no preview title: the first line names the modes, the current one in brackets
-        return modes:label() .. "\n" .. pm.as_text(idx and modes:spec(opts.items[idx]))
+        return pm.fzf_text(
+          modes:label(),
+          idx and modes:spec(opts.items[idx]),
+          tonumber(preview_lines)
+        )
       end,
-      winopts = { on_create = setup_double_esc },
+      winopts = {
+        on_create = function()
+          -- a resumed picker restarts fzf with this same state: start in the first mode
+          modes:reset()
+          setup_double_esc()
+        end,
+      },
       actions = {
         ["default"] = function(selected)
           if selected and selected[1] then opts.on_select(by_line[selected[1]] or selected[1]) end
@@ -420,7 +431,7 @@ function M.pick_item(opts)
             modes:toggle()
           end,
           exec_silent = true,
-          postfix = "change-preview-window(" .. scroll.cycle .. ")+refresh-preview",
+          postfix = "refresh-preview",
         },
       },
     })

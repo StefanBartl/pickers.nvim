@@ -10,6 +10,21 @@ a changelog.
 
 ---
 
+[x] **`pick_item()` previews: the mode is tracked in Lua only; every engine scrolls `lines` specs too.**
+  Review fixes for the entry below. fzf's `--preview-window` offset (`+{N}` and the
+  `change-preview-window(a|b)` cycle on the toggle key) was a second copy of the current mode. fzf-lua resets
+  it on its own: its flex-layout resize handler, `toggle-preview`/fullscreen and window resizes all emit
+  `change-preview-window`, which put fzf back on the first mode's line while the preview showed another mode,
+  and the toggle in turn undid fzf-lua's layout flip. `:FzfLua resume` restarted fzf at the first mode's
+  offset while the Lua state kept the last mode, and fzf < 0.46's native alternative layout (`<N(...)`)
+  ignored the cycle. Now fzf's offset is left alone (`preview_offset` only pins the mode line, `~1`) and the
+  Lua preview cuts the text so the spec's `line` sits in the middle of `$FZF_PREVIEW_LINES` (the mode line
+  then reads `(from line N)`); a (re)started fzf window starts in the first mode. The item index is the
+  only hidden field again and is read from the end of the line, so an item text with a TAB in it previews
+  (the per-mode fields were matched from the start and lost the index). telescope and snacks now put a
+  `lines` spec's `line` in view as well (`pickers.preview_modes.show_line`), which BINDINGS.md already
+  claimed.
+
 [x] **`pick_item()` previews: fzf-lua scrolls to the line, and the switch moved to `<M-c>`.** fzf-lua's
   preview of a mode with a `line` now puts that line in view (centred) instead of showing the top: every fzf
   line carries one hidden field per mode with that mode's line (0 = top), fzf-lua's `preview_offset` scrolls

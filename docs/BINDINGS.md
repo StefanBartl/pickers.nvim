@@ -140,7 +140,7 @@ The path-copy/system rows carry a **direct key** (Ctrl/Alt, bound in insert *and
 
 ¹ snacks: pickers.nvim doesn't own `Snacks.setup()`, but snacks reads `Snacks.config.picker` each time a picker opens — so the keys are patched into that table once snacks is loaded (`pickers.entry_actions.patch`), a key you already bound winning. `keys.snacks_win()` stays exported for merging by hand.
 
-**Preview switch in `pick_item` lists.** When the items carry `previews`, `<M-c>` (`<a-c>` in snacks, `alt-c` in fzf-lua) cycles the preview mode; `preview_toggle_key` moves it per call. It is not `<M-t>`, so `copy_project_root` keeps working in those lists. All three engines put the spec's `line` in view, fzf-lua included (its text preview is scrolled through fzf's `--preview-window` offset, centred, with the mode line kept on top).
+**Preview switch in `pick_item` lists.** When the items carry `previews`, `<M-c>` (`<a-c>` in snacks, `alt-c` in fzf-lua) cycles the preview mode; `preview_toggle_key` moves it per call. It is not `<M-t>`, so `copy_project_root` keeps working in those lists. All three engines put the spec's `line` in view, for `file` and `lines` specs alike. telescope and snacks centre it in their preview window. fzf-lua's preview is fzf's own text window, so there the text starts a little above the line instead (the line sits in the middle of the window, and the mode line on top says `(from line N)` when lines above were left out); fzf's scroll offset is not used, so resizing, fullscreen or `:FzfLua resume` cannot move the preview away from the current mode.
 
 ### Quickfix-window keys (`quickfix.keys`)
 

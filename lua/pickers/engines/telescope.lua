@@ -319,12 +319,7 @@ local function modes_previewer(state, conf)
           bufname = self.state.bufname,
           winid = winid,
           callback = function()
-            if spec.line and winid and vim.api.nvim_win_is_valid(winid) then
-              pcall(vim.api.nvim_win_set_cursor, winid, { spec.line, 0 })
-              vim.api.nvim_win_call(winid, function()
-                vim.cmd("normal! zz")
-              end)
-            end
+            require("pickers.preview_modes").show_line(winid, spec.line)
           end,
         })
         return
@@ -336,6 +331,8 @@ local function modes_previewer(state, conf)
         false,
         (spec and spec.lines) or { "(no preview in this mode)" }
       )
+      -- a `lines` spec may carry a `line` too
+      if spec then require("pickers.preview_modes").show_line(winid, spec.line) end
       if spec and spec.ft and spec.ft ~= "" then
         require("telescope.previewers.utils").highlighter(bufnr, spec.ft)
       end

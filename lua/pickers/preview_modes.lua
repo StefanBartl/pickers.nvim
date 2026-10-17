@@ -5,8 +5,9 @@
 --- Every engine then shows the preview of the current mode and lets the user
 --- cycle through the modes with a key (`opts.preview_toggle_key`, default
 --- `<M-c>`). This module holds what is the same for all three engines: which
---- modes exist, which one is current, how an item resolves to a spec and how
---- the key is spelled for fzf-lua and snacks.
+--- modes exist, which one is current, how an item resolves to a spec, how the
+--- spec's `line` is put in view and how the key is spelled for fzf-lua and
+--- snacks. The current mode lives here only; no engine keeps a copy of it.
 ---
 --- The default key is `<M-c>` ("cycle"), not `<M-t>`: `<M-t>` is the
 --- in-picker key of `copy_project_root`, and in a list with previews the
@@ -22,9 +23,12 @@ M.DEFAULT_KEY = "<M-c>"
 ---Lines fzf-lua's text preview puts above the spec's content (the mode line).
 M.FZF_HEADER_LINES = 1
 
+---Preview height assumed when fzf does not report one (`$FZF_PREVIEW_LINES`).
+M.FZF_DEFAULT_HEIGHT = 20
+
 ---@class Pickers.PreviewSpec
 ---@field file string?     Absolute path shown with the engine's file previewer.
----@field line integer?    1-based line to put in view (fzf-lua also honours it for `lines`).
+---@field line integer?    1-based line to put in view (for `file` and `lines` alike).
 ---@field lines string[]?  Text shown instead of a file.
 ---@field ft string?       Filetype used to highlight `lines`.
 
@@ -70,47 +74,11 @@ function State:spec(item)
   return nil
 end
 
----The line to scroll to for `item` in every mode, in mode order (0 = top).
----fzf-lua's preview is fzf's own text window: fzf can only scroll it through
----`--preview-window +{N}`, a field of the item's line, so every mode's line
----is written into the line as a hidden field (see `State:fzf_scroll`).
----@param item string|table
----@return integer[]
-function State:lines_per_mode(item)
-  local out = {}
-  local saved = self.idx
-  for i = 1, #self.modes do
-    self.idx = i
-    local spec = self:spec(item)
-    local line = spec and tonumber(spec.line)
-    out[i] = (line and line >= 1) and math.floor(line) or 0
-  end
-  self.idx = saved
-  return out
-end
-
----fzf `--preview-window` scroll offsets for the modes. The mode lines sit in
----the fields `first_field`, `first_field + 1`, ... of every fzf line; the
----mode line on top of the text preview is a fixed header (`~1`), hence the
----`+1`, and `-/2` centres the target line.
----@param first_field integer
----@return { initial: string, cycle: string }
----  `initial`: the offset for the first mode (fzf-lua's `preview_offset`);
----  `cycle`: the argument of `change-preview-window(...)` that, pressed together
----  with the mode switch, steps to the next mode's field and wraps around.
-function State:fzf_scroll(first_field)
-  local function offset(i)
-    return string.format("+{%d}+%d-/2", first_field + i - 1, M.FZF_HEADER_LINES)
-  end
-  local cycle = {}
-  for i = 2, #self.modes do
-    cycle[#cycle + 1] = offset(i)
-  end
-  cycle[#cycle + 1] = offset(1)
-  return {
-    initial = offset(1) .. ":~" .. M.FZF_HEADER_LINES,
-    cycle = table.concat(cycle, "|"),
-  }
+---Back to the first mode. A picker that is opened again (fzf-lua's resume
+---restarts fzf with the same closures and so the same state) starts in the
+---first mode, like a new one.
+function State:reset()
+  self.idx = 1
 end
 
 ---@param items (string|table)[]
@@ -179,25 +147,75 @@ function M.fzf_key(key)
   return name((k:gsub("^<(.+)>$", "%1")))
 end
 
----Preview text for engines that can only show a string (fzf-lua): the lines,
----or the file's content.
+---The text of `spec` as lines: its `lines`, or the file's content.
 ---@param spec Pickers.PreviewSpec|nil
----@return string
-function M.as_text(spec)
-  if not spec then return "" end
+---@return string[]
+local function text_lines(spec)
+  if not spec then return {} end
   if spec.lines then
     local out = {}
     for i, l in ipairs(spec.lines) do
       out[i] = tostring(l)
     end
-    return table.concat(out, "\n")
+    return out
   end
   if spec.file then
     local ok, lines = pcall(vim.fn.readfile, spec.file)
-    if not ok then return "could not read " .. spec.file end
-    return table.concat(lines, "\n")
+    if not ok then return { "could not read " .. spec.file } end
+    return lines
   end
-  return ""
+  return {}
+end
+
+---Preview text for engines that can only show a string (fzf-lua): the lines,
+---or the file's content.
+---@param spec Pickers.PreviewSpec|nil
+---@return string
+function M.as_text(spec)
+  return table.concat(text_lines(spec), "\n")
+end
+
+---The whole fzf-lua preview: the mode line `label`, then the spec's text with
+---its `line` in view.
+---
+---fzf's preview is its own text window, and fzf scrolls it only through
+---`--preview-window` offsets. Those are fixed per fzf process (fzf-lua's own
+---resize/flex/fullscreen handling resets them), while the mode lives here in
+---Lua, so a scroll offset kept in fzf drifts from the mode. The line is put in
+---view by cutting the text instead: it starts so that `line` sits in the
+---middle of the `height` rows under the mode line, from the top when the text
+---fits or the line is near it, never so far that the end leaves rows empty.
+---When the text is cut, the mode line says from which line on it is shown.
+---@param label string
+---@param spec Pickers.PreviewSpec|nil
+---@param height integer|nil  Rows of the preview window (`$FZF_PREVIEW_LINES`).
+---@return string
+function M.fzf_text(label, spec, height)
+  local lines = text_lines(spec)
+  local line = spec and tonumber(spec.line)
+  local first = 1
+  if line then
+    local rows = math.max(1, (tonumber(height) or M.FZF_DEFAULT_HEIGHT) - M.FZF_HEADER_LINES)
+    first = math.floor(line) - math.floor((rows - 1) / 2)
+    first = math.max(1, math.min(first, #lines - rows + 1))
+  end
+  if first == 1 then return label .. "\n" .. table.concat(lines, "\n") end
+  return string.format("%s  (from line %d)\n%s", label, first, table.concat(lines, "\n", first))
+end
+
+---Put `line` of the buffer shown in `win` in view, centred (telescope and
+---snacks, for `file` and `lines` specs alike). A line past the end is clamped
+---to the last one.
+---@param win integer|nil
+---@param line integer|nil
+function M.show_line(win, line)
+  line = tonumber(line)
+  if not (line and win and vim.api.nvim_win_is_valid(win)) then return end
+  local count = vim.api.nvim_buf_line_count(vim.api.nvim_win_get_buf(win))
+  pcall(vim.api.nvim_win_set_cursor, win, { math.max(1, math.min(math.floor(line), count)), 0 })
+  vim.api.nvim_win_call(win, function()
+    vim.cmd("normal! zz")
+  end)
 end
 
 return M

@@ -45,7 +45,8 @@
 ---                      (with no/blank preview) alongside ones that have it.
 ---@field line integer?  1-based line of `file` to put in view (modes preview).
 ---@field previews table<string, Pickers.PreviewSpec>?  Switchable previews:
----                      mode name -> what to show (`file`/`line` or `lines`/`ft`).
+---                      mode name -> what to show (`file`/`line` or `lines`/`ft`,
+---                      a `lines` spec may carry a `line` too).
 ---                      When at least one item carries this, every engine shows
 ---                      the preview of the current mode and the key
 ---                      `opts.preview_toggle_key` (default `<M-c>`) cycles the
