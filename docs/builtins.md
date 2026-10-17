@@ -12,8 +12,12 @@ through pickers.nvim's own roots/find-flags resolution (`lua/pickers/actions/`);
 `builtin` bypasses that entirely and just calls the engine's function with
 whatever opts you pass, same as calling it yourself.
 
-Tab-completes over every registered name (`:Pickers builtin <Tab>`). See
-`lua/pickers/builtins/init.lua` for the registry itself.
+Tab-completes over every registered name (`:Pickers builtin <Tab>`). A name
+that is not registered (a typo) opens a choice of all builtins, the closest
+names first; picking one runs it, cancelling does nothing. From Lua,
+`require("pickers.builtins").run(name)` does not ask: an unknown name is
+reported as an error. See `lua/pickers/builtins/init.lua` for the registry
+itself.
 
 The matrix below is the list — one row per registered name, 53 of them at the
 time of writing. It is the only place in the docs that counts them, so the
