@@ -9012,16 +9012,69 @@ do
     end
     check("preview_modes: default key collides with no in-picker key", clash == nil, clash)
   end
-  check(
-    "preview_modes: scroll line per mode, 0 without one",
-    vim.deep_equal(st:lines_per_mode(items[1]), { 7, 0 })
-      and vim.deep_equal(st:lines_per_mode(items[2]), { 0, 0 })
-      and st:current() == "normal"
-  )
-  check(
-    "preview_modes: fzf scroll offsets cycle through the mode fields",
-    vim.deep_equal(st:fzf_scroll(3), { initial = "+{3}+1-/2:~1", cycle = "+{4}+1-/2|+{3}+1-/2" })
-  )
+  st:toggle()
+  st:reset()
+  check("preview_modes: reset goes back to the first mode", st:current() == "normal")
+  -- fzf-lua: the line is put in view by cutting the text, centred in the rows
+  -- under the mode line; fzf's own scroll offset is never used.
+  do
+    local hundred = {}
+    for i = 1, 100 do
+      hundred[i] = "L" .. i
+    end
+    local out = vim.split(pm.fzf_text("M", { lines = hundred, line = 40 }, 21), "\n")
+    -- 21 rows - 1 mode line = 20 rows of text; line 40 in the middle of them
+    check(
+      "preview_modes: fzf_text centres the line under the mode line",
+      out[1] == "M  (from line 31)" and out[2] == "L31" and out[11] == "L40",
+      out[1] .. " / " .. tostring(out[2])
+    )
+    local near = vim.split(pm.fzf_text("M", { lines = hundred, line = 5 }, 21), "\n")
+    check(
+      "preview_modes: fzf_text shows a line near the top from the top",
+      near[1] == "M" and near[2] == "L1" and #near == 101
+    )
+    local tail = vim.split(pm.fzf_text("M", { lines = hundred, line = 99 }, 21), "\n")
+    check(
+      "preview_modes: fzf_text never leaves rows empty at the end",
+      tail[1] == "M  (from line 81)" and tail[#tail] == "L100" and #tail == 21,
+      tail[1]
+    )
+    local past = vim.split(pm.fzf_text("M", { lines = { "a", "b" }, line = 120 }, 21), "\n")
+    check(
+      "preview_modes: fzf_text with a line past a short text shows all of it",
+      vim.deep_equal(past, { "M", "a", "b" })
+    )
+    local dflt = vim.split(pm.fzf_text("M", { lines = hundred, line = 50 }), "\n")
+    check(
+      "preview_modes: fzf_text without a height assumes the default",
+      dflt[1]
+        == string.format(
+          "M  (from line %d)",
+          50 - math.floor((pm.FZF_DEFAULT_HEIGHT - pm.FZF_HEADER_LINES - 1) / 2)
+        ),
+      dflt[1]
+    )
+    check("preview_modes: fzf_text of nothing", pm.fzf_text("M", nil, 10) == "M\n")
+  end
+  -- telescope/snacks: put a line of the window's buffer in view, clamped
+  do
+    local b = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_lines(b, 0, -1, false, { "1", "2", "3", "4", "5", "6" })
+    local w = vim.api.nvim_get_current_win()
+    local before = vim.api.nvim_win_get_buf(w)
+    vim.api.nvim_win_set_buf(w, b)
+    pm.show_line(w, 4)
+    local at4 = vim.api.nvim_win_get_cursor(w)[1]
+    pm.show_line(w, 120)
+    local clamped = vim.api.nvim_win_get_cursor(w)[1]
+    pm.show_line(w, nil)
+    check(
+      "preview_modes: show_line moves the cursor, past the end to the last line",
+      at4 == 4 and clamped == 6 and vim.api.nvim_win_get_cursor(w)[1] == 6
+    )
+    vim.api.nvim_win_set_buf(w, before)
+  end
   check(
     "preview_modes: snacks key",
     pm.snacks_key("<M-t>") == "<a-t>" and pm.snacks_key("<C-p>") == "<c-p>"
@@ -9150,6 +9203,26 @@ do
     "pick_item/telescope: normal mode hands the file to telescope's buffer maker",
     made.path == "/tmp/a.md" and made.bufnr == fake.state.bufnr
   )
+  -- a `lines` spec with a `line`: the preview window shows that line, not the top
+  do
+    local twin = vim.api.nvim_get_current_win()
+    local tbuf = vim.api.nvim_create_buf(false, true)
+    local before = vim.api.nvim_win_get_buf(twin)
+    vim.api.nvim_win_set_buf(twin, tbuf)
+    local lfake = { state = { bufnr = tbuf, winid = twin, bufname = "y" } }
+    previewer.define_preview(lfake, {
+      value = {
+        text = "L",
+        previews = { normal = { lines = { "a", "b", "c", "d", "e" }, line = 4 } },
+      },
+    })
+    check(
+      "pick_item/telescope: a `lines` spec puts its line in view",
+      vim.api.nvim_win_get_cursor(twin)[1] == 4,
+      vim.api.nvim_win_get_cursor(twin)[1]
+    )
+    vim.api.nvim_win_set_buf(twin, before)
+  end
 
   package.loaded["pickers.engines.telescope"] = nil
   for k, v in pairs(prev) do
@@ -9221,6 +9294,15 @@ do
     "pick_item/snacks: file mode shows the file and puts the line in view",
     file_shown == "some/file.lua" and vim.api.nvim_win_get_cursor(swin)[1] == 4
   )
+  -- a `lines` spec with a `line` (the stub's set_lines leaves the 5-line buffer in place)
+  vim.api.nvim_win_set_cursor(swin, { 1, 0 })
+  ctx.item = { item = { text = "G", previews = { normal = { lines = { "x" }, line = 3 } } } }
+  sel.snacks.preview(ctx)
+  check(
+    "pick_item/snacks: a `lines` spec puts its line in view",
+    vim.api.nvim_win_get_cursor(swin)[1] == 3,
+    vim.api.nvim_win_get_cursor(swin)[1]
+  )
   check(
     "pick_item/snacks: the select layout shows the preview",
     sel.snacks.layout.preset == "select" and next(sel.snacks.layout.hidden) == nil
@@ -9248,38 +9330,68 @@ do
       picked = i
     end,
   })
-  -- Fields: text, index, then each mode's line (0 = top): A's normal mode is
-  -- file line 7, its table mode has no line; B's plain `file` has none either.
   check(
-    "pick_item/fzf: hidden index field, then one scroll line per mode",
-    fz.lines[1] == "A\t1\t7\t0" and fz.lines[2] == "B\t2\t0\t0",
+    "pick_item/fzf: hidden index field after the text",
+    fz.lines[1] == "A\t1" and fz.lines[2] == "B\t2",
     vim.inspect(fz.lines)
   )
-  -- fzf's text preview only scrolls through --preview-window: the first mode's
-  -- field (3), +1 for the mode line kept as a fixed header, centred.
+  -- The mode lives in Lua only. fzf's scroll offset is fixed per process and
+  -- fzf-lua's resize/flex/fullscreen handling resets it, so it must not carry
+  -- the mode's line (no field reference, no change-preview-window on toggle):
+  -- only the mode line is kept as a fixed header.
   check(
-    "pick_item/fzf: the preview scrolls to the first mode's line",
-    fz.o.preview_offset == "+{3}+1-/2:~1",
+    "pick_item/fzf: the preview offset only pins the mode line",
+    fz.o.preview_offset == "~1",
     tostring(fz.o.preview_offset)
   )
   check(
     "pick_item/fzf: a file that cannot be read says so under the mode line",
-    vim.startswith(fz.o.preview({ "B\t2\t0\t0" }) or "", "[normal] table\ncould not read ")
+    vim.startswith(fz.o.preview({ "B\t2" }) or "", "[normal] table\ncould not read ")
   )
   local act = fz.o.actions["alt-c"]
   check(
-    "pick_item/fzf: toggle is silent, steps the scroll field along and refreshes",
-    act.exec_silent == true
-      and act.postfix == "change-preview-window(+{4}+1-/2|+{3}+1-/2)+refresh-preview",
+    "pick_item/fzf: toggle is silent, refreshes and leaves fzf's preview window alone",
+    act.exec_silent == true and act.postfix == "refresh-preview",
     tostring(act.postfix)
   )
   act.fn()
   check(
     "pick_item/fzf: after the toggle the preview shows the table lines",
-    fz.o.preview({ "A\t1\t7\t0" }) == "normal [table]\n| x |\n| - |"
+    fz.o.preview({ "A\t1" }) == "normal [table]\n| x |\n| - |"
   )
-  fz.o.actions["default"]({ "A\t1\t7\t0" })
+  -- `:FzfLua resume` restarts fzf with the same closures; the new window starts in mode 1
+  local on_create_buf = vim.api.nvim_get_current_buf()
+  fz.o.winopts.on_create()
+  pcall(vim.keymap.del, "t", "<Esc>", { buffer = on_create_buf })
+  pcall(vim.keymap.del, "n", "<Esc>", { buffer = on_create_buf })
+  check(
+    "pick_item/fzf: a (re)started window starts in the first mode",
+    vim.startswith(fz.o.preview({ "A\t1" }) or "", "[normal] table\n")
+  )
+  fz.o.actions["default"]({ "A\t1" })
   check("pick_item/fzf: on_select gets the exact original item", picked == items[1])
+
+  -- the preview text starts near the spec's line; an item text may hold a TAB
+  local long = {}
+  for i = 1, 100 do
+    long[i] = "L" .. i
+  end
+  fzf_engine.pick_item({
+    items = { { text = "a\tb", previews = { normal = { lines = long, line = 40 } } } },
+    prompt = "Tab",
+    on_select = function() end,
+  })
+  check(
+    "pick_item/fzf: the index is read from the end of the line",
+    fz.lines[1] == "a\tb\t1",
+    vim.inspect(fz.lines)
+  )
+  local shown = vim.split(fz.o.preview({ fz.lines[1] }, 21) or "", "\n")
+  check(
+    "pick_item/fzf: an item text with a TAB still previews, its line centred",
+    shown[1] == "[normal]  (from line 31)" and shown[11] == "L40",
+    shown[1] .. " / " .. tostring(shown[11])
+  )
   package.loaded["fzf-lua"] = prev_fzf
   package.loaded["pickers.engines.fzf"] = nil
 end

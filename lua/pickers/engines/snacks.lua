@@ -301,19 +301,15 @@ function M.pick_item(opts)
           require("snacks.picker.preview").file(proxy)
           -- `preview:loc()` reads the position from the real picker item, not from the
           -- proxy, so the line is put in view here
-          local win = ctx.preview.win and ctx.preview.win.win
-          if spec.line and win and vim.api.nvim_win_is_valid(win) then
-            pcall(vim.api.nvim_win_set_cursor, win, { spec.line, 0 })
-            vim.api.nvim_win_call(win, function()
-              vim.cmd("normal! zz")
-            end)
-          end
+          pm.show_line(ctx.preview.win and ctx.preview.win.win, spec.line)
           ctx.preview:set_title(modes:label())
           return
         end
         ctx.preview:reset()
         ctx.preview:set_lines((spec and spec.lines) or { "(no preview in this mode)" })
         if spec and spec.ft and spec.ft ~= "" then ctx.preview:highlight({ ft = spec.ft }) end
+        -- a `lines` spec may carry a `line` too
+        if spec then pm.show_line(ctx.preview.win and ctx.preview.win.win, spec.line) end
         ctx.preview:set_title(modes:label())
       end,
       actions = {
