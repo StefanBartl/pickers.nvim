@@ -382,18 +382,23 @@ function M.pick_item(opts)
 
   -- Items with `previews`: the preview follows the current mode and a key
   -- switches it (see `pickers.preview_modes`). fzf only sees text lines, so the
-  -- hidden second field is the item's index, not a file.
+  -- hidden second field is the item's index, not a file. The preview is fzf's
+  -- own text window, which only fzf can scroll: the fields from the third on
+  -- carry each mode's `line`, `preview_offset` scrolls to the first mode's,
+  -- and the toggle key steps fzf's scroll field along with the mode.
   local pm = require("pickers.preview_modes")
   local modes = pm.new(opts)
   if modes then
     local lines, by_line = {}, {}
     for i, it in ipairs(opts.items) do
       local text = (type(it) == "table") and it.text or it
-      lines[i] = text .. "\t" .. i
+      lines[i] = text .. "\t" .. i .. "\t" .. table.concat(modes:lines_per_mode(it), "\t")
       by_line[lines[i]] = it
     end
+    local scroll = modes:fzf_scroll(3)
     fzf.fzf_exec(lines, {
       prompt = opts.prompt,
+      preview_offset = scroll.initial,
       fzf_opts = vim.tbl_extend("force", {
         ["--no-multi"] = true,
         ["--delimiter"] = "\\t",
@@ -401,7 +406,7 @@ function M.pick_item(opts)
       }, history_fzf_opts("item") or {}, cheatsheet_header()),
       preview = function(selected)
         local line = (type(selected) == "table") and selected[1] or selected
-        local idx = line and tonumber(line:match("\t(%d+)$"))
+        local idx = line and tonumber(line:match("^[^\t]*\t(%d+)"))
         -- fzf has no preview title: the first line names the modes, the current one in brackets
         return modes:label() .. "\n" .. pm.as_text(idx and modes:spec(opts.items[idx]))
       end,
@@ -415,7 +420,7 @@ function M.pick_item(opts)
             modes:toggle()
           end,
           exec_silent = true,
-          postfix = "refresh-preview",
+          postfix = "change-preview-window(" .. scroll.cycle .. ")+refresh-preview",
         },
       },
     })

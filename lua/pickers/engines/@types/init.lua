@@ -48,7 +48,7 @@
 ---                      mode name -> what to show (`file`/`line` or `lines`/`ft`).
 ---                      When at least one item carries this, every engine shows
 ---                      the preview of the current mode and the key
----                      `opts.preview_toggle_key` (default `<M-t>`) cycles the
+---                      `opts.preview_toggle_key` (default `<M-c>`) cycles the
 ---                      modes (`opts.preview_modes` fixes their order; else
 ---                      "normal" first, then alphabetically). A `file` on the
 ---                      item stands in for a missing "normal" mode. See

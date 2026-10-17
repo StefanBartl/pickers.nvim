@@ -126,7 +126,7 @@ All of these live in the augroup `"pickers.nvim"` when lib.nvim is present; with
 | `copy_absolute` | `<C-y>` · chords `[a`, `[f` | patched | fixed (`ctrl-y`) | export only¹ |
 | `copy_dirname` | `<M-y>` · chord `]a` | patched | fixed (`alt-y`) | export only¹ |
 | `copy_env_rooted` | `<M-v>` · chord `[e` | patched | fixed (`alt-v`) | export only¹ |
-| `copy_project_root`² | `<M-t>` · chord `[R` | patched | fixed (`alt-t`) | export only¹ |
+| `copy_project_root` | `<M-t>` · chord `[R` | patched | fixed (`alt-t`) | export only¹ |
 | `copy_project_relative` | `<M-e>` · chord `]R` | patched | fixed (`alt-e`) | export only¹ |
 | `copy_buffer_relative` | `<M-j>` · chord `]b` | patched | fixed (`alt-j`) | export only¹ |
 | `markdown_link` | `<M-l>` · chords `ML`, `MM` | patched | fixed (`alt-l`) | export only¹ |
@@ -140,7 +140,7 @@ The path-copy/system rows carry a **direct key** (Ctrl/Alt, bound in insert *and
 
 ¹ snacks: pickers.nvim doesn't own `Snacks.setup()`, but snacks reads `Snacks.config.picker` each time a picker opens — so the keys are patched into that table once snacks is loaded (`pickers.entry_actions.patch`), a key you already bound winning. `keys.snacks_win()` stays exported for merging by hand.
 
-² In a `pick_item` list whose items carry `previews`, `<M-t>` (`alt-t` in fzf-lua) switches the preview mode instead of `copy_project_root`; set `preview_toggle_key` to move it. fzf-lua previews are text, so the item's `line` is not scrolled to there.
+**Preview switch in `pick_item` lists.** When the items carry `previews`, `<M-c>` (`<a-c>` in snacks, `alt-c` in fzf-lua) cycles the preview mode; `preview_toggle_key` moves it per call. It is not `<M-t>`, so `copy_project_root` keeps working in those lists. All three engines put the spec's `line` in view, fzf-lua included (its text preview is scrolled through fzf's `--preview-window` offset, centred, with the mode line kept on top).
 
 ### Quickfix-window keys (`quickfix.keys`)
 
