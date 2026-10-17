@@ -503,6 +503,8 @@ end
 function M.run(name, opts, engine_name)
   local entry = M.REGISTRY[name]
   if not entry then
+    -- A Lua caller gets the error, never a prompt; only `:Pickers builtin`
+    -- (see `M.run_interactive`) offers the registry instead.
     notify.error(
       "Unknown builtin '" .. tostring(name) .. "'. Run :Pickers builtin <Tab> to list them."
     )
@@ -553,6 +555,61 @@ function M.run(name, opts, engine_name)
     notify.error(
       ("builtin '%s' (%s.%s) error: %s"):format(name, engine_name, impl.fn, tostring(err))
     )
+  end
+end
+
+--- Every registered builtin name, closest to `name` first: names containing
+--- `name` (case-insensitive) lead, then ascending Levenshtein distance, then
+--- alphabetical.
+---@param name string
+---@return string[]
+function M.ranked_names(name)
+  local distance = require("lib.lua.strings.distance")
+  local query = tostring(name or ""):lower()
+  local keyed = {}
+  for _, n in ipairs(M.names()) do
+    keyed[#keyed + 1] = {
+      name = n,
+      miss = (query ~= "" and n:lower():find(query, 1, true)) and 0 or 1,
+      dist = distance.levenshtein(query, n:lower()),
+    }
+  end
+  table.sort(keyed, function(a, b)
+    if a.miss ~= b.miss then return a.miss < b.miss end
+    if a.dist ~= b.dist then return a.dist < b.dist end
+    return a.name < b.name
+  end)
+  local out = {}
+  for i, k in ipairs(keyed) do
+    out[i] = k.name
+  end
+  return out
+end
+
+--- Entry point of `:Pickers builtin <name>`. A known name runs straight away;
+--- an unknown one opens a choice of the registered builtins (closest first)
+--- via lib.nvim's `ui.kit.select` (`vim.ui.select` as fallback). Picking one
+--- runs it, cancelling does nothing.
+---@param name string
+---@param opts table|nil
+---@param engine_name string|nil
+function M.run_interactive(name, opts, engine_name)
+  if M.REGISTRY[name] then return M.run(name, opts, engine_name) end
+  local items = M.ranked_names(name)
+  local title = "Unknown builtin '" .. tostring(name) .. "' — run which?"
+  local function on_pick(choice)
+    if type(choice) == "string" and M.REGISTRY[choice] then M.run(choice, opts, engine_name) end
+  end
+  local kit_ok, kit = pcall(require, "lib.nvim.ui.kit")
+  if kit_ok and type(kit) == "table" and type(kit.select) == "function" then
+    kit.select({
+      title = title,
+      items = items,
+      respect_override = true,
+      on_select = on_pick,
+    })
+  else
+    vim.ui.select(items, { prompt = title }, on_pick)
   end
 end
 

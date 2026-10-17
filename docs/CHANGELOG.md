@@ -10,6 +10,12 @@ a changelog.
 
 ---
 
+[x] **`:Pickers builtin <unknown>` offers the builtins instead of the `<Tab>` hint.**
+  A name that is not registered now opens a choice of every builtin (names containing the typed text first,
+  then by edit distance) through lib.nvim's `ui.kit.select` (`vim.ui.select` as fallback); the pick runs, a
+  cancel does nothing. `pickers.builtins.run()` called from Lua still only reports the error. New:
+  `builtins.ranked_names()` and `builtins.run_interactive()` (the `:Pickers builtin` route).
+
 [x] **`pick_item()` previews: the mode is tracked in Lua only; every engine scrolls `lines` specs too.**
   Review fixes for the entry below. fzf's `--preview-window` offset (`+{N}` and the
   `change-preview-window(a|b)` cycle on the toggle key) was a second copy of the current mode. fzf-lua resets

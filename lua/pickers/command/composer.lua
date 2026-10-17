@@ -158,9 +158,10 @@ end
 
 -- Native pickers (git/lsp/search/…) — not a scope×action, so it does not
 -- delegate to pickers.command.handle; it dispatches straight to
--- pickers.builtins.run, which resolves the engine itself.
+-- pickers.builtins.run_interactive, which resolves the engine itself and offers
+-- the registry for an unknown name.
 ---@internal
----Route for `:Pickers builtin <name>` — dispatches straight to pickers.builtins.run.
+---Route for `:Pickers builtin <name>` — dispatches to pickers.builtins.run_interactive.
 ---@return table route
 local function builtin_route()
   return {
@@ -168,7 +169,7 @@ local function builtin_route()
     args = { { name = "name", type = "PICKERS_BUILTIN_NAME" } },
     desc = "Native picker (git/lsp/search/…) — see docs/builtins.md",
     run = function(ctx)
-      require("pickers.builtins").run(ctx.pos[1])
+      require("pickers.builtins").run_interactive(ctx.pos[1])
     end,
   }
 end

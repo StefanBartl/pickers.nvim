@@ -2871,6 +2871,21 @@ do
     check("complete: builtin git_branches", has(builtin_names, "git_branches"))
     check("complete: builtin lsp_definitions", has(builtin_names, "lsp_definitions"))
 
+    -- UI-05: `:Pickers builtin <unknown>` asks which builtin to run instead of
+    -- only printing the "<Tab> to list them" hint.
+    local kit = require("lib.nvim.ui.kit")
+    local orig_select = kit.select
+    local offered
+    kit.select = function(o)
+      offered = o.items
+    end
+    pcall(vim.cmd, "Pickers builtin git_brnches")
+    kit.select = orig_select
+    check(
+      ":Pickers builtin <unknown> offers the builtins, closest first",
+      offered ~= nil and offered[1] == "git_branches"
+    )
+
     -- dir's nav slot: aliases, numeric depths, and the "path=" prefix.
     local nav_completion = vim.fn.getcompletion("Pickers dir ", "cmdline")
     check("complete: dir nav offers action words too", has(nav_completion, "files"))
@@ -3110,6 +3125,61 @@ do
     "builtins.run: missing engine module does not throw",
     pcall(builtins.run, "git_branches", nil, "telescope")
   )
+
+  -- UI-05: an unknown name from `:Pickers builtin` offers the registry
+  -- (closest first) instead of only pointing at <Tab>; a Lua call of run()
+  -- keeps reporting the error without asking.
+  local ranked = builtins.ranked_names("git_brnches")
+  check("builtins.ranked_names: closest name first", ranked[1] == "git_branches")
+  check(
+    "builtins.ranked_names: substring matches lead",
+    builtins.ranked_names("diagnostics")[1]:find("diagnostics", 1, true) ~= nil
+  )
+  check("builtins.ranked_names: every builtin is offered", #ranked == #builtins.names())
+
+  local kit_ok, kit = pcall(require, "lib.nvim.ui.kit")
+  if not kit_ok then
+    print("  skip builtins.run_interactive tests (lib.nvim not on runtimepath)")
+  else
+    local orig_select, orig_run = kit.select, builtins.run
+    local select_calls, run_calls = {}, {}
+    kit.select = function(o)
+      select_calls[#select_calls + 1] = o
+    end
+    builtins.run = function(name, ...)
+      run_calls[#run_calls + 1] = name
+      if not builtins.REGISTRY[name] then return orig_run(name, ...) end
+    end
+
+    builtins.run("nope_not_real")
+    check("builtins.run (Lua): unknown name does not prompt", #select_calls == 0)
+
+    run_calls = {}
+    builtins.run_interactive("git_brnches")
+    local sel = select_calls[1]
+    check(
+      "builtins.run_interactive: unknown name opens a choice, closest first",
+      sel ~= nil and sel.items[1] == "git_branches" and #run_calls == 0
+    )
+    if sel then
+      sel.on_select(nil)
+      check("builtins.run_interactive: cancelling runs nothing", #run_calls == 0)
+      sel.on_select("git_branches")
+      check(
+        "builtins.run_interactive: the choice runs that builtin",
+        run_calls[1] == "git_branches"
+      )
+    end
+
+    select_calls, run_calls = {}, {}
+    builtins.run_interactive("git_status")
+    check(
+      "builtins.run_interactive: a known name runs without asking",
+      #select_calls == 0 and run_calls[1] == "git_status"
+    )
+
+    kit.select, builtins.run = orig_select, orig_run
+  end
 end
 
 -- ── sources.repos — list_names / resolve / complete; needs lib.nvim ─────────
