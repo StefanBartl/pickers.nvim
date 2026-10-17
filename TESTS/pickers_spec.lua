@@ -1191,6 +1191,33 @@ do
   )
   config.apply({ repos_dir = repos_root })
 
+  -- The folding goes through lib.nvim's named-roots registry: a root that a
+  -- plugin or the user registered folds although pickers knows nothing about
+  -- it, and the deepest root wins over repos_dir (a fold hard-wired to
+  -- repos_dir can do neither).
+  local roots = require("lib.nvim.fs.roots")
+  local unregister = roots.register("PC_TEST_NOTES", join("pc_test_notes"))
+  local unregister_deep = roots.register("PC_TEST_DEEP", repos_root .. "/foo.nvim")
+  local reg_notes = path_copy.build("env_rooted", join("pc_test_notes/a/b.md"))
+  local reg_deep = path_copy.build("env_rooted", under_root)
+  unregister()
+  unregister_deep()
+  check(
+    "path_copy.build: env_rooted folds a root registered in the lib.nvim registry",
+    reg_notes == "$PC_TEST_NOTES/a/b.md",
+    tostring(reg_notes)
+  )
+  check(
+    "path_copy.build: env_rooted takes the deepest registered root",
+    reg_deep == "$PC_TEST_DEEP/x.lua",
+    tostring(reg_deep)
+  )
+  check(
+    "path_copy.build: a registered root is gone after unregister",
+    path_copy.build("env_rooted", join("pc_test_notes/a/b.md")) == join("pc_test_notes/a/b.md")
+      and path_copy.build("env_rooted", under_root) == "$REPOS_DIR/foo.nvim/x.lua"
+  )
+
   -- run(): register + notify side effects, and the guard branches.
   check(
     "path_copy.run: unknown format returns false",
@@ -8883,6 +8910,21 @@ do
       package.loaded["gopath.env_shorten"] = saved
       config.reset()
       return got == "../src/a.lua"
+    end)()
+  )
+  check(
+    "link_insert.target: env uses a root registered in the lib.nvim registry",
+    (function()
+      local saved = package.loaded["gopath.env_shorten"]
+      package.loaded["gopath.env_shorten"] = false
+      config.apply({ repos_dir = li_root .. "/elsewhere" })
+      local unregister = require("lib.nvim.fs.roots").register("LI_TEST_SRC", li_root .. "/src")
+      local got = li.target(abs, buf, "env")
+      unregister()
+      local after = li.target(abs, buf, "env")
+      package.loaded["gopath.env_shorten"] = saved
+      config.reset()
+      return got == "$LI_TEST_SRC/a.lua" and after == "../src/a.lua"
     end)()
   )
   check(

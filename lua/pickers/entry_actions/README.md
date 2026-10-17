@@ -112,11 +112,13 @@ telescope `<M-f>/<M-k>/<M-q>`, fzf-lua `alt-a/alt-g/alt-q/alt-i/alt-h/alt-f`, fz
 `alt-b/alt-f/alt-d` (a test in `TESTS/` guards this). `ctrl-y` shadows fzf-lua's git-picker-only
 `git_yank_commit` the way `ctrl-a` already shadows those pickers' own overrides.
 
-`copy_env_rooted` folds `$REPOS_DIR` back into the path (e.g.
-`$REPOS_DIR/foo.nvim/x.lua`) when the entry lives under it — reading
-`pickers.config`'s already-resolved `repos_dir`, not `vim.env.REPOS_DIR`
-directly — and falls back to the plain absolute path otherwise (unset,
-empty, or the entry is outside it), same posture as filetree.nvim's own
+`copy_env_rooted` folds the deepest named root back into the path (e.g.
+`$REPOS_DIR/foo.nvim/x.lua`) through lib.nvim's `fs.roots` registry. The
+plugin's own root is `pickers.config`'s already-resolved `repos_dir` (not
+`vim.env.REPOS_DIR`), handed to the registry per call; `$NVIM_CONFIG_DIR` and the
+roots the user (`roots.setup`) or other plugins (`roots.register`) defined fold
+too, and a deeper one wins over `$REPOS_DIR`. The plain absolute path comes back
+when the entry is under no root, same posture as filetree.nvim's own
 `env_rooted`.
 
 The snacks adapter's `get_actions()` values carry `desc` (not bare functions) so
