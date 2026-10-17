@@ -3131,9 +3131,12 @@ do
   -- keeps reporting the error without asking.
   local ranked = builtins.ranked_names("git_brnches")
   check("builtins.ranked_names: closest name first", ranked[1] == "git_branches")
+  -- "branch" is closer to "browse" (distance 4) than to "git_branches" (6), so
+  -- only the substring rule puts git_branches first. (An exact name such as
+  -- "diagnostics" would lead on distance 0 alone and prove nothing.)
   check(
     "builtins.ranked_names: substring matches lead",
-    builtins.ranked_names("diagnostics")[1]:find("diagnostics", 1, true) ~= nil
+    builtins.ranked_names("branch")[1] == "git_branches"
   )
   check("builtins.ranked_names: every builtin is offered", #ranked == #builtins.names())
 
@@ -3147,7 +3150,8 @@ do
       select_calls[#select_calls + 1] = o
     end
     builtins.run = function(name, ...)
-      run_calls[#run_calls + 1] = name
+      -- tostring: a nil name (a cancel leaking through) must still count.
+      run_calls[#run_calls + 1] = tostring(name)
       if not builtins.REGISTRY[name] then return orig_run(name, ...) end
     end
 
