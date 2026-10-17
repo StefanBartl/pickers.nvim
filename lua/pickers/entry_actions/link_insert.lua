@@ -14,8 +14,9 @@
 ---   "cwd"      relative to the working directory
 ---   "absolute" the full path
 ---   "env"      `$VAR/rest` when the file lies under a known root (gopath.nvim's
----              `shorten_path` when installed, else `$REPOS_DIR` /
----              `$NVIM_CONFIG_DIR` literally), else the "buffer" form
+---              `shorten_path` when installed, else the deepest root of
+---              lib.nvim's `fs.roots` registry: `$REPOS_DIR`,
+---              `$NVIM_CONFIG_DIR`, registered ones), else the "buffer" form
 ---
 --- The caller closes the picker first (the window behind it is where the text
 --- goes, and insert mode must end up there, not in a prompt buffer that is
@@ -24,6 +25,7 @@
 local notify = require("lib.nvim.notify").create("[pickers.entry_actions.link_insert]")
 local feedback = require("lib.nvim.notify").create("[pickers]", { messages = true })
 local unify_slashes = require("lib.nvim.cross.fs.separators.unify_slashes")
+local roots = require("lib.nvim.fs.roots")
 
 local fn = vim.fn
 
@@ -66,21 +68,14 @@ local function env_path(abs)
     if shortened then return shortened end
   end
 
-  local function under(root)
-    if type(root) ~= "string" or root == "" then return nil end
-    local norm_root = unify_slashes(root):gsub("/+$", "")
-    local norm = unify_slashes(abs)
-    local lower = vim.fn.has("win32") == 1
-    local a, r = lower and norm:lower() or norm, lower and norm_root:lower() or norm_root
-    if a == r then return "" end
-    if a:sub(1, #r + 1) == r .. "/" then return norm:sub(#norm_root + 1) end
-    return nil
-  end
-
-  local repos = under(require("pickers.config").get().repos_dir)
-  if repos then return "$REPOS_DIR" .. repos end
-  local nvim = under(fn.stdpath("config"))
-  if nvim then return "$NVIM_CONFIG_DIR" .. nvim end
+  -- The registry of lib.nvim: the plugin's own root (`repos_dir`) goes in per
+  -- call, `$NVIM_CONFIG_DIR` and the roots of the user / other plugins are
+  -- visible anyway. `force`: the user chose the "env" spelling by name.
+  local repos_dir = require("pickers.config").get().repos_dir
+  local extra = type(repos_dir) == "string" and repos_dir ~= "" and { REPOS_DIR = repos_dir } or nil
+  local folded, name =
+    roots.fold(abs, { vars = {}, extra = extra, nvim_config = true, force = true })
+  if name then return folded end
   return nil
 end
 

@@ -39,42 +39,28 @@ local notify = require("lib.nvim.notify").create("[pickers.entry_actions.path_co
 -- Success feedback: also in `:messages` (see entry_actions.system for the why).
 local feedback = require("lib.nvim.notify").create("[pickers]", { messages = true })
 local unify_slashes = require("lib.nvim.cross.fs.separators.unify_slashes")
-local is_windows = require("lib.nvim.cross.platform.is_windows")
+local roots = require("lib.nvim.fs.roots")
 
 local fn = vim.fn
 
 local M = {}
 
 ---@internal
----Fold `$REPOS_DIR` back into an absolute path when it lives under it.
----Falls back to the plain absolute path when the env var is unset/empty or
----`abs` is not under it -- same "no relative form, leave it as-is" posture
----as filetree.nvim's `util.path.env_rooted`. Reads `pickers.config`'s
----already-resolved `repos_dir` (the one sanctioned place this env var is
----read in this plugin, see `pickers.config`'s own module doc) rather than
----`vim.env.REPOS_DIR` directly.
+---Fold the deepest named root (lib.nvim's `fs.roots` registry) back into an
+---absolute path: `$REPOS_DIR/…`, `$NVIM_CONFIG_DIR/…`, or a root the user or
+---another plugin registered. The plugin's own root is `pickers.config`'s
+---already-resolved `repos_dir` (the one sanctioned place this env var is read
+---in this plugin, see `pickers.config`'s own module doc), handed to the
+---registry per call -- `setup()`/`register()` are never touched here. Falls
+---back to the plain absolute path when `abs` is under no root -- same "no
+---relative form, leave it as-is" posture as filetree.nvim's
+---`util.path.env_rooted`. `force`: the user asked for this format by name.
 ---@param abs string
 ---@return string
 local function env_rooted(abs)
-  local root = require("pickers.config").get().repos_dir
-  if type(root) ~= "string" or root == "" then return abs end
-
-  local norm = unify_slashes(abs)
-  local norm_root = unify_slashes(root):gsub("/+$", "")
-
-  -- Windows compares paths case-insensitively, and a drive letter alone can
-  -- differ in case between $REPOS_DIR and what the picker reports for a
-  -- file under it -- a case-sensitive compare would just never match there.
-  local function fold(s)
-    return is_windows() and s:lower() or s
-  end
-  local folded, folded_root = fold(norm), fold(norm_root)
-
-  local under = folded == folded_root or folded:sub(1, #folded_root + 1) == folded_root .. "/"
-  if not under then return abs end
-
-  local rest = norm:sub(#norm_root + 2)
-  return rest == "" and "$REPOS_DIR" or ("$REPOS_DIR/" .. rest)
+  local repos_dir = require("pickers.config").get().repos_dir
+  local extra = type(repos_dir) == "string" and repos_dir ~= "" and { REPOS_DIR = repos_dir } or nil
+  return (roots.fold(abs, { vars = {}, extra = extra, nvim_config = true, force = true }))
 end
 
 ---The link text for `abs`: its last segment. A trailing separator (`dir/`, which

@@ -17,8 +17,9 @@ local M = {
   link_insert = {
     -- How the link path is spelled: "buffer" (relative to the target buffer's
     -- directory, `./x`/`../x`), "cwd", "absolute", or "env" (`$REPOS_DIR/…`,
-    -- `$NVIM_CONFIG_DIR/…`, via gopath.nvim's shorten_path when installed;
-    -- "buffer" for a file under no known root).
+    -- `$NVIM_CONFIG_DIR/…` or any root of lib.nvim's `fs.roots` registry, via
+    -- gopath.nvim's shorten_path when installed; "buffer" for a file under no
+    -- known root).
     path = "buffer",
     -- lib.nvim.markdown.link_cursor: the cursor goes where the link still needs
     -- typing (empty title, else the path) and into insert mode.
