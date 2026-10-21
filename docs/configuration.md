@@ -2,6 +2,15 @@
 
 All keys are optional. Unset keys keep their default values.
 
+What `setup()` is given is checked against the defaults (`lib.lua.config`): an unknown key is reported with the
+nearest known one (`smart.limmit` -> did you mean `smart.limit`?), and a value of the wrong type, below its bound or
+outside its list of values (`history.fzf_scope`, `link_insert.path`, ...) is reported and left out, so the default
+applies. `setup()` can be called again: it replaces the first call. The lower-level `require("pickers.config").apply()`
+adds to what the earlier calls said (several lazy.nvim specs for this plugin): a rejected value keeps the value an
+earlier call set, `collections` and `mappings` of a later call replace the earlier ones, `tabs.groups` and
+`depth_aliases` merge entry by entry (a group set to `false` removes it), any other table merges key by key and a list
+replaces. `require("pickers.config").issues()` lists what was dropped.
+
 ```lua
 require("pickers").setup({
   -- "auto" detects telescope first, then fzf-lua, then snacks.nvim

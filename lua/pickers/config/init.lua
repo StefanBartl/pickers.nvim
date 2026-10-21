@@ -1,39 +1,34 @@
 ---@module 'pickers.config'
----@brief Manages the active configuration; merges user options into defaults.
+---@brief The active configuration: `DEFAULTS` plus what `apply()` was given, through `lib.lua.config.new`.
 ---@see pickers.config.DEFAULTS
+---@description
+--- `M.apply(opts)` can be called more than once (several lazy.nvim specs for this plugin, or incrementally):
+--- every call is checked against the schema inferred from `DEFAULTS`, the part that passes is merged into
+--- `applied` (the options of all calls so far), and `lib.lua.config` computes the config from the defaults and
+--- `applied` from scratch, then runs `resolve`. `pickers.setup()` calls `M.reset()` first, so a second real
+--- `setup()` replaces the first (LUA-87).
+---
+--- What a call is allowed to say:
+---  * an unknown key is reported with a did-you-mean hint and left out (ERR-50);
+---  * a value of the wrong type, outside its bounds or not in its list of values is reported and left out, so
+---    the value of an earlier call (or the default) stays (ERR-22);
+---  * `keymaps` / `usercmds` may be `false` (`{ enable = false }`) or `true` (`{ enable = true }`) (REL-20);
+---  * `collections` is replaced whole by each call, `mappings` too; `tabs.groups` and `depth_aliases` merge entry
+---    by entry (a group set to `false` removes the default one); every other table merges key by key and a list
+---    replaces.
+---
+--- `resolve` derives what no layer can say: `repos_dir` from lib.nvim's env snapshot when unset (LUA-06), the
+--- `~` / `$VAR` of the paths, the collections in their final shape, the fold of `find.ignore_list` into
+--- `find.exclude`, whole numbers where a count is meant.
 
 local expand_path = require("lib.nvim.cross.fs.expand_path")
 local notify = require("lib.nvim.notify").create("[pickers]")
+local lib_config = require("lib.lua.config")
+local schema = require("lib.lua.config.schema")
+
+local DEFAULTS = require("pickers.config.DEFAULTS")
 
 local M = {}
-
-local _cfg = nil ---@type Pickers.Config|nil
-
----Return the active configuration, initialising from defaults on first call.
----@return Pickers.Config
-function M.get()
-  if _cfg then return _cfg end
-  _cfg = vim.deepcopy(require("pickers.config.DEFAULTS"))
-  -- Via lib.nvim's env snapshot, not a direct vim.env.REPOS_DIR read: it's the
-  -- one sanctioned place this env var is read, and `repo_base` is `nil` when
-  -- unset -- same behavior as before, single source of truth now. Resolved
-  -- here rather than in DEFAULTS.lua so requiring that module alone stays
-  -- pure data (LUA-06).
-  _cfg.repos_dir = require("lib.nvim.system.env").get().repo_base
-  return _cfg
-end
-
----Discard the active configuration, so the next `M.get()`/`M.apply()` call
----starts from a fresh `DEFAULTS` copy again. `pickers.setup()` calls this
----before `M.apply(opts)`, so a second real `setup()` call in the same Lua
----state replaces the first cleanly instead of composing on top of whatever
----it left behind (LUA-87). `M.apply()` on its own keeps mutating the live
----table in place -- that is what lets it be called repeatedly to build up
----one configuration (e.g. incrementally, or across several lazy.nvim specs
----for this plugin), which is a different, still-supported use.
-function M.reset()
-  _cfg = nil
-end
 
 ---Validate and normalise a single collection entry.
 ---Returns nil if the entry is invalid.
@@ -64,614 +59,262 @@ local function normalise_collection(raw)
   }
 end
 
----Validate and normalise the `history` sub-config, merging into `current`.
----@internal
----@param raw table
----@param current Pickers.HistoryConfig
----@return Pickers.HistoryConfig
-local function normalise_history(raw, current)
-  local result = vim.deepcopy(current)
+-- ── What the schema cannot infer from DEFAULTS ───────────────────────────────
+-- DEFAULTS.lua cannot say it all: several of its fields default to `nil` (repos_dir, find.exclude, history.dir,
+-- the opt-in keymaps, ...) and a Lua table never stores a nil-valued key, a few take a second type (a key that is
+-- `false` by default also takes a string), and some have bounds or a closed set of values.
 
-  if type(raw.enabled) == "boolean" then result.enabled = raw.enabled end
-
-  if raw.fzf_scope ~= nil then
-    local allowed = { plugin = true, global = true, patch = true }
-    if type(raw.fzf_scope) == "string" and allowed[raw.fzf_scope] then
-      result.fzf_scope = raw.fzf_scope
-    else
-      notify.warn(
-        string.format(
-          "Invalid history.fzf_scope %q, keeping %q",
-          tostring(raw.fzf_scope),
-          result.fzf_scope
-        )
-      )
-    end
-  end
-
-  if type(raw.dir) == "string" and raw.dir ~= "" then result.dir = expand_path(raw.dir) end
-
-  if raw.limit ~= nil then
-    if type(raw.limit) == "number" and raw.limit > 0 then
-      result.limit = raw.limit
-    else
-      notify.warn(
-        string.format("Invalid history.limit %s, keeping %s", vim.inspect(raw.limit), result.limit)
-      )
-    end
-  end
-
-  return result
-end
-
----Validate and normalise the `smart` sub-config, merging into `current`.
----Was previously a blind `vim.tbl_deep_extend` (same leniency as `cfg.find`),
----which let a wrong-type `limit`/`timeout`/`weights.*` reach
----`pickers.smart.score` and `vim.system():wait()` unchecked -- both crash on
----a non-number there (ERR-22): `smart.limit = "20"` throws "attempt to
----compare string with number" in `score.rank`'s trim step, and
----`smart.weights.filename = "abc"` throws "attempt to perform arithmetic on
----a string value" in `score.score_file`, on every keystroke of the smart
----action once configured. Reproduced directly against `pickers.smart.score`
----before this fix; both keep the previous value with a warning after it.
----@internal
----@param raw table
----@param current Pickers.SmartConfig
----@return Pickers.SmartConfig
-local function normalise_smart(raw, current)
-  local result = vim.deepcopy(current)
-
-  if type(raw.weights) == "table" then
-    for _, field in ipairs({ "filename", "content", "both" }) do
-      local v = raw.weights[field]
-      if v ~= nil then
-        if type(v) == "number" then
-          result.weights[field] = v
-        else
-          notify.warn(
-            string.format(
-              "Invalid smart.weights.%s %s, keeping %s",
-              field,
-              vim.inspect(v),
-              result.weights[field]
-            )
-          )
-        end
-      end
-    end
-  end
-
-  if raw.limit ~= nil then
-    if type(raw.limit) == "number" and raw.limit > 0 then
-      result.limit = math.floor(raw.limit)
-    else
-      notify.warn(
-        string.format("Invalid smart.limit %s, keeping %s", vim.inspect(raw.limit), result.limit)
-      )
-    end
-  end
-
-  if raw.timeout ~= nil then
-    if type(raw.timeout) == "number" and raw.timeout > 0 then
-      result.timeout = raw.timeout
-    else
-      notify.warn(
-        string.format(
-          "Invalid smart.timeout %s, keeping %s",
-          vim.inspect(raw.timeout),
-          result.timeout
-        )
-      )
-    end
-  end
-
-  if type(raw.frecency) == "table" then
-    if type(raw.frecency.enabled) == "boolean" then
-      result.frecency.enabled = raw.frecency.enabled
-    end
-
-    if raw.frecency.weight ~= nil then
-      if type(raw.frecency.weight) == "number" then
-        result.frecency.weight = raw.frecency.weight
-      else
-        notify.warn(
-          string.format(
-            "Invalid smart.frecency.weight %s, keeping %s",
-            vim.inspect(raw.frecency.weight),
-            result.frecency.weight
-          )
-        )
-      end
-    end
-
-    if raw.frecency.dir ~= nil then
-      if type(raw.frecency.dir) == "string" and raw.frecency.dir ~= "" then
-        result.frecency.dir = raw.frecency.dir
-      else
-        notify.warn(
-          string.format(
-            "Invalid smart.frecency.dir %s, keeping %s",
-            vim.inspect(raw.frecency.dir),
-            vim.inspect(result.frecency.dir)
-          )
-        )
-      end
-    end
-  end
-
-  if type(raw.dedup_grep_rows) == "boolean" then result.dedup_grep_rows = raw.dedup_grep_rows end
-
-  return result
-end
-
----Validate and normalise the `quickfix` sub-config, merging into `current`.
----Was previously a blind `vim.tbl_deep_extend`, which let a wrong-type
----`preview.height`/`context`/`delay_ms` reach `pickers.quickfix`'s
----`math.max`/arithmetic/`<=` comparisons unchecked -- all three crash on a
----non-number there (ERR-22), on the very first `CursorMoved` in any
----quickfix window (preview is on by default): `delay_ms = "40"` throws
----"attempt to compare string with number" in the debounce check, even
----though "40" is a numeral string, because Lua's `<=` never coerces
----strings the way its arithmetic operators do. Reproduced directly with
----`math.max`/arithmetic/`<=` against a string before this fix; each field
----keeps its previous value with a warning instead.
----@internal
----@param raw table
----@param current Pickers.QuickfixConfig
----@return Pickers.QuickfixConfig
-local function normalise_quickfix(raw, current)
-  local result = vim.deepcopy(current)
-
-  if type(raw.enabled) == "boolean" then result.enabled = raw.enabled end
-
-  if type(raw.preview) == "table" then
-    local p, rp = raw.preview, result.preview
-
-    if type(p.enabled) == "boolean" then rp.enabled = p.enabled end
-
-    if p.height ~= nil then
-      if type(p.height) == "number" and p.height > 0 then
-        rp.height = math.floor(p.height)
-      else
-        notify.warn(
-          string.format(
-            "Invalid quickfix.preview.height %s, keeping %s",
-            vim.inspect(p.height),
-            rp.height
-          )
-        )
-      end
-    end
-
-    if p.context ~= nil then
-      if type(p.context) == "number" and p.context >= 0 then
-        rp.context = math.floor(p.context)
-      else
-        notify.warn(
-          string.format(
-            "Invalid quickfix.preview.context %s, keeping %s",
-            vim.inspect(p.context),
-            rp.context
-          )
-        )
-      end
-    end
-
-    if p.border ~= nil then
-      if type(p.border) == "string" and p.border ~= "" then
-        rp.border = p.border
-      else
-        notify.warn(
-          string.format(
-            "Invalid quickfix.preview.border %s, keeping %q",
-            vim.inspect(p.border),
-            rp.border
-          )
-        )
-      end
-    end
-
-    if p.delay_ms ~= nil then
-      if type(p.delay_ms) == "number" and p.delay_ms >= 0 then
-        rp.delay_ms = math.floor(p.delay_ms)
-      else
-        notify.warn(
-          string.format(
-            "Invalid quickfix.preview.delay_ms %s, keeping %s",
-            vim.inspect(p.delay_ms),
-            rp.delay_ms
-          )
-        )
-      end
-    end
-  end
-
-  if type(raw.keys) == "table" then
-    local k, rk = raw.keys, result.keys
-    for _, name in ipairs({ "filter", "restore", "toggle_preview" }) do
-      local v = k[name]
-      if v ~= nil then
-        if v == false or (type(v) == "string" and v ~= "") then
-          rk[name] = v
-        else
-          notify.warn(
-            string.format("Invalid quickfix.keys.%s %s, keeping previous", name, vim.inspect(v))
-          )
-        end
-      end
-    end
-  end
-
-  return result
-end
-
----Validate and normalise the `keys` sub-config, merging into `current`.
----Each action accepts a single lhs string, a list of lhs strings, or `false`
----to unbind it. Invalid values are rejected with a warning and left unchanged.
----@internal
----@param raw table
----@param current Pickers.KeysConfig
----@return Pickers.KeysConfig
-local function normalise_keys(raw, current)
-  local result = vim.deepcopy(current)
-
-  if type(raw.enable) == "boolean" then result.enable = raw.enable end
-  if type(raw.open_background_show) == "boolean" then
-    result.open_background_show = raw.open_background_show
-  end
-
-  local actions = require("pickers.keys").ACTIONS
-  for name in pairs(actions) do
-    local v = raw[name]
-    if v ~= nil then
-      if v == false or type(v) == "string" or type(v) == "table" then
-        result[name] = v
-      else
-        notify.warn(string.format("Invalid keys.%s %s, keeping previous", name, vim.inspect(v)))
-      end
-    end
-  end
-
-  return result
-end
-
--- ── ERR-50: unknown-key validation, before the merge below ──────────────────
--- DEFAULTS.lua cannot double as this list of known keys: several of its own
--- fields default to `nil` (repos_dir, find.exclude, history.dir, ...), and a
--- Lua table never stores a nil-valued key -- `pairs(DEFAULTS)` silently omits
--- exactly the fields most likely to be set by a caller. Explicit key sets
--- side-step that trap entirely.
-
-local TOP_LEVEL_OPTS = {
-  "engine",
-  "repos_dir",
-  "deps_popup",
-  "link_insert",
-  "collections",
-  "depth_aliases",
-  "keymaps",
-  "mappings",
-  "find",
-  "usercmds",
-  "keys",
-  "history",
-  "result_count",
-  "smart",
-  "display",
-  "images",
-  "filetree",
-  "tabs",
-  "quickfix",
-  -- Removed keys: kept "known" here so opts.selected_index/experimental reach
-  -- their own dedicated warning further below instead of this generic one.
-  "selected_index",
-  "experimental",
+---Every action of `keymaps` that takes a key: a string, a list of strings, or `false` (unbound).
+local KEYMAP_ACTIONS = {
+  "cwd_files",
+  "cwd_grep",
+  "config_files",
+  "config_grep",
+  "folder_files",
+  "dir_pick",
+  "explorer",
+  "repos_files",
+  "repos_grep",
+  "system_files",
+  "cwd_smart",
+  "config_smart",
+  "folder_smart",
+  "cwd_filegrep",
+  "cwd_find_all",
 }
 
--- Sub-tables merged wholesale via `vim.tbl_deep_extend` below (find, keymaps,
--- usercmds, tabs) would otherwise absorb a typo'd key silently -- no
--- per-field validation catches it the way normalise_history/normalise_keys/
--- normalise_smart/normalise_quickfix/the inline display/images checks
--- already do for their own tables. smart and quickfix are listed here too:
--- normalise_smart/normalise_quickfix validate each field's VALUE (ERR-22),
--- but still rely on this table to catch an unknown KEY (ERR-50) before that,
--- same as every other nested table below.
----@type table<string, string[]>
-local NESTED_OPTS = {
-  find = { "hidden", "no_ignore", "follow", "exclude", "ignore_list", "native" },
-  keymaps = {
-    "enable",
-    "cwd_files",
-    "cwd_grep",
-    "config_files",
-    "config_grep",
-    "folder_files",
-    "dir_pick",
-    "explorer",
-    "repos_files",
-    "repos_grep",
-    "system_files",
-    "cwd_smart",
-    "config_smart",
-    "folder_smart",
-    "cwd_filegrep",
-    "cwd_find_all",
-  },
-  usercmds = { "enable" },
-  keys = {
-    "enable",
-    "preview_scroll_down",
-    "preview_scroll_up",
-    "preview_scroll_left",
-    "preview_scroll_right",
-    "history_back",
-    "history_forward",
-    "create_file",
-    "open_background",
-    "open_background_show",
-    "preview_toggle",
-    "split",
-    "vsplit",
-    "tab",
-    "mouse_confirm",
-    "cheatsheet",
-    -- Path-copy entry actions (pickers.entry_actions.path_copy).
-    "copy_absolute",
-    "copy_dirname",
-    "copy_env_rooted",
-    "copy_project_root",
-    "copy_project_relative",
-    "copy_buffer_relative",
-    "markdown_link",
-    "markdown_link_insert",
-    -- System entry actions (pickers.entry_actions.system).
-    "open_system",
-    "reveal_in_manager",
-    -- Opt-in tab-group switch actions (pickers.keys.ACTIONS.tab_next/tab_prev);
-    -- absent from DEFAULTS.keys because their default is `false`, not nil.
-    "tab_next",
-    "tab_prev",
-  },
-  history = { "enabled", "fzf_scope", "dir", "limit" },
-  result_count = { "enabled", "interval_ms" },
-  smart = { "weights", "limit", "timeout", "frecency", "dedup_grep_rows" },
-  ["smart.weights"] = { "filename", "content", "both" },
-  ["smart.frecency"] = { "enabled", "weight", "dir" },
-  display = { "path_shorten", "path_adaptive", "cycle", "prompt_top", "preview_wrap" },
-  images = { "enabled", "pdf_text" },
-  filetree = { "enabled" },
-  link_insert = { "path", "cursor" },
-  ["link_insert.cursor"] = { "enable", "startinsert", "path_cursor" },
-  tabs = { "groups" }, -- "groups"' own keys are user-named group names, not validated
-  quickfix = { "enabled", "preview", "keys" },
-  ["quickfix.preview"] = { "enabled", "height", "context", "border", "delay_ms" },
-  ["quickfix.keys"] = { "filter", "restore", "toggle_preview" },
+---Every action of `keys` that takes a key (`enable` and `open_background_show` are switches).
+local KEYS_ACTIONS = {
+  "preview_scroll_down",
+  "preview_scroll_up",
+  "preview_scroll_left",
+  "preview_scroll_right",
+  "history_back",
+  "history_forward",
+  "create_file",
+  "open_background",
+  "preview_toggle",
+  "split",
+  "vsplit",
+  "tab",
+  "mouse_confirm",
+  "cheatsheet",
+  "copy_absolute",
+  "copy_dirname",
+  "copy_env_rooted",
+  "copy_project_root",
+  "copy_project_relative",
+  "copy_buffer_relative",
+  "markdown_link",
+  "markdown_link_insert",
+  "open_system",
+  "reveal_in_manager",
+  -- Opt-in tab-group switch actions (pickers.keys.ACTIONS.tab_next/tab_prev).
+  "tab_next",
+  "tab_prev",
 }
 
----@internal
----Nearest allowed key within edit distance 3, as a " (did you mean %q?)" hint.
----@param name string
----@param allowed string[]
----@return string
-local function did_you_mean(name, allowed)
-  local levenshtein = require("lib.lua.strings.distance").levenshtein
-  local best, best_distance = nil, nil
-  for _, known in ipairs(allowed) do
-    local d = levenshtein(name, known)
-    if d <= 3 and (best_distance == nil or d < best_distance) then
-      best, best_distance = known, d
-    end
-  end
-  return best and (" (did you mean %q?)"):format(best) or ""
+---@type table<string, any>
+local EXCEPTIONS = {
+  repos_dir = "string",
+  depth_aliases = { "table" }, -- the user picks the names; the entries are checked in `resolve`
+  ["find.exclude"] = "table",
+  ["history.dir"] = "string",
+  ["history.fzf_scope"] = { "string", enum = { "plugin", "global", "patch" } },
+  ["history.limit"] = { "number", min = 1 },
+  ["result_count.interval_ms"] = { "number", min = 1 },
+  ["smart.limit"] = { "number", min = 1 },
+  ["smart.timeout"] = { "number", min = 1 },
+  ["smart.frecency.dir"] = "string",
+  -- Opt-in switches, nil = the engine keeps its own default (pickers.display_native).
+  ["display.path_adaptive"] = "boolean",
+  ["display.cycle"] = "boolean",
+  ["display.prompt_top"] = "boolean",
+  ["display.preview_wrap"] = "boolean",
+  ["link_insert.path"] = { "string", enum = { "buffer", "cwd", "absolute", "env" } },
+  ["link_insert.cursor.path_cursor"] = { "string", enum = { "end", "start" } },
+  ["quickfix.preview.height"] = { "number", min = 1 },
+  ["quickfix.preview.context"] = { "number", min = 0 },
+  ["quickfix.preview.delay_ms"] = { "number", min = 0 },
+  ["quickfix.keys.filter"] = "string|false",
+  ["quickfix.keys.restore"] = "string|false",
+  ["quickfix.keys.toggle_preview"] = "string|false",
+}
+for _, name in ipairs(KEYMAP_ACTIONS) do
+  EXCEPTIONS["keymaps." .. name] = "keymap"
+end
+for _, name in ipairs(KEYS_ACTIONS) do
+  EXCEPTIONS["keys." .. name] = "keymap"
 end
 
----@internal
----Drop (and warn about) every key not in `allowed`, recursing into the
----sub-tables named in NESTED_OPTS so a typo cannot hide behind
----`vim.tbl_deep_extend` either. Returns a shallow-ish copy; kept leaf values
----are the original references, not deep-copied.
----@param raw table
----@param allowed string[]
----@param path string  dotted prefix for a nested warning, e.g. "smart."
----@return table
-local function sanitize_level(raw, allowed, path)
-  local known = {}
-  for _, k in ipairs(allowed) do
-    known[k] = true
-  end
+---Merge rules of the store: `tabs.groups` and `depth_aliases` are maps of independent entries (a group set to
+---`false` removes the default one), `mappings` has no default to merge against.
+local STORE_MERGE = {
+  ["tabs.groups"] = "entries",
+  depth_aliases = "entries",
+  mappings = "replace",
+}
 
-  local out = {}
-  for key, value in pairs(raw) do
-    if type(key) ~= "string" then
-      out[key] = value -- not a named option (e.g. a list); nothing to validate
-    elseif not known[key] then
-      notify.warn(
-        string.format("Unknown config key %q%s -- ignored", path .. key, did_you_mean(key, allowed))
-      )
-    elseif type(value) == "table" and NESTED_OPTS[path .. key] then
-      out[key] = sanitize_level(value, NESTED_OPTS[path .. key], path .. key .. ".")
-    else
-      out[key] = value
-    end
+---Merge rules of the options collected from the calls of `apply()`: a `false` entry must survive until the store
+---merges it over the defaults, so `entries` would drop it here.
+local APPLIED_MERGE = { mappings = "replace" }
+
+---The schema every call is checked against: the one the store checks its layer with (an `entries` section is an
+---open table there, so it is one here).
+local CALL_SCHEMA = (function()
+  local all = { ["tabs.groups"] = { "table" } }
+  for path, s in pairs(EXCEPTIONS) do
+    all[path] = s
   end
-  return out
+  return schema.infer(DEFAULTS, all)
+end)()
+
+---The options all calls of `apply()` have contributed (already checked), the input of the store.
+---@type table
+local applied = {}
+
+---@param message string
+local function warn(message)
+  notify.warn(message)
+end
+
+local store = lib_config.new(DEFAULTS, {
+  name = "pickers",
+  layers = { "setup" },
+  schema = EXCEPTIONS,
+  merge = STORE_MERGE,
+  -- The module that took `config.get().keys` once keeps seeing the current values.
+  stable = true,
+  notify = warn,
+  resolve = function(cfg, issues)
+    -- `repos_dir`: via lib.nvim's env snapshot, not a direct vim.env read -- it is the one sanctioned place this
+    -- env var is read, and `repo_base` is nil when unset. Resolved here rather than in DEFAULTS.lua so requiring
+    -- that module alone stays pure data (LUA-06).
+    if type(cfg.repos_dir) == "string" then
+      cfg.repos_dir = expand_path(cfg.repos_dir)
+    else
+      cfg.repos_dir = require("lib.nvim.system.env").get().repo_base
+    end
+
+    local collections = {}
+    for _, raw in ipairs(cfg.collections or {}) do
+      local coll = normalise_collection(raw)
+      if coll then
+        collections[#collections + 1] = coll
+      else
+        issues[#issues + 1] = "invalid collection entry (name+dir required, and name must "
+          .. "produce a legal :{Name}Files command): "
+          .. vim.inspect(raw, { newline = " ", indent = "" })
+      end
+    end
+    cfg.collections = collections
+
+    -- The names are the user's; only a function under a string name is an alias.
+    for name, fn in pairs(cfg.depth_aliases) do
+      if type(name) ~= "string" or type(fn) ~= "function" then
+        issues[#issues + 1] = ("depth_aliases.%s must be a function"):format(tostring(name))
+        cfg.depth_aliases[name] = nil
+      end
+    end
+
+    -- A group list replaces the default group of the same name wholesale (a list is not something to merge
+    -- element by element); other groups stay.
+    for name, targets in pairs(cfg.tabs.groups) do
+      if type(name) ~= "string" or type(targets) ~= "table" then
+        issues[#issues + 1] = ("tabs.groups.%s must be a list of :Pickers arguments"):format(
+          tostring(name)
+        )
+        cfg.tabs.groups[name] = nil
+      end
+    end
+
+    -- `find.ignore_list`: fold lib.nvim's shared ignore list into the excludes, so every consumer of
+    -- cfg.find.exclude sees it.
+    if cfg.find.ignore_list == true then
+      cfg.find.exclude = require("pickers.find_native").with_ignore_list(cfg.find.exclude)
+    end
+
+    if cfg.history.dir == "" then
+      cfg.history.dir = nil
+    elseif type(cfg.history.dir) == "string" then
+      cfg.history.dir = expand_path(cfg.history.dir)
+    end
+
+    -- counts are whole numbers
+    cfg.smart.limit = math.floor(cfg.smart.limit)
+    cfg.result_count.interval_ms = math.floor(cfg.result_count.interval_ms)
+    local preview = cfg.quickfix.preview
+    preview.height = math.floor(preview.height)
+    preview.context = math.floor(preview.context)
+    preview.delay_ms = math.floor(preview.delay_ms)
+    if preview.border == "" then
+      preview.border = DEFAULTS.quickfix.preview.border
+      issues[#issues + 1] = "quickfix.preview.border must not be empty"
+    end
+  end,
+})
+
+---Return the active configuration (the defaults until `M.apply()` was called).
+---@return Pickers.Config
+function M.get()
+  return store.get()
+end
+
+---Discard everything `M.apply()` was given, so the next `M.get()`/`M.apply()` call starts from `DEFAULTS` again.
+---`pickers.setup()` calls this before `M.apply(opts)`, so a second real `setup()` call in the same Lua state
+---replaces the first cleanly instead of composing on top of whatever it left behind (LUA-87). `M.apply()` on its
+---own builds up one configuration -- that is what lets it be called repeatedly (e.g. incrementally, or across
+---several lazy.nvim specs for this plugin), which is a different, still-supported use.
+function M.reset()
+  applied = {}
+  store.reset()
+end
+
+---What was dropped or degraded since the last `M.reset()`, for `:checkhealth`.
+---@return string[]
+function M.issues()
+  return store.issues()
+end
+
+---The `switch group` shape of `keymaps` / `usercmds`: `false` is `{ enable = false }`, `true` is
+---`{ enable = true }` (a later `true` must switch the group back on).
+---@internal
+---@param value any
+---@return table|nil
+local function switch(value)
+  if value == true then return { enable = true } end
+  return require("lib.nvim.normalize").normalize_switch_group(value)
 end
 
 ---Merge user-provided options into the active configuration.
 ---@param opts Pickers.Config|nil
 function M.apply(opts)
-  local cfg = M.get()
   if type(opts) ~= "table" then return end
 
-  -- ERR-50: validated (and unknown keys dropped) before anything below reads
-  -- from it, so a typo cannot vanish silently into either the top-level
-  -- default or a deep-merged sub-table that would otherwise absorb it.
-  -- REL-20: `keymaps = false` / `usercmds = false` mean `{ enable = false }`.
-  -- The shared lib.nvim helper owns the shape; `true` is `{ enable = true }`
-  -- here because apply() merges into the active config (a later `true` must
-  -- switch the group back on).
-  local normalize = require("lib.nvim.normalize")
-  local function switch(value)
-    if value == true then return { enable = true } end
-    return normalize.normalize_switch_group(value)
-  end
-  opts = vim.tbl_extend("force", opts, {
-    keymaps = switch(opts.keymaps),
-    usercmds = switch(opts.usercmds),
-  })
-  local sanitized = sanitize_level(opts, TOP_LEVEL_OPTS, "")
+  local copy = lib_config.copy(opts)
+  copy.keymaps = switch(copy.keymaps)
+  copy.usercmds = switch(copy.usercmds)
 
-  if type(sanitized.engine) == "string" then cfg.engine = sanitized.engine end
-  if type(sanitized.repos_dir) == "string" then cfg.repos_dir = expand_path(sanitized.repos_dir) end
-  if type(sanitized.deps_popup) == "boolean" then cfg.deps_popup = sanitized.deps_popup end
-
-  if type(sanitized.collections) == "table" then
-    cfg.collections = {}
-    for _, raw in ipairs(sanitized.collections) do
-      local coll = normalise_collection(raw)
-      if coll then
-        cfg.collections[#cfg.collections + 1] = coll
-      else
-        notify.warn(
-          string.format(
-            "Invalid collection entry (name+dir required, and name must "
-              .. "produce a legal :{Name}Files command): %s",
-            vim.inspect(raw)
-          )
-        )
-      end
-    end
-  end
-
-  if type(sanitized.depth_aliases) == "table" then
-    for k, v in pairs(sanitized.depth_aliases) do
-      if type(k) == "string" and type(v) == "function" then cfg.depth_aliases[k] = v end
-    end
-  end
-
-  if type(sanitized.find) == "table" then
-    cfg.find = vim.tbl_deep_extend("force", cfg.find, sanitized.find)
-    -- `find.ignore_list`: fold lib.nvim's shared ignore list into the
-    -- excludes, once, so every consumer of cfg.find.exclude sees it.
-    if cfg.find.ignore_list == true then
-      cfg.find.exclude = require("pickers.find_native").with_ignore_list(cfg.find.exclude)
-    end
-  end
-
-  if type(sanitized.keymaps) == "table" then
-    cfg.keymaps = vim.tbl_deep_extend("force", cfg.keymaps, sanitized.keymaps)
-  end
-  -- Plain replace, not merged -- each entry is independent and there is no
-  -- meaningful "default" to merge a user's mappings table against (unlike
-  -- keymaps/find/smart, DEFAULTS.mappings is always empty).
-  if type(sanitized.mappings) == "table" then cfg.mappings = sanitized.mappings end
-  if type(sanitized.usercmds) == "table" then
-    cfg.usercmds = vim.tbl_deep_extend("force", cfg.usercmds, sanitized.usercmds)
-  end
-
-  if type(sanitized.keys) == "table" then cfg.keys = normalise_keys(sanitized.keys, cfg.keys) end
-
-  if type(sanitized.link_insert) == "table" then
-    local li = sanitized.link_insert
-    local modes = { buffer = true, cwd = true, absolute = true, env = true }
-    if li.path ~= nil then
-      if modes[li.path] then
-        cfg.link_insert.path = li.path
-      else
-        notify.warn(
-          ("link_insert.path must be buffer|cwd|absolute|env, got %s -- using %q"):format(
-            vim.inspect(li.path),
-            cfg.link_insert.path
-          )
-        )
-      end
-    end
-    if type(li.cursor) == "table" then
-      local c = li.cursor
-      if type(c.enable) == "boolean" then cfg.link_insert.cursor.enable = c.enable end
-      if type(c.startinsert) == "boolean" then
-        cfg.link_insert.cursor.startinsert = c.startinsert
-      end
-      if c.path_cursor == "end" or c.path_cursor == "start" then
-        cfg.link_insert.cursor.path_cursor = c.path_cursor
-      end
-    end
-  end
-
-  if type(sanitized.history) == "table" then
-    cfg.history = normalise_history(sanitized.history, cfg.history)
-  end
-
-  -- Both keys were removed and are read here for one purpose: to say so. They
-  -- are deliberately absent from `Pickers.Opts` -- naming them there would
-  -- claim they are supported.
-  ---@diagnostic disable-next-line: undefined-field
-  if type(sanitized.selected_index) == "table" or type(sanitized.experimental) == "table" then
-    notify.warn(
+  -- Both keys were removed and are read here for one purpose: to say so. They are deliberately absent from
+  -- `Pickers.Opts` -- naming them there would claim they are supported.
+  if type(copy.selected_index) == "table" or type(copy.experimental) == "table" then
+    warn(
       "selected_index has been removed (it never worked reliably) -- "
         .. "this opts.selected_index/opts.experimental was ignored."
     )
   end
+  copy.selected_index, copy.experimental = nil, nil
 
-  if type(sanitized.result_count) == "table" then
-    if type(sanitized.result_count.enabled) == "boolean" then
-      cfg.result_count.enabled = sanitized.result_count.enabled
-    end
-    if
-      type(sanitized.result_count.interval_ms) == "number"
-      and sanitized.result_count.interval_ms > 0
-    then
-      cfg.result_count.interval_ms = math.floor(sanitized.result_count.interval_ms)
-    end
+  -- ERR-50 / ERR-22: what this call says is checked before it joins the rest, so a typo or a wrong value costs
+  -- this call that option and nothing else: an earlier call's value stays.
+  local problems = {}
+  local clean = schema.check_record(copy, CALL_SCHEMA.fields, "", problems)
+  for _, problem in ipairs(problems) do
+    warn(problem)
   end
 
-  -- ERR-22: field-by-field, not a blind deep-merge -- see normalise_smart.
-  if type(sanitized.smart) == "table" then
-    cfg.smart = normalise_smart(sanitized.smart, cfg.smart)
-  end
-
-  if type(sanitized.display) == "table" then
-    if type(sanitized.display.path_shorten) == "boolean" then
-      cfg.display.path_shorten = sanitized.display.path_shorten
-    end
-    -- Opt-in switches, nil = the engine's own default (pickers.display_native).
-    for _, key in ipairs({ "cycle", "prompt_top", "preview_wrap", "path_adaptive" }) do
-      if type(sanitized.display[key]) == "boolean" then
-        cfg.display[key] = sanitized.display[key]
-      end
-    end
-  end
-
-  if type(sanitized.images) == "table" then
-    if type(sanitized.images.enabled) == "boolean" then
-      cfg.images.enabled = sanitized.images.enabled
-    end
-    if type(sanitized.images.pdf_text) == "boolean" then
-      cfg.images.pdf_text = sanitized.images.pdf_text
-    end
-  end
-
-  if type(sanitized.filetree) == "table" then
-    if type(sanitized.filetree.enabled) == "boolean" then
-      cfg.filetree.enabled = sanitized.filetree.enabled
-    end
-  end
-
-  -- A group list replaces the default group of the same name wholesale (a
-  -- list is not something to merge element by element); other groups stay.
-  if type(sanitized.tabs) == "table" and type(sanitized.tabs.groups) == "table" then
-    for name, targets in pairs(sanitized.tabs.groups) do
-      if type(name) == "string" and (type(targets) == "table" or targets == false) then
-        cfg.tabs.groups[name] = targets or nil
-      end
-    end
-  end
-
-  -- ERR-22: field-by-field, not a blind deep-merge -- see normalise_quickfix.
-  -- A key.* set to `false` unbinds it; normalise_quickfix keeps that too.
-  if type(sanitized.quickfix) == "table" then
-    cfg.quickfix = normalise_quickfix(sanitized.quickfix, cfg.quickfix)
-  end
+  applied = lib_config.deep_merge(applied, clean, APPLIED_MERGE)
+  store.setup(applied)
 end
 
 return M

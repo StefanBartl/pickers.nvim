@@ -9512,6 +9512,121 @@ do
   package.loaded["pickers.engines.fzf"] = nil
 end
 
+-- ── config — lib.lua.config.new: what the store guarantees ──────────────────
+do
+  local config = require("pickers.config")
+  local DEFAULTS = require("pickers.config.DEFAULTS")
+  local warned = {}
+  local real_notify = vim.notify
+  ---@diagnostic disable-next-line: duplicate-set-field
+  vim.notify = function(message)
+    warned[#warned + 1] = tostring(message)
+  end
+  local function warned_text()
+    return table.concat(warned, "\n")
+  end
+
+  config.reset()
+  local cfg = config.get()
+  check(
+    "store: get() before apply() is the defaults",
+    cfg.engine == "auto" and cfg.find.hidden == true
+  )
+
+  -- nothing of the live config is a table of DEFAULTS
+  check("store: keys is a copy", cfg.keys ~= DEFAULTS.keys)
+  check(
+    "store: a list inside is a copy too",
+    cfg.keys.open_background ~= DEFAULTS.keys.open_background
+  )
+  check("store: tab groups are copies", cfg.tabs.groups.default ~= DEFAULTS.tabs.groups.default)
+  check("store: depth_aliases is a copy", cfg.depth_aliases ~= DEFAULTS.depth_aliases)
+
+  -- a module that took a table once keeps seeing the current values (`stable`)
+  local keys_before = cfg.keys
+  config.apply({ keys = { split = "<C-x>" } })
+  check("store: the config table stays the same table", config.get() == cfg)
+  check(
+    "store: so does a section of it, with the new value",
+    config.get().keys == keys_before and keys_before.split == "<C-x>"
+  )
+
+  -- a later call replaces the whole collections list, and mappings
+  config.apply({ collections = { { name = "one", dir = "/tmp/one" } } })
+  config.apply({ collections = { { name = "two", dir = "/tmp/two" } } })
+  check(
+    "store: collections of a later call replace the earlier",
+    #config.get().collections == 1 and config.get().collections[1].name == "two"
+  )
+  config.apply({ mappings = { a = { lhs = "<leader>a" } } })
+  config.apply({ mappings = { b = { lhs = "<leader>b" } } })
+  check(
+    "store: mappings of a later call replace the earlier",
+    config.get().mappings.a == nil and config.get().mappings.b ~= nil
+  )
+
+  -- the entries of tabs.groups and depth_aliases merge one by one
+  config.apply({ tabs = { groups = { git = false } } })
+  config.apply({ tabs = { groups = { mine = { "cwd files" } } } })
+  check(
+    "store: a group set to false stays removed after a later call, the new one is added",
+    config.get().tabs.groups.git == nil
+      and config.get().tabs.groups.mine ~= nil
+      and config.get().tabs.groups.default ~= nil
+  )
+  local seen_alias = function() end
+  config.apply({ depth_aliases = { mine = seen_alias, other = "not a function" } })
+  check(
+    "store: a function under a name is an alias and the defaults stay",
+    config.get().depth_aliases.mine == seen_alias
+      and type(config.get().depth_aliases.git) == "function"
+  )
+  check("store: a non-function entry is dropped", config.get().depth_aliases.other == nil)
+  check(
+    "store: and reported",
+    vim.iter(config.issues()):any(function(line)
+      return line:find("depth_aliases.other", 1, true) ~= nil
+    end)
+  )
+
+  -- what is wrong is said, with a hint, and costs only that option
+  warned = {}
+  config.apply({
+    smart = { limmit = 5, timeout = 10 },
+    engien = "fzf",
+    quickfix = { preview = { height = 0 } },
+  })
+  local text = warned_text()
+  check(
+    "store: an unknown nested key is reported with the nearest known one",
+    text:find("smart.limmit", 1, true) and text:find("smart.limit", 1, true) ~= nil,
+    text
+  )
+  check("store: an unknown top-level key is reported", text:find("engien", 1, true) ~= nil, text)
+  check(
+    "store: a value below its bound is reported",
+    text:find("quickfix.preview.height", 1, true) ~= nil,
+    text
+  )
+  check(
+    "store: the valid sibling of a rejected key is applied",
+    config.get().smart.timeout == 10 and config.get().quickfix.preview.height == 12
+  )
+
+  -- reset() is a fresh start
+  config.reset()
+  check(
+    "store: reset() drops everything the calls added",
+    config.get().collections[1] == nil
+      and config.get().keys.split == "<C-s>"
+      and config.get().tabs.groups.git ~= nil
+  )
+  check("store: and the issues", #config.issues() == 0)
+
+  vim.notify = real_notify
+  config.apply({ engine = "auto", find = { hidden = true } })
+end
+
 -- ── Summary ─────────────────────────────────────────────────────────────────
 print(string.format("\n%d passed, %d failed", passed, failed))
 os.exit(failed == 0 and 0 or 1)
