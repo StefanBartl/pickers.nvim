@@ -1,7 +1,7 @@
 ---@module 'pickers.integrations.filetree'
 ---@brief Files / live grep scoped to one directory, for filetree.nvim's tree.
 ---@description
---- [filetree.nvim](https://github.com/StefanBartl/filetree.nvim) has `f` (find
+--- [filetree.nvim](https://github.com/WKDSteve/filetree.nvim) has `f` (find
 --- files) and `gr` (grep) on a tree node. When this plugin is installed it hands
 --- the node's directory here instead of driving a picker of its own, so the
 --- engine choice, the `find.*` flags and the entry actions are the ones the rest

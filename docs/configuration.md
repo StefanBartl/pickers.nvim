@@ -388,11 +388,11 @@ require("pickers").setup({
 An image entry in the results (`.png`, `.jpg`, `.webp`, … — whatever
 images.nvim's own `extensions` lists) is drawn as a picture in the preview
 window instead of previewed as bytes. Requires
-[images.nvim](https://github.com/StefanBartl/images.nvim); **on by default**,
+[images.nvim](https://github.com/WKDSteve/images.nvim); **on by default**,
 and inert without it.
 
 A `.pdf` entry previews as its first page, on the same switch, when
-[pdfport.nvim](https://github.com/StefanBartl/pdfport.nvim) and poppler's
+[pdfport.nvim](https://github.com/WKDSteve/pdfport.nvim) and poppler's
 `pdftoppm` are there as well — images.nvim reaches both, pickers.nvim never
 does. Which page and at what resolution is images.nvim's own
 `pdf = { enabled, page, dpi }`; the switch below turns the whole integration
@@ -426,7 +426,7 @@ Full details, and why each engine draws the line where it does, in
 
 ## filetree.nvim integration
 
-With [filetree.nvim](https://github.com/StefanBartl/filetree.nvim) installed,
+With [filetree.nvim](https://github.com/WKDSteve/filetree.nvim) installed,
 its `f` (find files) and `gr` (grep) on a tree node, and `tf` / `tg` which force
 this plugin, hand the node's directory to pickers.nvim. Engine choice, `find.*`
 flags and entry actions are then the ones the rest of your setup uses. Nothing

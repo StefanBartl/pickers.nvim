@@ -1,7 +1,7 @@
 # filetree.nvim
 
 `f` (find files) and `gr` (grep) on a node of the
-[filetree.nvim](https://github.com/StefanBartl/filetree.nvim) tree, run through
+[filetree.nvim](https://github.com/WKDSteve/filetree.nvim) tree, run through
 this plugin — with your engine, your `find.*` flags and your entry actions.
 
 ## What it does

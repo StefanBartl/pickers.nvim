@@ -42,7 +42,7 @@ function M.check()
   if pcall(require, "lib.nvim.notify") then
     vim.health.ok("lib.nvim available")
   else
-    vim.health.error("lib.nvim not found", { "Add 'StefanBartl/lib.nvim' as a dependency" })
+    vim.health.error("lib.nvim not found", { "Add 'WKDSteve/lib.nvim' as a dependency" })
   end
 
   -- lib.nvim.bindings.usercmd.composer: required -- the :Pickers command layer
@@ -58,7 +58,7 @@ function M.check()
   else
     vim.health.error(
       ":Pickers will fail to register — lib.nvim.bindings.usercmd.composer not found",
-      { "Add 'StefanBartl/lib.nvim' as a dependency" }
+      { "Add 'WKDSteve/lib.nvim' as a dependency" }
     )
   end
 
@@ -207,7 +207,7 @@ function M.check()
   elseif not pcall(require, "images.integrations.picker") then
     vim.health.info(
       "images.nvim not installed — image entries preview as text, as before. "
-        .. "https://github.com/StefanBartl/images.nvim previews them as pictures."
+        .. "https://github.com/WKDSteve/images.nvim previews them as pictures."
     )
   elseif images.available() then
     vim.health.ok(

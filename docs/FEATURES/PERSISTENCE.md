@@ -43,7 +43,7 @@ and documented in full where it is used —
   the config shape, the `BufReadPost` definition of "a visit", and the
   enabled-gate. The heuristic itself (bucketed recency, log-dampened counts,
   the JSON store) is
-  [`lib.nvim.frecency`](https://github.com/StefanBartl/lib.nvim/blob/main/lua/lib/nvim/frecency/README.md),
+  [`lib.nvim.frecency`](https://github.com/WKDSteve/lib.nvim/blob/main/lua/lib/nvim/frecency/README.md),
   extracted from this file so `gopath.nvim` could rank its alternate-file
   candidates the same way instead of growing a second copy of the same
   buckets.

@@ -493,10 +493,10 @@ do
   -- own_engine unset/false: single entry, no engine dependency added.
   local plain = plugin_spec({})
   check("plugin_spec: own_engine=false returns 1 entry", #plain == 1, "#=" .. #plain)
-  check("plugin_spec: repo is pickers.nvim", plain[1][1] == "StefanBartl/pickers.nvim")
+  check("plugin_spec: repo is pickers.nvim", plain[1][1] == "WKDSteve/pickers.nvim")
   check(
     "plugin_spec: deps are just lib.nvim",
-    #plain[1].dependencies == 1 and plain[1].dependencies[1] == "StefanBartl/lib.nvim"
+    #plain[1].dependencies == 1 and plain[1].dependencies[1] == "WKDSteve/lib.nvim"
   )
   check(
     "plugin_spec: own_engine=false entry is explicitly lazy=false (LUA-93)",
@@ -528,10 +528,10 @@ do
   local snacks_spec = plugin_spec({ own_engine = true, engine = "snacks", engine_opts = { x = 1 } })
   check("plugin_spec: own_engine=true returns 2 entries", #snacks_spec == 2, "#=" .. #snacks_spec)
   check("plugin_spec: engine entry repo", snacks_spec[1][1] == "folke/snacks.nvim")
-  check("plugin_spec: pickers entry repo", snacks_spec[2][1] == "StefanBartl/pickers.nvim")
+  check("plugin_spec: pickers entry repo", snacks_spec[2][1] == "WKDSteve/pickers.nvim")
   check(
     "plugin_spec: pickers entry depends on both lib.nvim and the engine",
-    has(snacks_spec[2].dependencies, "StefanBartl/lib.nvim")
+    has(snacks_spec[2].dependencies, "WKDSteve/lib.nvim")
       and has(snacks_spec[2].dependencies, "folke/snacks.nvim")
   )
   check(

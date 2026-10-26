@@ -7,9 +7,9 @@
 ---
 --- Minimal setup (lazy.nvim):
 ---   {
----     "StefanBartl/pickers.nvim",
+---     "WKDSteve/pickers.nvim",
 ---     lazy = false,                       -- required: load at startup
----     dependencies = { "StefanBartl/lib.nvim" },
+---     dependencies = { "WKDSteve/lib.nvim" },
 ---     config = function()
 ---       require("pickers").setup({
 ---         engine = "auto",

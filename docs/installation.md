@@ -7,7 +7,7 @@
 - Neovim **0.10+** — `vim.uv` and `vim.system` are used unguarded (directory
   navigation, the collection and repo sources, and the `smart` action's `rg`/
   `fd` calls all depend on them)
-- [lib.nvim](https://github.com/StefanBartl/lib.nvim)
+- [lib.nvim](https://github.com/WKDSteve/lib.nvim)
 
 ### One of (auto-detected, telescope preferred, then fzf-lua, then snacks.nvim)
 
@@ -22,13 +22,13 @@
 | `rg` (ripgrep) | Live grep, and the content half of `smart` |
 | `fd` | The file and directory source, and the `system` scope |
 | `fzf` | The fzf engine itself |
-| [images.nvim](https://github.com/StefanBartl/images.nvim) | Image entries drawn in the preview window |
-| [pdfport.nvim](https://github.com/StefanBartl/pdfport.nvim) | A PDF entry previewed as its first page |
-| [ui.nvim](https://github.com/StefanBartl/ui.nvim) | `ui.kit` backs the directory-nav/action/scope pickers (falls back to `vim.ui.select` without it) and the create-file/system-search prompts (no fallback for those two -- they need it if actually invoked) |
+| [images.nvim](https://github.com/WKDSteve/images.nvim) | Image entries drawn in the preview window |
+| [pdfport.nvim](https://github.com/WKDSteve/pdfport.nvim) | A PDF entry previewed as its first page |
+| [ui.nvim](https://github.com/WKDSteve/ui.nvim) | `ui.kit` backs the directory-nav/action/scope pickers (falls back to `vim.ui.select` without it) and the create-file/system-search prompts (no fallback for those two -- they need it if actually invoked) |
 
 `rg`, `fd` and `fzf` are declared in [install.json](install.json) and
 read by lib.nvim's
-[deps module](https://github.com/StefanBartl/lib.nvim/blob/main/lua/lib/nvim/deps/README.md).
+[deps module](https://github.com/WKDSteve/lib.nvim/blob/main/lua/lib/nvim/deps/README.md).
 A popup explains what is missing the first time `setup()` runs after
 installing; `:Lib deps show pickers.nvim` repeats it any time, and it is folded
 into `:checkhealth pickers`. Turn the popup off in this plugin's own spec with
@@ -41,9 +41,9 @@ into `:checkhealth pickers`. Turn the popup off in this plugin's own spec with
 
 ```lua
 {
-  "StefanBartl/pickers.nvim",
+  "WKDSteve/pickers.nvim",
   lazy = false,                      -- required: must load at startup for keymaps
-  dependencies = { "StefanBartl/lib.nvim" },
+  dependencies = { "WKDSteve/lib.nvim" },
   config = function()
     require("pickers").setup({
       engine    = "auto",            -- "auto" | "telescope" | "fzf" | "snacks"
@@ -73,8 +73,8 @@ If startup time matters and you only want the plugin loaded on first use:
 
 ```lua
 {
-  "StefanBartl/pickers.nvim",
-  dependencies = { "StefanBartl/lib.nvim" },
+  "WKDSteve/pickers.nvim",
+  dependencies = { "WKDSteve/lib.nvim" },
   cmd = {
     "Pickers",
     "DirPicker", "FindConfig", "GrepConfig", "FindInFolder",
@@ -148,8 +148,8 @@ known at spec-build time instead. `own_engine = true` requires an explicit
 
 ```lua
 use {
-  "StefanBartl/pickers.nvim",
-  requires = { "StefanBartl/lib.nvim" },
+  "WKDSteve/pickers.nvim",
+  requires = { "WKDSteve/lib.nvim" },
   config = function()
     require("pickers").setup({
       engine = "auto",

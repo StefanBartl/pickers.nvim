@@ -18,10 +18,10 @@
 [![Neovim](https://img.shields.io/badge/Neovim-0.10%2B-57A143?logo=neovim&logoColor=white)](https://neovim.io)
 [![Lua](https://img.shields.io/badge/Lua-5.1%2FLuaJIT-2C2D72?logo=lua&logoColor=white)](https://www.lua.org)
 ![Status](https://img.shields.io/badge/status-beta-orange)
-[![CI](https://github.com/StefanBartl/pickers.nvim/actions/workflows/ci.yml/badge.svg)](https://github.com/StefanBartl/pickers.nvim/actions/workflows/ci.yml)
-[![wkd](https://img.shields.io/badge/wkd-family-c6ff3d)](https://stefanbartl.github.io/wkd/p/pickers/)
+[![CI](https://github.com/WKDSteve/pickers.nvim/actions/workflows/ci.yml/badge.svg)](https://github.com/WKDSteve/pickers.nvim/actions/workflows/ci.yml)
+[![wkd](https://img.shields.io/badge/wkd-family-c6ff3d)](https://wkdsteve.github.io/wkd/p/pickers/)
 
-> Part of the [wkd](https://stefanbartl.github.io/wkd/) family — see this plugin's [page](https://stefanbartl.github.io/wkd/p/pickers/) on the site.
+> Part of the [wkd](https://wkdsteve.github.io/wkd/) family — see this plugin's [page](https://wkdsteve.github.io/wkd/p/pickers/) on the site.
 
 One `:Pickers` command over telescope.nvim, fzf-lua and snacks.nvim. Seven
 separate picker modules consolidated into one grammar —
@@ -32,23 +32,23 @@ action and native picker completing with `<Tab>`.
 
 ## Around it
 
-> **[insights.nvim](https://github.com/StefanBartl/insights.nvim)** — the next
+> **[insights.nvim](https://github.com/WKDSteve/insights.nvim)** — the next
 > question after the jump: pickers gets you into a repository, insights tells
 > you how it is put together.
 >
-> **[images.nvim](https://github.com/StefanBartl/images.nvim)** — draws an
+> **[images.nvim](https://github.com/WKDSteve/images.nvim)** — draws an
 > image entry in the preview window as a picture instead of as bytes.
 >
-> **[pdfport.nvim](https://github.com/StefanBartl/pdfport.nvim)** — the same
+> **[pdfport.nvim](https://github.com/WKDSteve/pdfport.nvim)** — the same
 > for a `.pdf` entry, previewed as its first page.
 >
-> **[filetree.nvim](https://github.com/StefanBartl/filetree.nvim)** — its `f`
+> **[filetree.nvim](https://github.com/WKDSteve/filetree.nvim)** — its `f`
 > (find files) and `gr` (grep) on a tree node run through this plugin, and the
 > picked file is revealed in the tree. On by default; either end can opt out
 > ([details](docs/FEATURES/FILETREE.md)).
 >
 > All of the above are soft: without them everything else works unchanged.
-> [lib.nvim](https://github.com/StefanBartl/lib.nvim) and one picker engine are
+> [lib.nvim](https://github.com/WKDSteve/lib.nvim) and one picker engine are
 > the real dependencies — see [Requirements](docs/installation.md#requirements).
 
 ---
@@ -80,7 +80,7 @@ question each page answers.
 - [Workflow](docs/WORKFLOW.md) — how scopes, collections and engines combine into a way of working, and the traps table worth reading before you hit one.
 - [Changelog](docs/CHANGELOG.md) — what changed, in the order it happened.
 - [Contributing](docs/CONTRIBUTING.md) — ground rules, project layout, and how to add a scope, an action or an engine.
-- [Feedback](https://github.com/StefanBartl/pickers.nvim/issues) — bugs, feature requests and usage questions; broader discussion in [Discussions](https://github.com/StefanBartl/pickers.nvim/discussions).
+- [Feedback](https://github.com/WKDSteve/pickers.nvim/issues) — bugs, feature requests and usage questions; broader discussion in [Discussions](https://github.com/WKDSteve/pickers.nvim/discussions).
 
 `:help pickers` is the same reference inside the editor. When something does
 not behave the way the config says it should, there is no separate

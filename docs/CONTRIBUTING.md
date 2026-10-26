@@ -1,7 +1,7 @@
 # Contributing to pickers.nvim
 
 Thank you for your interest! Bugs, ideas and questions are welcome in the
-[issue tracker](https://github.com/StefanBartl/pickers.nvim/issues); pull
+[issue tracker](https://github.com/WKDSteve/pickers.nvim/issues); pull
 requests very welcome.
 
 ## Getting the repository into a session
@@ -14,7 +14,7 @@ vim.opt.rtp:prepend("/path/to/pickers.nvim")
 require("pickers").setup({})
 ```
 
-[lib.nvim](https://github.com/StefanBartl/lib.nvim) has to be on the runtime
+[lib.nvim](https://github.com/WKDSteve/lib.nvim) has to be on the runtime
 path too, and at least one engine — telescope.nvim, fzf-lua or snacks.nvim.
 Test against more than one where you can: most of the interesting bugs in this
 plugin are an engine disagreeing with the other two about what a picker option
@@ -117,7 +117,7 @@ all — that is what collections are for, see [`collections.md`](collections.md)
 bash scripts/test.sh
 ```
 
-Run with [testing.nvim](https://github.com/StefanBartl/testing.nvim) (found via
+Run with [testing.nvim](https://github.com/WKDSteve/testing.nvim) (found via
 `$TESTING_NVIM_DIR`, `.deps/`, a sibling checkout or the plugin manager's
 directory; `lib.nvim` the same way). Exit 0 is a pass. [GitHub Actions](../.github/workflows/ci.yml) runs it plus
 stylua and luacheck on every push and pull request to `main`.

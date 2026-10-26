@@ -7,7 +7,7 @@
 --- follow was the disappointing half: selecting such an entry showed the
 --- engine's text preview of a binary file ("Binary cannot be previewed", or a
 --- screenful of bytes). With
---- [images.nvim](https://github.com/StefanBartl/images.nvim) installed, the
+--- [images.nvim](https://github.com/WKDSteve/images.nvim) installed, the
 --- preview window shows the actual picture instead.
 ---
 --- **A PDF entry is the same feature.** `.pdf` is a result like any other and

@@ -10,7 +10,7 @@ bash scripts/test.sh                      # all specs
 bash scripts/test.sh --json ir.json       # plus the machine-readable result
 ```
 
-The runner is [testing.nvim](https://github.com/StefanBartl/testing.nvim); it
+The runner is [testing.nvim](https://github.com/WKDSteve/testing.nvim); it
 and `lib.nvim` are looked up in `$TESTING_NVIM_DIR` / `$LIB_NVIM_DIR`,
 `.deps/<name>`, `../<name>` and `stdpath('data')/lazy/<name>` (a missing one is
 an error). The spec itself is still a self-running script and can be run

@@ -11,7 +11,7 @@ screenshots is a result list like any other. What followed was the
 disappointing half: moving onto such an entry showed the engine's text preview
 of a binary file — "Binary cannot be previewed", or a screenful of bytes.
 
-With [images.nvim](https://github.com/StefanBartl/images.nvim) installed, the
+With [images.nvim](https://github.com/WKDSteve/images.nvim) installed, the
 preview window shows the picture. Nothing else changes: the same pickers, the
 same keys, the same entries; only the preview of an image entry is different.
 
@@ -23,7 +23,7 @@ same keys, the same entries; only the preview of an image entry is different.
 ## PDFs, the same way
 
 A `.pdf` entry previews as its **first page**, with
-[pdfport.nvim](https://github.com/StefanBartl/pdfport.nvim) installed
+[pdfport.nvim](https://github.com/WKDSteve/pdfport.nvim) installed
 alongside images.nvim (and poppler's `pdftoppm`, which pdfport shells out to).
 
 ```
@@ -150,9 +150,9 @@ would overwrite what the engine has just correctly put in the window.
   [`adapters/telescope.lua`](../../lua/pickers/integrations/images/adapters/telescope.lua)
 - **Config:** `images.enabled` (default `true`); which page and at what
   resolution is images.nvim's `pdf = { … }`
-- **Dependency:** [images.nvim](https://github.com/StefanBartl/images.nvim),
+- **Dependency:** [images.nvim](https://github.com/WKDSteve/images.nvim),
   soft and `pcall`'d — absent, nothing changes. PDF pages additionally need
-  [pdfport.nvim](https://github.com/StefanBartl/pdfport.nvim) and `pdftoppm`,
+  [pdfport.nvim](https://github.com/WKDSteve/pdfport.nvim) and `pdftoppm`,
   both of which images.nvim reaches, never this plugin
 - **Health:** `:checkhealth pickers` → "image previews (images.nvim)", which
   reports the PDF half as a line of its own

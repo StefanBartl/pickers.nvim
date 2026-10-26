@@ -2,7 +2,7 @@
                                                                 *pickers.nvim*
 
 Author:   Stefan Bartl <stefan.bartl.work@gmail.com>
-Homepage: https://github.com/StefanBartl/pickers.nvim
+Homepage: https://github.com/WKDSteve/pickers.nvim
 
 ==============================================================================
 CONTENTS                                                      *pickers-contents*
@@ -44,7 +44,7 @@ engine (telescope.nvim, fzf-lua, or snacks.nvim — auto-detected).
 2. REQUIREMENTS                                           *pickers-requirements*
 
 Required:
-  • lib.nvim  https://github.com/StefanBartl/lib.nvim
+  • lib.nvim  https://github.com/WKDSteve/lib.nvim
 
 One of (auto-detected, telescope preferred, then fzf-lua, then snacks.nvim):
   • telescope.nvim  https://github.com/nvim-telescope/telescope.nvim
@@ -64,8 +64,8 @@ telescope or snacks on older fzf.
 
 Minimal (lazy.nvim): >lua
   {
-    "StefanBartl/pickers.nvim",
-    dependencies = { "StefanBartl/lib.nvim" },
+    "WKDSteve/pickers.nvim",
+    dependencies = { "WKDSteve/lib.nvim" },
     config = function()
       require("pickers").setup()
     end,
@@ -857,7 +857,7 @@ mechanism -- no pickers.nvim-side logic: >lua
 An entry whose file is an image (.png/.jpg/... -- whatever images.nvim's own
 `extensions` lists) is drawn as a picture in the preview window instead of
 being previewed as bytes.  Needs images.nvim
-(https://github.com/StefanBartl/images.nvim); on by default, and inert
+(https://github.com/WKDSteve/images.nvim); on by default, and inert
 without it: >lua
   require("pickers").setup({
     images = { enabled = true },   -- false keeps the engine's text preview
@@ -875,7 +875,7 @@ without it: >lua
 PDF entries                                                *pickers-images-pdf*
 
 A .pdf entry previews as its FIRST PAGE, on the same switch, when
-pdfport.nvim (https://github.com/StefanBartl/pdfport.nvim) and poppler's
+pdfport.nvim (https://github.com/WKDSteve/pdfport.nvim) and poppler's
 `pdftoppm` are installed alongside images.nvim.  Nothing in pickers.nvim reads
 a PDF: images.nvim rasterizes the page and draws it like any other picture,
 and without a rasterizer the entry simply stays the engine's to preview.
