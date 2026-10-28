@@ -2328,6 +2328,45 @@ do
     "browse.delete: dir",
     browse.delete(broot .. "/made") and vim.fn.isdirectory(broot .. "/made") == 0
   )
+
+  -- The delete action asks through the shared dialog: declining keeps the file, accepting removes it.
+  do
+    local dialog = require("lib.nvim.ui.dialog")
+    local real_yesno = dialog.yesno
+    vim.fn.writefile({ "z" }, broot .. "/victim.txt")
+    browse.open(broot, { engine_mod = fake_engine })
+    local delete_action
+    for _, e in ipairs(last_opts.items) do
+      if e.action == "delete" then delete_action = e end
+    end
+    local asked
+    for _, accept in ipairs({ false, true }) do
+      dialog.yesno = function(question, label, cb, opts)
+        asked = { question = question, label = label, kind = opts and opts.kind }
+        cb(accept)
+      end
+      last_opts.on_select(delete_action) -- picks the entry to delete
+      local victim
+      for _, e in ipairs(last_opts.items) do
+        if e.text == "victim.txt" then victim = e end
+      end
+      last_opts.on_select(victim)
+      check(
+        "browse: delete " .. (accept and "accepted" or "declined") .. " via dialog.yesno",
+        asked ~= nil
+          and asked.label == "delete"
+          and asked.kind == "danger"
+          and (vim.fn.filereadable(broot .. "/victim.txt") == 1) == not accept
+      )
+      if not accept then
+        browse.open(broot, { engine_mod = fake_engine })
+        for _, e in ipairs(last_opts.items) do
+          if e.action == "delete" then delete_action = e end
+        end
+      end
+    end
+    dialog.yesno = real_yesno
+  end
   vim.fn.delete(broot, "rf")
 end
 

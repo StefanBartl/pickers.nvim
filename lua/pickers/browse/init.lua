@@ -256,13 +256,23 @@ local function run_action(entry, opts)
     end)
   elseif entry.action == "delete" then
     pick_entry(dir, "Delete which?", opts.engine_mod, function(e)
-      vim.ui.select({ "yes", "no" }, { prompt = "Delete " .. e.path .. "?" }, function(answer)
-        if answer == "yes" then
+      local function answered(accepted)
+        if accepted then
           local ok, err = M.delete(e.path)
           if not ok then notify.error("delete: " .. tostring(err)) end
         end
         reopen()
-      end)
+      end
+      local question = "Delete " .. e.path .. "?"
+      -- lib.nvim is a soft dependency: without it the question is a plain vim.ui.select.
+      local has_dialog, dialog = pcall(require, "lib.nvim.ui.dialog")
+      if has_dialog and type(dialog.yesno) == "function" then
+        dialog.yesno(question, "delete", answered, { kind = "danger" })
+      else
+        vim.ui.select({ "yes", "no" }, { prompt = question }, function(answer)
+          answered(answer == "yes")
+        end)
+      end
     end)
   end
 end
