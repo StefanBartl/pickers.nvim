@@ -264,15 +264,7 @@ local function run_action(entry, opts)
         reopen()
       end
       local question = "Delete " .. e.path .. "?"
-      -- lib.nvim is a soft dependency: without it the question is a plain vim.ui.select.
-      local has_dialog, dialog = pcall(require, "lib.nvim.ui.dialog")
-      if has_dialog and type(dialog.yesno) == "function" then
-        dialog.yesno(question, "delete", answered, { kind = "danger" })
-      else
-        vim.ui.select({ "yes", "no" }, { prompt = question }, function(answer)
-          answered(answer == "yes")
-        end)
-      end
+      require("lib.nvim.ui.dialog").yesno(question, "delete", answered, { kind = "danger" })
     end)
   end
 end
