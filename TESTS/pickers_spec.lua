@@ -2992,8 +2992,8 @@ end
 -- lib.nvim's help float (<M-h> on the command line) shows one line per positional argument,
 -- taken from the argument's `desc`, the text of its type (`register_type`) or, for a closed set,
 -- `enum_desc`. Pins that no route of :Pickers ships an argument without one, and that the lines
--- keep the float's house style: one short line, no trailing full stop. Skipped on a lib.nvim
--- without `help.undocumented` / `arg_desc`.
+-- keep the float's house style: one short line, no trailing full stop. A lib.nvim
+-- without `help.undocumented` / `arg_desc` fails the case by name (NEW-43).
 do
   local okc, composer = pcall(require, "lib.nvim.bindings.usercmd.composer")
   local oke, entries = pcall(require, "lib.nvim.bindings.usercmd.composer.help.entries")
@@ -3006,7 +3006,11 @@ do
       and type(entries.arg_desc) == "function"
     )
   then
-    print("  skip :Pickers option float tests (lib.nvim has no argument texts)")
+    check(
+      "option float: lib.nvim lacks composer.help.undocumented / entries.arg_desc: update lib.nvim",
+      false,
+      ""
+    )
   else
     -- A collection route is generated per collection, so one is configured to cover it too.
     require("pickers.config").apply({ collections = { { name = "notes", dir = "/tmp/notes" } } })
